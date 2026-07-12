@@ -1,0 +1,83 @@
+# SHIME 2026-08-08 event configuration
+# REQUIRED_INPUTは主催者確定後に置換する
+
+event:
+  code: shime-20260808
+  name: "REQUIRED_INPUT: 正式イベント名"
+  timezone: Asia/Tokyo
+  starts_at: "2026-08-08T14:00:00+09:00"
+  ends_at: "REQUIRED_INPUT: 終了日時"
+  venue_name: "REQUIRED_INPUT: 会場名"
+  venue_address: "REQUIRED_INPUT: 会場住所"
+  capacity: 50
+  status: draft
+
+application:
+  sources:
+    - shime_form
+    - csv
+  opens_at: "REQUIRED_INPUT: 受付開始日時"
+  closes_at: "REQUIRED_INPUT: 受付終了日時"
+  confirmation_mode: manual
+  waitlist_enabled: false
+  duplicate_detection:
+    - phone
+    - email
+    - full_name_and_birth_date
+
+dream:
+  # required_private_allowed または optional
+  registration_mode: required_private_allowed
+  public_visibility_default: private
+  project_opt_in_default: false
+
+preference:
+  # mutual_up_to_2 / first_choice_only / ranked_up_to_3
+  mode: mutual_up_to_2
+  opens_at: "REQUIRED_INPUT: 希望入力開始日時"
+  closes_at: "REQUIRED_INPUT: 希望入力締切日時"
+  result_publish_mode: manual
+  allow_multiple_matches: false
+  contact_exchange_mode: operator_mediated
+
+participants:
+  categories:
+    - code: group_a
+      label: "REQUIRED_INPUT: 区分A"
+    - code: group_b
+      label: "REQUIRED_INPUT: 区分B"
+  participant_number:
+    group_a_prefix: A
+    group_b_prefix: B
+    digits: 2
+
+seating:
+  assignment_mode: pair_score_initial_seating
+  conversation_rounds: "REQUIRED_INPUT: 席替え回数"
+  tables: [] # 管理画面または席CSVから登録
+  weights:
+    values: 40
+    marriage_intent: 25
+    relationship_pace: 15
+    conversation_style: 10
+    topic_overlap: 10
+  require_manager_publish: true
+
+emotion_cards:
+  card_set_code: "REQUIRED_INPUT: カードセット"
+  redraw_limit: 1
+
+notifications:
+  passport_issued: true
+  questionnaire_reminder: true
+  day_before: true
+  preference_open: true
+  preference_deadline: true
+  result_available: true
+
+privacy:
+  retention_days: "REQUIRED_INPUT: 保存日数"
+  dream_project_consent_separate: true
+  show_unilateral_preference_to_participant: false
+  expose_rank_to_participant: false
+
