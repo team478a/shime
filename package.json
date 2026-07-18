@@ -11,7 +11,7 @@
     "docs:sync": "tsx scripts/sync-public-docs.ts",
     "lint": "pnpm --filter @shime/web lint && eslint packages tests",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run",
+    "test": "pnpm test:unit && pnpm test:integration",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
