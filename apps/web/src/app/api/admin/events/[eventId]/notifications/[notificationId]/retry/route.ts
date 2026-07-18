@@ -1,0 +1,7 @@
+import { randomUUID } from "node:crypto";
+import { and, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { requirePermission } from "@shime/core";
+import { auditLogs, getDatabase, notifications } from "@shime/db";
+import { requireStaffSession } from "@shime/web/server/auth";
+export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string; notificationId: string }> }) { const requestId = randomUUID(); const session = await requireStaffSession().catch(() => null); if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); try { requirePermission(session.role, "notification:write"); } catch { return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 }); } const { eventId, notificationId } = await params; const db = getDatabase(); const [updated] = await db.transaction(async (tx) => { const rows = await tx.update(notifications).set({ status: "queued", scheduledAt: new Date(), errorCode: null, errorMessage: null, updatedAt: new Date() }).where(and(eq(notifications.id, notificationId), eq(notifications.eventId, eventId), eq(notifications.tenantId, session.tenantId), eq(notifications.status, "failed"))).returning(); if (rows[0]) await tx.insert(auditLogs).values({ tenantId: session.tenantId, actorUserId: session.userId, eventId, action: "notification.retry", targetType: "notification", targetId: notificationId, requestId }); return rows; }); return updated ? NextResponse.json({ data: updated }) : NextResponse.json({ code: "NOT_RETRYABLE" }, { status: 409 }); }

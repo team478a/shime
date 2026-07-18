@@ -1,0 +1,13 @@
+external_id,full_name,full_name_kana,phone,email,birth_date,nickname,residence_area,participant_category,application_status,applied_at,consent_confirmed_at,notes
+RH-A01,テスト参加者A01,テストサンカシャエーゼロイチ,00000000001,rh-a01@example.invalid,1990-01-01,A01,検証地域,group_a,confirmed,2026-07-15T10:00:00+09:00,2026-07-15T10:00:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-A02,テスト参加者A02,テストサンカシャエーゼロニ,00000000002,rh-a02@example.invalid,1991-02-02,A02,検証地域,group_b,confirmed,2026-07-15T10:01:00+09:00,2026-07-15T10:01:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-A03,テスト参加者A03,テストサンカシャエーゼロサン,00000000003,rh-a03@example.invalid,1992-03-03,A03,検証地域,group_a,confirmed,2026-07-15T10:02:00+09:00,2026-07-15T10:02:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-A04,テスト参加者A04,テストサンカシャエーゼロヨン,00000000004,rh-a04@example.invalid,1993-04-04,A04,検証地域,group_b,confirmed,2026-07-15T10:03:00+09:00,2026-07-15T10:03:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-B01,テスト参加者B01,テストサンカシャビーゼロイチ,00000000005,rh-b01@example.invalid,1988-05-05,B01,検証地域,group_a,confirmed,2026-07-15T10:04:00+09:00,2026-07-15T10:04:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-B02,テスト参加者B02,テストサンカシャビーゼロニ,00000000006,rh-b02@example.invalid,1989-06-06,B02,検証地域,group_b,confirmed,2026-07-15T10:05:00+09:00,2026-07-15T10:05:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-B03,テスト参加者B03,テストサンカシャビーゼロサン,00000000007,rh-b03@example.invalid,1990-07-07,B03,検証地域,group_a,confirmed,2026-07-15T10:06:00+09:00,2026-07-15T10:06:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-B04,テスト参加者B04,テストサンカシャビーゼロヨン,00000000008,rh-b04@example.invalid,1991-08-08,B04,検証地域,group_b,confirmed,2026-07-15T10:07:00+09:00,2026-07-15T10:07:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-C01,テスト参加者C01,テストサンカシャシーゼロイチ,00000000009,rh-c01@example.invalid,1987-09-09,C01,検証地域,group_a,confirmed,2026-07-15T10:08:00+09:00,2026-07-15T10:08:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-C02,テスト参加者C02,テストサンカシャシーゼロニ,00000000010,rh-c02@example.invalid,1988-10-10,C02,検証地域,group_b,confirmed,2026-07-15T10:09:00+09:00,2026-07-15T10:09:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-C03,テスト参加者C03,テストサンカシャシーゼロサン,00000000011,rh-c03@example.invalid,1989-11-11,C03,検証地域,group_a,confirmed,2026-07-15T10:10:00+09:00,2026-07-15T10:10:00+09:00,SYNTHETIC_REHEARSAL_ONLY
+RH-C04,テスト参加者C04,テストサンカシャシーゼロヨン,00000000012,rh-c04@example.invalid,1990-12-12,C04,検証地域,group_b,confirmed,2026-07-15T10:11:00+09:00,2026-07-15T10:11:00+09:00,SYNTHETIC_REHEARSAL_ONLY

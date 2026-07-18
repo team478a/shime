@@ -1,0 +1,146 @@
+baseUrl: https://shime-staging.vercel.app
+csvPath: docs/shime/REHEARSAL_APPLICATIONS_12.csv
+tables:
+  - tableCode: T01
+    capacity: 2
+    displayOrder: 1
+    seats:
+      - seatCode: T01-1
+      - seatCode: T01-2
+  - tableCode: T02
+    capacity: 2
+    displayOrder: 2
+    seats:
+      - seatCode: T02-1
+      - seatCode: T02-2
+dream:
+  aiEnabled: false
+  aiTimeoutMs: 3000
+  projectConsentVersion: null
+  fallbackBridgeTemplate: "{card}という気持ちと{wish}という願いを、自分らしい一歩につなげてみましょう。"
+  fallbackCandidates:
+    - "自分らしく安心して話せる関係を育てたい"
+    - "お互いを尊重しながら温かな時間を重ねたい"
+    - "新しい出会いを大切にし、前向きな一歩を踏み出したい"
+  cardSet:
+    code: rehearsal-v1
+    name: SHIMEリハーサル感情カード
+    version: 1
+    cards:
+      - { name: わくわく, imageKey: null, description: 新しい出会いへの期待 }
+      - { name: ほっとする, imageKey: null, description: 安心して話せる気持ち }
+      - { name: どきどき, imageKey: null, description: 少し緊張している気持ち }
+      - { name: やさしい, imageKey: null, description: 相手を思いやりたい気持ち }
+      - { name: 前向き, imageKey: null, description: 一歩進んでみたい気持ち }
+      - { name: 穏やか, imageKey: null, description: 落ち着いて過ごしたい気持ち }
+      - { name: 好奇心, imageKey: null, description: 相手をもっと知りたい気持ち }
+      - { name: 自分らしく, imageKey: null, description: 無理をせず自然体でいたい気持ち }
+questionnaire:
+  name: SHIMEリハーサル席案内5問
+  version: 1
+  questions:
+    - axis: values
+      prompt: 大切にしたい価値観を選んでください
+      kind: multi_select
+      maxSelections: 3
+      weight: 40
+      options:
+        - { code: family, label: 家族, scoreValue: null }
+        - { code: work, label: 仕事, scoreValue: null }
+        - { code: trust, label: 信頼, scoreValue: null }
+        - { code: growth, label: 成長, scoreValue: null }
+    - axis: marriage_intent
+      prompt: 結婚への今の温度感を教えてください
+      kind: ordinal
+      maxSelections: 1
+      weight: 25
+      options:
+        - { code: "1", label: ゆっくり考えたい, scoreValue: 1 }
+        - { code: "2", label: 良い方がいれば, scoreValue: 2 }
+        - { code: "3", label: 前向き, scoreValue: 3 }
+        - { code: "4", label: 早めに考えたい, scoreValue: 4 }
+        - { code: "5", label: 具体的に考えている, scoreValue: 5 }
+    - axis: relationship_pace
+      prompt: 関係を育てるペースを教えてください
+      kind: ordinal
+      maxSelections: 1
+      weight: 15
+      options:
+        - { code: "1", label: ゆっくり, scoreValue: 1 }
+        - { code: "2", label: 少しずつ, scoreValue: 2 }
+        - { code: "3", label: 自然に, scoreValue: 3 }
+        - { code: "4", label: 積極的に, scoreValue: 4 }
+        - { code: flexible, label: 相手に合わせたい, scoreValue: null }
+    - axis: conversation_style
+      prompt: 会話で近いスタイルを選んでください
+      kind: complement
+      maxSelections: 1
+      weight: 10
+      options:
+        - { code: talker, label: 話す方が得意, scoreValue: null }
+        - { code: listener, label: 聞く方が得意, scoreValue: null }
+        - { code: balance, label: どちらも同じくらい, scoreValue: null }
+    - axis: topic_overlap
+      prompt: 話してみたいテーマを選んでください
+      kind: multi_select
+      maxSelections: 3
+      weight: 10
+      options:
+        - { code: food, label: 食, scoreValue: null }
+        - { code: travel, label: 旅行, scoreValue: null }
+        - { code: hobby, label: 趣味, scoreValue: null }
+        - { code: work, label: 仕事, scoreValue: null }
+        - { code: future, label: 将来, scoreValue: null }
+legalDocuments:
+  - documentType: event_terms
+    version: rehearsal-v1
+    title: SHIMEリハーサルイベント利用規約
+    body: "本規約はSHIME検証環境で行う合成データによるリハーサル専用です。実在する参加者の情報を入力せず、運営担当者の指示に従って検証してください。"
+  - documentType: privacy
+    version: rehearsal-v1
+    title: SHIMEリハーサルプライバシー方針
+    body: "検証には合成データのみを使用します。LINE識別情報、連携URL、QRトークン、非公開回答を証跡や共有資料へ記録しないでください。"
+notificationTemplates:
+  - templateKey: result_matched
+    name: 成立結果（検証用）
+    body: "結果をご確認ください。連絡先交換は運営の案内に従ってください。"
+  - templateKey: result_unmatched
+    name: 不成立結果（検証用）
+    body: "ご参加ありがとうございました。今回の結果はSHIME PASSからご確認いただけます。"
+events:
+  - prefix: RH-A
+    questionnaireCode: rehearsal-rh-a
+    code: rh-a-20260715
+    name: "[検証専用] SHIME RH-A"
+    startsAt: 2026-07-25T04:00:00.000Z
+    endsAt: 2026-07-25T06:00:00.000Z
+    applicationOpensAt: 2026-07-15T00:00:00.000Z
+    applicationClosesAt: 2026-07-24T14:59:59.000Z
+    preferenceOpensAt: 2026-07-25T04:30:00.000Z
+    preferenceClosesAt: 2026-07-25T05:00:00.000Z
+    dreamRegistrationMode: required_private_allowed
+    preferenceMode: mutual_up_to_2
+  - prefix: RH-B
+    questionnaireCode: rehearsal-rh-b
+    code: rh-b-20260715
+    name: "[検証専用] SHIME RH-B"
+    startsAt: 2026-07-26T04:00:00.000Z
+    endsAt: 2026-07-26T06:00:00.000Z
+    applicationOpensAt: 2026-07-15T00:00:00.000Z
+    applicationClosesAt: 2026-07-25T14:59:59.000Z
+    preferenceOpensAt: 2026-07-26T04:30:00.000Z
+    preferenceClosesAt: 2026-07-26T05:00:00.000Z
+    dreamRegistrationMode: optional
+    preferenceMode: first_choice_only
+  - prefix: RH-C
+    questionnaireCode: rehearsal-rh-c
+    code: rh-c-20260715
+    name: "[検証専用] SHIME RH-C"
+    startsAt: 2026-07-27T04:00:00.000Z
+    endsAt: 2026-07-27T06:00:00.000Z
+    applicationOpensAt: 2026-07-15T00:00:00.000Z
+    applicationClosesAt: 2026-07-26T14:59:59.000Z
+    preferenceOpensAt: 2026-07-27T04:30:00.000Z
+    preferenceClosesAt: 2026-07-27T05:00:00.000Z
+    dreamRegistrationMode: optional
+    preferenceMode: ranked_up_to_3
