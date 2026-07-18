@@ -1,0 +1,2 @@
+import { describe, expect, it } from "vitest"; import { createCsv, protectSpreadsheetFormula } from "@shime/core";
+describe("CSV export", () => { it("prevents spreadsheet formula injection", () => { expect(protectSpreadsheetFormula("=1+1")).toBe("'=1+1"); expect(protectSpreadsheetFormula("@SUM(A1)")).toBe("'@SUM(A1)"); }); it("quotes commas and emits a UTF-8 BOM", () => { expect(createCsv(["name"], [["Doe, Jane"]])).toBe('\uFEFFname\r\n"Doe, Jane"\r\n'); }); });

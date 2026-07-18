@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "apps/web/.next",
+  "crons": [
+    { "path": "/api/jobs/notifications", "schedule": "0 0 * * *" },
+    { "path": "/api/jobs/health-monitor", "schedule": "5 0 * * *" }
+  ]
+}

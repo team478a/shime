@@ -1,0 +1,41 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11.7.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm audit:dependencies
+      - run: pnpm readiness
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          DATABASE_URL: postgresql://build:build@localhost:5432/build
+          SESSION_PEPPER: build-only-session-pepper-at-least-32-characters
+          PASSWORD_PEPPER: build-only-password-pepper-at-least-32-characters
+          LINK_TOKEN_PEPPER: build-only-link-token-pepper-at-least-32-characters
+          QR_TOKEN_PEPPER: build-only-qr-token-pepper-at-least-32-characters
+          APP_URL: http://localhost:3000
+          APP_ENV: test
+          NEXT_PUBLIC_LIFF_ID: build-liff-id
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11.7.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e

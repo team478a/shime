@@ -1,0 +1,90 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1783827206925,
+      "tag": "0000_huge_spirit",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783829737162,
+      "tag": "0001_fresh_dark_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783832398263,
+      "tag": "0002_shocking_cannonball",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783833752527,
+      "tag": "0003_plain_maestro",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783835461558,
+      "tag": "0004_fearless_tana_nile",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783848469723,
+      "tag": "0005_gigantic_boom_boom",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783850860706,
+      "tag": "0006_parched_penance",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783859373964,
+      "tag": "0007_lock_supabase_data_api",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783998731849,
+      "tag": "0008_breezy_lyja",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784011808191,
+      "tag": "0009_warm_strong_guy",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784263131782,
+      "tag": "0010_famous_kang",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784268224709,
+      "tag": "0011_glossy_mastermind",
+      "breakpoints": true
+    }
+  ]
+}

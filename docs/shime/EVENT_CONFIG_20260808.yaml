@@ -77,6 +77,8 @@ notifications:
 
 privacy:
   retention_days: "REQUIRED_INPUT: 保存日数"
+  event_terms_version: "REQUIRED_INPUT: イベント規約版"
+  privacy_version: "REQUIRED_INPUT: プライバシーポリシー版"
   dream_project_consent_separate: true
   show_unilateral_preference_to_participant: false
   expose_rank_to_participant: false

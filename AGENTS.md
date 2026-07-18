@@ -2,7 +2,7 @@
 
 ## Project goal
 
-Build the SHIME marriage-event LIFF application for the 2026-08-08 production event.
+Build the SHIME marriage-event LIFF application for the 2026-08-08 production event while treating SHIME as an extensible operations OS that can support multiple services, event types, and combined workflows.
 
 ## Source of truth
 
@@ -13,6 +13,7 @@ Read these files before planning or editing:
 - `docs/shime/IMPLEMENTATION_TASKS_V1.md`
 - `docs/shime/EVENT_CONFIG_20260808.yaml`
 - `docs/shime/APPLICATION_IMPORT_TEMPLATE.csv`
+- `docs/shime/PLATFORM_OS_PRINCIPLES.md`
 
 Latest explicit user instructions override these documents.
 
@@ -31,6 +32,14 @@ Latest explicit user instructions override these documents.
 - Store timestamps in UTC and display in Asia/Tokyo.
 - Use migrations for every schema change.
 - Add tests with every behavior change.
+- Treat on-site staff operations as smartphone-first; do not assume a PC is available.
+- Minimize staff typing by reusing known data, short prefix/partial searches, candidate selection, presets, and context-preserving navigation.
+- Keep touch targets large and keep the primary action usable without horizontal scrolling.
+- Input reduction must not weaken tenant/event isolation, permissions, explicit confirmation for consequential actions, or audit logging.
+- Build reusable platform capabilities separately from service-specific modules; do not embed marriage-event assumptions in shared authentication, permissions, forms, notifications, jobs, storage, or integration layers.
+- Model reusable templates separately from event instances. Copy a versioned snapshot into an event so later template edits cannot alter historical or in-progress operations.
+- Prefer module contracts, provider interfaces, and versioned configuration over direct cross-module table coupling.
+- Keep tenant, service/module, and event scopes explicit so future horizontal expansion does not leak data or permissions across boundaries.
 
 ## Required checks
 

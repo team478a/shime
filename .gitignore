@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+.next/
+.vercel/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+test-results/
+playwright-report/
+artifacts/*-rehearsal-qr.png
+apps/web/public/downloads/
+.qa_client_requirements*/
+
+.vercel
