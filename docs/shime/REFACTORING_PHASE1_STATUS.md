@@ -21,6 +21,8 @@
 - `PUT /api/liff/me/dream`
 - `POST /api/liff/me/dream/skip`
 - `POST /api/liff/events/:eventId/dream/suggestions`
+- `GET /api/liff/events/:eventId/emotion-cards`
+- `POST /api/liff/events/:eventId/emotion-selection`
 
 ## 実施内容
 
@@ -39,6 +41,9 @@
 - Dream保存、任意スキップ、候補生成APIを移行
 - body内event IDを使うDream APIは、既存どおり入力検証後に認証を行う順序を維持
 - Dream保存時の参加者更新と感情カード参照にtenant・event境界を明示
+- 感情カード取得と感情選択保存APIを移行
+- 感情選択時のカードIDをイベントに設定されたカードセットへ限定
+- 感情選択と参加者状態の更新条件にtenant・event・participant境界を明示
 - 未ログインとイベント未紐づけを既存どおり401として扱う契約を維持
 
 ## 互換性
@@ -53,7 +58,7 @@
 
 ## Phase 1の残作業
 
-1. participantHandlerの感情・設問・希望入力APIへの段階適用
+1. participantHandlerの設問・希望入力APIへの段階適用
 2. publicHandler
 3. jobHandler
 4. webhookHandler
@@ -70,4 +75,4 @@
 
 ## 次の推奨対象
 
-参加者向け感情カード・感情選択APIの認証共通化を候補とする。ただし、カード管理等の業務UseCase・Repository分離と混在させず、Phase 1ではHandler適用と契約テストだけに限定する。
+参加者向け設問・回答APIの認証共通化を候補とする。ただし、設問管理等の業務UseCase・Repository分離と混在させず、Phase 1ではHandler適用と契約テストだけに限定する。
