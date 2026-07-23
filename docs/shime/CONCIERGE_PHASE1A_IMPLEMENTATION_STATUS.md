@@ -63,6 +63,16 @@ SUPABASE_CONCIERGE_BUCKET=作成した非公開bucket名
 
 既存の`SUPABASE_URL`と`SUPABASE_SERVICE_ROLE_KEY`も必要である。bucketをpublicにしない。
 
+### staging反映記録（2026-07-23）
+
+- Migration `0012_blue_serpent_society.sql`: 適用済み
+- private bucket `shime-private-concierge`: 作成・非公開設定・制限確認済み
+- Vercel `SUPABASE_CONCIERGE_BUCKET`: Production環境へ設定済み
+- Vercel deployment: `dpl_G6hCR88HBsBhMkoEwB5FY544LNBV`
+- alias: `https://shime-staging.vercel.app`
+- `/api/health`: HTTP 200
+- `/admin/concierge`: 未認証時に`/admin/login`へリダイレクトすることを確認
+
 ## 未実装（次Phase以降）
 
 ### Phase 1B候補
