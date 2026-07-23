@@ -64,6 +64,35 @@ describe("participantHandler contract", () => {
     });
   });
 
+  it("passes the request and route arguments through to update handlers", async () => {
+    const handler = createParticipantHandler({
+      loadParticipant: async () => auth,
+      createRequestId: () => "request-update",
+    })(
+      async (_request: Request, routeContext: { params: Promise<{ eventId: string }> }) =>
+        (await routeContext.params).eventId,
+      async ({ participant }, request: Request) =>
+        Response.json({
+          method: request.method,
+          participantId: participant.id,
+          payload: await request.json(),
+        }),
+    );
+
+    const request = new Request("https://example.test/api/liff/events/event-1/passport", {
+      method: "POST",
+      body: JSON.stringify({ issue: true }),
+    });
+    const response = await handler(request, { params: Promise.resolve({ eventId: "event-1" }) });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      method: "POST",
+      participantId: "participant-1",
+      payload: { issue: true },
+    });
+  });
+
   it("preserves known participant API errors without adding a request ID", async () => {
     const handler = createParticipantHandler({
       loadParticipant: async () => auth,
