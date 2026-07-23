@@ -15,15 +15,14 @@ export function createConciergeStorageProvider(): PrivateObjectStorageProvider {
   });
   return {
     async uploadImmutable(input) {
-      const result = await client.storage.from(env.SUPABASE_CONCIERGE_BUCKET).upload(
-        input.objectKey,
-        input.bytes,
-        { contentType: input.contentType, upsert: false },
-      );
+      const result = await client.storage
+        .from(env.SUPABASE_CONCIERGE_BUCKET)
+        .upload(input.objectKey, input.bytes, { contentType: input.contentType, upsert: false });
       if (result.error) throw new Error("CONCIERGE_STORAGE_UPLOAD_FAILED");
     },
     async createSignedReadUrl(objectKey, expiresInSeconds) {
-      const result = await client.storage.from(env.SUPABASE_CONCIERGE_BUCKET)
+      const result = await client.storage
+        .from(env.SUPABASE_CONCIERGE_BUCKET)
         .createSignedUrl(objectKey, expiresInSeconds);
       if (result.error || !result.data.signedUrl) throw new Error("CONCIERGE_STORAGE_SIGN_FAILED");
       return result.data.signedUrl;

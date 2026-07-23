@@ -6,7 +6,8 @@ export default defineConfig({
   out: "./packages/db/migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL ?? "postgresql://shime:shime@localhost:5432/shime",
+    url:
+      process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL ?? "postgresql://shime:shime@localhost:5432/shime",
   },
   strict: true,
 });

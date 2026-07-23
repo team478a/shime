@@ -1,15 +1,10 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildLinePublicUrls,
-  parseLiffLinkQuery,
-} from "../../apps/web/src/server/line-client-config";
+import { buildLinePublicUrls, parseLiffLinkQuery } from "../../apps/web/src/server/line-client-config";
 import { buildLiffApplicationLink, buildLiffEventEntryLink } from "@shime/core";
 
 describe("LINE public URLs", () => {
   it("builds current LIFF and webhook URLs without deprecated schemes", () => {
-    expect(
-      buildLinePublicUrls("123-test", "https://shime.example/", "shime tenant"),
-    ).toEqual({
+    expect(buildLinePublicUrls("123-test", "https://shime.example/", "shime tenant")).toEqual({
       liffUrl: "https://liff.line.me/123-test",
       endpointUrl: "https://shime.example/liff/link",
       webhookUrl: "https://shime.example/api/webhooks/line?tenant=shime%20tenant",
@@ -27,9 +22,10 @@ describe("LINE public URLs", () => {
 
 describe("LIFF link query parsing", () => {
   it("uses direct query parameters after the secondary redirect", () => {
-    expect(
-      parseLiffLinkQuery({ eventId: "event-1", linkToken: "token-1" }),
-    ).toEqual({ eventId: "event-1", linkToken: "token-1" });
+    expect(parseLiffLinkQuery({ eventId: "event-1", linkToken: "token-1" })).toEqual({
+      eventId: "event-1",
+      linkToken: "token-1",
+    });
   });
 
   it("reads additional LIFF URL information from the primary redirect state", () => {
@@ -51,7 +47,9 @@ describe("LIFF link query parsing", () => {
 
 describe("LIFF application link", () => {
   it("encodes event and opaque link-token values", () => {
-    expect(buildLiffApplicationLink("123-test", "event/1", "secret+token")).toBe("https://liff.line.me/123-test?eventId=event%2F1&linkToken=secret%2Btoken");
+    expect(buildLiffApplicationLink("123-test", "event/1", "secret+token")).toBe(
+      "https://liff.line.me/123-test?eventId=event%2F1&linkToken=secret%2Btoken",
+    );
   });
 
   it("does not build an incomplete link", () => {

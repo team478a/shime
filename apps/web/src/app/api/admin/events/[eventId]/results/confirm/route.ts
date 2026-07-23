@@ -1,2 +1,102 @@
-import { randomUUID } from "node:crypto"; import { and, eq, isNull } from "drizzle-orm"; import { NextResponse } from "next/server"; import { findMatchConflicts, requirePermission } from "@shime/core"; import { auditLogs, checkins, events, getDatabase, lovePassports, matchCandidates, participants, resultConfirmations } from "@shime/db"; import { requireStaffSession } from "@shime/web/server/auth";
-export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) { const { eventId } = await params; const session = await requireStaffSession().catch(() => null); if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); try { requirePermission(session.role, "result:confirm"); } catch { return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 }); } const db = getDatabase(); const eventRows = await db.select().from(events).where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId))).limit(1); const event = eventRows[0]; if (!event || event.status !== "preference_closed") return NextResponse.json({ code: "INVALID_EVENT_STATE" }, { status: 409 }); const existing = await db.select().from(resultConfirmations).where(and(eq(resultConfirmations.tenantId, session.tenantId), eq(resultConfirmations.eventId, eventId), isNull(resultConfirmations.revokedAt))).limit(1); if (existing[0]) return NextResponse.json({ code: "ALREADY_CONFIRMED" }, { status: 409 }); const candidates = await db.select().from(matchCandidates).where(and(eq(matchCandidates.tenantId, session.tenantId), eq(matchCandidates.eventId, eventId))); if (candidates.some((c) => c.status === "candidate" || c.status === "pending")) return NextResponse.json({ code: "UNRESOLVED_CANDIDATES" }, { status: 409 }); const conflicts = findMatchConflicts(candidates, event.allowMultipleMatches); if (conflicts.length) return NextResponse.json({ code: "MULTIPLE_MATCH_CONFLICT", conflicts }, { status: 409 }); const eligible = await db.select({ id: participants.id }).from(participants).innerJoin(checkins, and(eq(checkins.tenantId, participants.tenantId), eq(checkins.eventId, participants.eventId), eq(checkins.participantId, participants.id), eq(checkins.status, "checked_in"))).where(and(eq(participants.tenantId, session.tenantId), eq(participants.eventId, eventId))); const approvedCount = candidates.filter((c) => c.status === "approved").length; const now = new Date(); const [confirmation] = await db.transaction(async (tx) => { const rows = await tx.insert(resultConfirmations).values({ tenantId: session.tenantId, eventId, confirmedBy: session.userId, confirmedAt: now, approvedCount, participantCount: eligible.length }).returning(); await tx.update(events).set({ status: "result_confirmed", resultPublishAt: now, updatedAt: now }).where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId))); await tx.update(lovePassports).set({ status: "result_available", updatedAt: now }).where(and(eq(lovePassports.tenantId, session.tenantId), eq(lovePassports.eventId, eventId))); await tx.insert(auditLogs).values({ tenantId: session.tenantId, actorUserId: session.userId, eventId, action: "results.confirm", targetType: "event", targetId: eventId, after: { approvedCount, participantCount: eligible.length }, requestId: randomUUID() }); return rows; }); return NextResponse.json({ data: confirmation }); }
+import { randomUUID } from "node:crypto";
+import { and, eq, isNull } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { findMatchConflicts, requirePermission } from "@shime/core";
+import {
+  auditLogs,
+  checkins,
+  events,
+  getDatabase,
+  lovePassports,
+  matchCandidates,
+  participants,
+  resultConfirmations,
+} from "@shime/db";
+import { requireStaffSession } from "@shime/web/server/auth";
+export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  const session = await requireStaffSession().catch(() => null);
+  if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  try {
+    requirePermission(session.role, "result:confirm");
+  } catch {
+    return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
+  }
+  const db = getDatabase();
+  const eventRows = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId)))
+    .limit(1);
+  const event = eventRows[0];
+  if (!event || event.status !== "preference_closed")
+    return NextResponse.json({ code: "INVALID_EVENT_STATE" }, { status: 409 });
+  const existing = await db
+    .select()
+    .from(resultConfirmations)
+    .where(
+      and(
+        eq(resultConfirmations.tenantId, session.tenantId),
+        eq(resultConfirmations.eventId, eventId),
+        isNull(resultConfirmations.revokedAt),
+      ),
+    )
+    .limit(1);
+  if (existing[0]) return NextResponse.json({ code: "ALREADY_CONFIRMED" }, { status: 409 });
+  const candidates = await db
+    .select()
+    .from(matchCandidates)
+    .where(and(eq(matchCandidates.tenantId, session.tenantId), eq(matchCandidates.eventId, eventId)));
+  if (candidates.some((c) => c.status === "candidate" || c.status === "pending"))
+    return NextResponse.json({ code: "UNRESOLVED_CANDIDATES" }, { status: 409 });
+  const conflicts = findMatchConflicts(candidates, event.allowMultipleMatches);
+  if (conflicts.length) return NextResponse.json({ code: "MULTIPLE_MATCH_CONFLICT", conflicts }, { status: 409 });
+  const eligible = await db
+    .select({ id: participants.id })
+    .from(participants)
+    .innerJoin(
+      checkins,
+      and(
+        eq(checkins.tenantId, participants.tenantId),
+        eq(checkins.eventId, participants.eventId),
+        eq(checkins.participantId, participants.id),
+        eq(checkins.status, "checked_in"),
+      ),
+    )
+    .where(and(eq(participants.tenantId, session.tenantId), eq(participants.eventId, eventId)));
+  const approvedCount = candidates.filter((c) => c.status === "approved").length;
+  const now = new Date();
+  const [confirmation] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(resultConfirmations)
+      .values({
+        tenantId: session.tenantId,
+        eventId,
+        confirmedBy: session.userId,
+        confirmedAt: now,
+        approvedCount,
+        participantCount: eligible.length,
+      })
+      .returning();
+    await tx
+      .update(events)
+      .set({ status: "result_confirmed", resultPublishAt: now, updatedAt: now })
+      .where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId)));
+    await tx
+      .update(lovePassports)
+      .set({ status: "result_available", updatedAt: now })
+      .where(and(eq(lovePassports.tenantId, session.tenantId), eq(lovePassports.eventId, eventId)));
+    await tx.insert(auditLogs).values({
+      tenantId: session.tenantId,
+      actorUserId: session.userId,
+      eventId,
+      action: "results.confirm",
+      targetType: "event",
+      targetId: eventId,
+      after: { approvedCount, participantCount: eligible.length },
+      requestId: randomUUID(),
+    });
+    return rows;
+  });
+  return NextResponse.json({ data: confirmation });
+}

@@ -149,47 +149,147 @@ export default function DreamPage() {
     }
   }
 
-  return <main><div className="participant-page">
-    <section className="panel wide participant-content">
-      <ParticipantPageHeader eyebrow="DREAM CONNECTION" title="今の気持ちに近いカード" description="今の気持ちを入口に、これから大切にしたいことを見つけます。" current="dream" eventId={eventId} />
-      {eventId && loadState === "idle" && <ParticipantNotice>感情カードを読み込んでいます…</ParticipantNotice>}
-      {(!eventId || loadState === "error") && <ParticipantNotice tone="error">感情カードを読み込めませんでした。LINEの案内から開き直してください。</ParticipantNotice>}
-      {loadState === "loaded" && cards.length === 0 && <ParticipantNotice>感情カードはまだ準備されていません。</ParticipantNotice>}
-      {loadState === "loaded" && optional && !completed && <div className="participant-skip">
-        <p>夢登録は任意です。登録せずに次へ進むこともできます。</p>
-        <button type="button" className="secondary" onClick={skip} disabled={Boolean(busyAction)}>{busyAction === "skip" ? "処理中…" : "今回は登録せず進む"}</button>
-      </div>}
-      {loadState === "loaded" && !completed && <div className="card-grid emotion-card-grid">{cards.map((card) => <button type="button" className={selected === card.id ? "emotion-card selected" : "emotion-card"} key={card.id} onClick={() => setSelected(card.id)} aria-pressed={selected === card.id} disabled={Boolean(busyAction) || selectionSaved}>
-        {card.imageKey && <span className="card-image-key">{card.imageKey}</span>}<strong>{card.name}</strong><small>{card.description}</small>
-      </button>)}</div>}
-      {completed && <a className="button-link" href={`/liff/questionnaire?eventId=${eventId}`}>席案内の5問へ</a>}
-    </section>
+  return (
+    <main>
+      <div className="participant-page">
+        <section className="panel wide participant-content">
+          <ParticipantPageHeader
+            eyebrow="DREAM CONNECTION"
+            title="今の気持ちに近いカード"
+            description="今の気持ちを入口に、これから大切にしたいことを見つけます。"
+            current="dream"
+            eventId={eventId}
+          />
+          {eventId && loadState === "idle" && <ParticipantNotice>感情カードを読み込んでいます…</ParticipantNotice>}
+          {(!eventId || loadState === "error") && (
+            <ParticipantNotice tone="error">
+              感情カードを読み込めませんでした。LINEの案内から開き直してください。
+            </ParticipantNotice>
+          )}
+          {loadState === "loaded" && cards.length === 0 && (
+            <ParticipantNotice>感情カードはまだ準備されていません。</ParticipantNotice>
+          )}
+          {loadState === "loaded" && optional && !completed && (
+            <div className="participant-skip">
+              <p>夢登録は任意です。登録せずに次へ進むこともできます。</p>
+              <button type="button" className="secondary" onClick={skip} disabled={Boolean(busyAction)}>
+                {busyAction === "skip" ? "処理中…" : "今回は登録せず進む"}
+              </button>
+            </div>
+          )}
+          {loadState === "loaded" && !completed && (
+            <div className="card-grid emotion-card-grid">
+              {cards.map((card) => (
+                <button
+                  type="button"
+                  className={selected === card.id ? "emotion-card selected" : "emotion-card"}
+                  key={card.id}
+                  onClick={() => setSelected(card.id)}
+                  aria-pressed={selected === card.id}
+                  disabled={Boolean(busyAction) || selectionSaved}
+                >
+                  {card.imageKey && <span className="card-image-key">{card.imageKey}</span>}
+                  <strong>{card.name}</strong>
+                  <small>{card.description}</small>
+                </button>
+              ))}
+            </div>
+          )}
+          {completed && (
+            <a className="button-link" href={`/liff/questionnaire?eventId=${eventId}`}>
+              席案内の5問へ
+            </a>
+          )}
+        </section>
 
-    {selected && !selectionSaved && suggestions.length === 0 && !completed && <form className="panel wide login-form participant-content" onSubmit={answer}>
-      <p className="eyebrow">REFLECTION</p><h2>カードについて教えてください</h2>
-      <label>第一印象<input name="firstImpression" required disabled={Boolean(busyAction)} /></label>
-      <label>どの領域に関係しますか<input name="relatedArea" required disabled={Boolean(busyAction)} /></label>
-      <label>その奥にある願い<input name="underlyingWish" required disabled={Boolean(busyAction)} /></label>
-      <label>自由記述<textarea name="freeText" disabled={Boolean(busyAction)} /></label>
-      <button disabled={Boolean(busyAction)}>{busyAction === "reflection" ? "回答を保存中…" : "夢候補を見る"}</button>
-    </form>}
+        {selected && !selectionSaved && suggestions.length === 0 && !completed && (
+          <form className="panel wide login-form participant-content" onSubmit={answer}>
+            <p className="eyebrow">REFLECTION</p>
+            <h2>カードについて教えてください</h2>
+            <label>
+              第一印象
+              <input name="firstImpression" required disabled={Boolean(busyAction)} />
+            </label>
+            <label>
+              どの領域に関係しますか
+              <input name="relatedArea" required disabled={Boolean(busyAction)} />
+            </label>
+            <label>
+              その奥にある願い
+              <input name="underlyingWish" required disabled={Boolean(busyAction)} />
+            </label>
+            <label>
+              自由記述
+              <textarea name="freeText" disabled={Boolean(busyAction)} />
+            </label>
+            <button disabled={Boolean(busyAction)}>
+              {busyAction === "reflection" ? "回答を保存中…" : "夢候補を見る"}
+            </button>
+          </form>
+        )}
 
-    {selectionSaved && suggestions.length === 0 && !completed && <section className="panel wide participant-content">
-      <h2>回答は保存されています</h2>
-      <p>夢候補の準備だけをもう一度試せます。回答を入れ直す必要はありません。</p>
-      <button type="button" onClick={loadSuggestions} disabled={Boolean(busyAction)}>{busyAction === "suggestions" ? "準備中…" : "夢候補を再読込"}</button>
-    </section>}
+        {selectionSaved && suggestions.length === 0 && !completed && (
+          <section className="panel wide participant-content">
+            <h2>回答は保存されています</h2>
+            <p>夢候補の準備だけをもう一度試せます。回答を入れ直す必要はありません。</p>
+            <button type="button" onClick={loadSuggestions} disabled={Boolean(busyAction)}>
+              {busyAction === "suggestions" ? "準備中…" : "夢候補を再読込"}
+            </button>
+          </section>
+        )}
 
-    {suggestions.length > 0 && !completed && <form className="panel wide login-form participant-content" onSubmit={confirm}>
-      <p className="eyebrow">YOUR DREAM</p><h2>夢候補</h2>
-      {suggestions.map((candidate) => <button type="button" className="secondary dream-candidate" aria-pressed={dreamText === candidate} key={candidate} onClick={() => setDreamText(candidate)} disabled={Boolean(busyAction)}>{candidate}</button>)}
-      <label>選択・編集<textarea value={dreamText} onChange={(event) => setDreamText(event.target.value)} maxLength={500} disabled={Boolean(busyAction)} /></label>
-      <label>公開範囲<select name="visibility" defaultValue="private" disabled={Boolean(busyAction)}><option value="private">非公開</option><option value="dream_only">夢のみ公開</option><option value="nickname_and_dream">ニックネームと夢を公開</option></select></label>
-      <label className="consent-choice"><input name="projectOptIn" type="checkbox" disabled={Boolean(busyAction)} /> 9999人夢応援プロジェクトへ任意参加する</label>
-      <p className="participant-privacy">公開設定とプロジェクト参加は任意です。選択しなくてもイベントへ参加できます。</p>
-      <button disabled={Boolean(busyAction) || !dreamText.trim()}>{busyAction === "confirm" ? "登録中…" : "この夢で確定"}</button>
-    </form>}
+        {suggestions.length > 0 && !completed && (
+          <form className="panel wide login-form participant-content" onSubmit={confirm}>
+            <p className="eyebrow">YOUR DREAM</p>
+            <h2>夢候補</h2>
+            {suggestions.map((candidate) => (
+              <button
+                type="button"
+                className="secondary dream-candidate"
+                aria-pressed={dreamText === candidate}
+                key={candidate}
+                onClick={() => setDreamText(candidate)}
+                disabled={Boolean(busyAction)}
+              >
+                {candidate}
+              </button>
+            ))}
+            <label>
+              選択・編集
+              <textarea
+                value={dreamText}
+                onChange={(event) => setDreamText(event.target.value)}
+                maxLength={500}
+                disabled={Boolean(busyAction)}
+              />
+            </label>
+            <label>
+              公開範囲
+              <select name="visibility" defaultValue="private" disabled={Boolean(busyAction)}>
+                <option value="private">非公開</option>
+                <option value="dream_only">夢のみ公開</option>
+                <option value="nickname_and_dream">ニックネームと夢を公開</option>
+              </select>
+            </label>
+            <label className="consent-choice">
+              <input name="projectOptIn" type="checkbox" disabled={Boolean(busyAction)} />{" "}
+              9999人夢応援プロジェクトへ任意参加する
+            </label>
+            <p className="participant-privacy">
+              公開設定とプロジェクト参加は任意です。選択しなくてもイベントへ参加できます。
+            </p>
+            <button disabled={Boolean(busyAction) || !dreamText.trim()}>
+              {busyAction === "confirm" ? "登録中…" : "この夢で確定"}
+            </button>
+          </form>
+        )}
 
-    {message && <section className="panel wide"><ParticipantNotice tone={messageTone}>{message}</ParticipantNotice></section>}
-  </div></main>;
+        {message && (
+          <section className="panel wide">
+            <ParticipantNotice tone={messageTone}>{message}</ParticipantNotice>
+          </section>
+        )}
+      </div>
+    </main>
+  );
 }

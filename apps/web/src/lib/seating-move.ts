@@ -4,7 +4,11 @@ export type SeatMoveResult =
   | { ok: true; assignments: MovableSeatAssignment[]; swappedParticipantId: string | null }
   | { ok: false; code: "SOURCE_NOT_FOUND" | "SOURCE_LOCKED" | "TARGET_LOCKED" | "NO_CHANGE" };
 
-export function moveParticipantToSeat(assignments: MovableSeatAssignment[], participantId: string, targetSeatId: string | null): SeatMoveResult {
+export function moveParticipantToSeat(
+  assignments: MovableSeatAssignment[],
+  participantId: string,
+  targetSeatId: string | null,
+): SeatMoveResult {
   const source = assignments.find((assignment) => assignment.participantId === participantId);
   if (!source) return { ok: false, code: "SOURCE_NOT_FOUND" };
   if (source.locked) return { ok: false, code: "SOURCE_LOCKED" };
@@ -22,4 +26,3 @@ export function moveParticipantToSeat(assignments: MovableSeatAssignment[], part
     }),
   };
 }
-

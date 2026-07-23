@@ -7,7 +7,9 @@ describe("check-in cancellation reasons", () => {
   });
 
   it("appends an optional short note", () => {
-    expect(buildCheckinCancellationReason("受付操作の訂正", " 対象者を取り違えた ")).toBe("受付操作の訂正: 対象者を取り違えた");
+    expect(buildCheckinCancellationReason("受付操作の訂正", " 対象者を取り違えた ")).toBe(
+      "受付操作の訂正: 対象者を取り違えた",
+    );
   });
 
   it("requires a note only for the other preset", () => {

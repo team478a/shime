@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { filterResultCandidates, resultStatusClass, summarizeResultCandidates } from "../../apps/web/src/lib/result-view";
+import {
+  filterResultCandidates,
+  resultStatusClass,
+  summarizeResultCandidates,
+} from "../../apps/web/src/lib/result-view";
 
 describe("result view helpers", () => {
   it("summarizes approved, pending, and declined candidates", () => {
-    expect(summarizeResultCandidates([
-      { status: "approved" },
-      { status: "pending" },
-      { status: "declined" },
-      { status: "approved" },
-    ])).toEqual({ total: 4, approved: 2, pending: 1, declined: 1 });
+    expect(
+      summarizeResultCandidates([
+        { status: "approved" },
+        { status: "pending" },
+        { status: "declined" },
+        { status: "approved" },
+      ]),
+    ).toEqual({ total: 4, approved: 2, pending: 1, declined: 1 });
   });
 
   it("treats an unknown status as pending for safe display", () => {

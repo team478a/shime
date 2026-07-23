@@ -3,4 +3,47 @@ import { NextResponse } from "next/server";
 import { emotionCards, emotionSelections, eventDreamSettings, getDatabase } from "@shime/db";
 import { getDreamProvider } from "@shime/web/server/dream-provider";
 import { requireParticipantForEvent } from "@shime/web/server/participant-auth";
-export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) { const { eventId } = await params; const auth = await requireParticipantForEvent(eventId).catch(() => null); if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); const db = getDatabase(); const rows = await db.select({ selection: emotionSelections, cardName: emotionCards.name }).from(emotionSelections).innerJoin(emotionCards, eq(emotionCards.id, emotionSelections.emotionCardId)).where(and(eq(emotionSelections.tenantId, auth.session.tenantId), eq(emotionSelections.eventId, eventId), eq(emotionSelections.participantId, auth.participant.id))).limit(1); const settings = await db.select().from(eventDreamSettings).where(and(eq(eventDreamSettings.tenantId, auth.session.tenantId), eq(eventDreamSettings.eventId, eventId))).limit(1); if (!rows[0] || !settings[0]) return NextResponse.json({ code: "DREAM_INPUT_INCOMPLETE" }, { status: 409 }); const providers = await getDreamProvider(auth.session.tenantId, { bridgeTemplate: settings[0].fallbackBridgeTemplate, candidates: settings[0].fallbackCandidates }, settings[0].aiEnabled, settings[0].aiTimeoutMs); const input = { cardName: rows[0].cardName, firstImpression: rows[0].selection.firstImpression, relatedArea: rows[0].selection.relatedArea, underlyingWish: rows[0].selection.underlyingWish, ...(rows[0].selection.freeText ? { freeText: rows[0].selection.freeText } : {}) }; let result; try { result = providers.primary ? await providers.primary.suggest(input) : await providers.fallback.suggest(input); } catch { result = await providers.fallback.suggest(input); } return NextResponse.json({ data: result }); }
+export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  const auth = await requireParticipantForEvent(eventId).catch(() => null);
+  if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  const db = getDatabase();
+  const rows = await db
+    .select({ selection: emotionSelections, cardName: emotionCards.name })
+    .from(emotionSelections)
+    .innerJoin(emotionCards, eq(emotionCards.id, emotionSelections.emotionCardId))
+    .where(
+      and(
+        eq(emotionSelections.tenantId, auth.session.tenantId),
+        eq(emotionSelections.eventId, eventId),
+        eq(emotionSelections.participantId, auth.participant.id),
+      ),
+    )
+    .limit(1);
+  const settings = await db
+    .select()
+    .from(eventDreamSettings)
+    .where(and(eq(eventDreamSettings.tenantId, auth.session.tenantId), eq(eventDreamSettings.eventId, eventId)))
+    .limit(1);
+  if (!rows[0] || !settings[0]) return NextResponse.json({ code: "DREAM_INPUT_INCOMPLETE" }, { status: 409 });
+  const providers = await getDreamProvider(
+    auth.session.tenantId,
+    { bridgeTemplate: settings[0].fallbackBridgeTemplate, candidates: settings[0].fallbackCandidates },
+    settings[0].aiEnabled,
+    settings[0].aiTimeoutMs,
+  );
+  const input = {
+    cardName: rows[0].cardName,
+    firstImpression: rows[0].selection.firstImpression,
+    relatedArea: rows[0].selection.relatedArea,
+    underlyingWish: rows[0].selection.underlyingWish,
+    ...(rows[0].selection.freeText ? { freeText: rows[0].selection.freeText } : {}),
+  };
+  let result;
+  try {
+    result = providers.primary ? await providers.primary.suggest(input) : await providers.fallback.suggest(input);
+  } catch {
+    result = await providers.fallback.suggest(input);
+  }
+  return NextResponse.json({ data: result });
+}

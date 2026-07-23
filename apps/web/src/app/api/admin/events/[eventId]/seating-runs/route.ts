@@ -1,9 +1,306 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { buildDeterministicAssignments, requirePermission, scorePair, type SeatingAnswers, type SeatingAxis } from "@shime/core";
-import { applications, auditLogs, checkins, eventSeats, eventTables, events, getDatabase, participantAvoidances, participants, questionnaireAnswers, questionnaireQuestions, questionnaireResponses, seatAssignments, seatingRuns } from "@shime/db";
+import {
+  buildDeterministicAssignments,
+  requirePermission,
+  scorePair,
+  type SeatingAnswers,
+  type SeatingAxis,
+} from "@shime/core";
+import {
+  applications,
+  auditLogs,
+  checkins,
+  eventSeats,
+  eventTables,
+  events,
+  getDatabase,
+  participantAvoidances,
+  participants,
+  questionnaireAnswers,
+  questionnaireQuestions,
+  questionnaireResponses,
+  seatAssignments,
+  seatingRuns,
+} from "@shime/db";
 import { requireStaffSession } from "@shime/web/server/auth";
-const weights = { values: 40, marriage_intent: 25, relationship_pace: 15, conversation_style: 10, topic_overlap: 10 } as const;
-export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string }> }) { const { eventId } = await params; const session = await requireStaffSession().catch(() => null); if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); try { requirePermission(session.role, "seating:write"); } catch { return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 }); } const db = getDatabase(); const runs = await db.select().from(seatingRuns).where(and(eq(seatingRuns.tenantId, session.tenantId), eq(seatingRuns.eventId, eventId))).orderBy(desc(seatingRuns.createdAt)); const assignments = runs.length ? await db.select().from(seatAssignments).where(and(eq(seatAssignments.tenantId, session.tenantId), eq(seatAssignments.eventId, eventId), inArray(seatAssignments.seatingRunId, runs.map((r) => r.id)))) : []; const people = await db.select({ id: participants.id, participantNumber: participants.participantNumber, fullName: applications.fullName, category: applications.participantCategory, checkinStatus: checkins.status }).from(participants).innerJoin(applications, and(eq(applications.id, participants.applicationId), eq(applications.tenantId, participants.tenantId))).leftJoin(checkins, and(eq(checkins.tenantId, participants.tenantId), eq(checkins.eventId, participants.eventId), eq(checkins.participantId, participants.id))).where(and(eq(participants.tenantId, session.tenantId), eq(participants.eventId, eventId))); const seats = await db.select({ id: eventSeats.id, seatCode: eventSeats.seatCode, tableCode: eventTables.tableCode, enabled: eventSeats.enabled }).from(eventSeats).innerJoin(eventTables, and(eq(eventTables.id, eventSeats.tableId), eq(eventTables.tenantId, eventSeats.tenantId), eq(eventTables.eventId, eventSeats.eventId))).where(and(eq(eventSeats.tenantId, session.tenantId), eq(eventSeats.eventId, eventId))); return NextResponse.json({ data: { runs: runs.map((run) => ({ ...run, assignments: assignments.filter((a) => a.seatingRunId === run.id) })), participants: people, seats } }); }
-export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) { const requestId = randomUUID(); const { eventId } = await params; const session = await requireStaffSession().catch(() => null); if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); try { requirePermission(session.role, "seating:write"); } catch { return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 }); } const db = getDatabase(); const event = await db.select().from(events).where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId))).limit(1); if (!event[0]) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 }); const people = await db.select({ id: participants.id, category: applications.participantCategory, checkedIn: checkins.status, responseId: questionnaireResponses.id }).from(participants).innerJoin(applications, and(eq(applications.id, participants.applicationId), eq(applications.tenantId, participants.tenantId))).leftJoin(checkins, and(eq(checkins.tenantId, participants.tenantId), eq(checkins.eventId, participants.eventId), eq(checkins.participantId, participants.id))).leftJoin(questionnaireResponses, and(eq(questionnaireResponses.tenantId, participants.tenantId), eq(questionnaireResponses.eventId, participants.eventId), eq(questionnaireResponses.participantId, participants.id), eq(questionnaireResponses.status, "submitted"))).where(and(eq(participants.tenantId, session.tenantId), eq(participants.eventId, eventId), inArray(participants.status, ["confirmed", "attended"]))); const responseIds = people.flatMap((p) => p.responseId ? [p.responseId] : []); const answerRows = responseIds.length ? await db.select({ responseId: questionnaireAnswers.responseId, axis: questionnaireQuestions.axis, declined: questionnaireAnswers.declined, optionCodes: questionnaireAnswers.optionCodes }).from(questionnaireAnswers).innerJoin(questionnaireQuestions, and(eq(questionnaireQuestions.id, questionnaireAnswers.questionId), eq(questionnaireQuestions.tenantId, questionnaireAnswers.tenantId))).where(and(eq(questionnaireAnswers.tenantId, session.tenantId), eq(questionnaireAnswers.eventId, eventId), inArray(questionnaireAnswers.responseId, responseIds))) : []; const answers = new Map<string, SeatingAnswers>(); for (const row of answerRows) { const current = answers.get(row.responseId) ?? {}; const numeric = Number(row.optionCodes[0]); current[row.axis as SeatingAxis] = { selections: row.optionCodes, declined: row.declined, ...(Number.isFinite(numeric) ? { ordinal: numeric } : {}) }; answers.set(row.responseId, current); } const scoring = { weights: { ...weights }, maxOrdinalDistance: { marriage_intent: 4, relationship_pace: 4 }, paceFlexibleCode: "flexible", conversationComplement: ((event[0].settings.seating as { conversationComplement?: Record<string, Record<string, number>> } | undefined)?.conversationComplement ?? {}) }; const pairScores: Array<{ a: string; b: string; score: number; sharedTopicCount: number; detail: ReturnType<typeof scorePair> }> = []; for (let i = 0; i < people.length; i++) for (let j = i + 1; j < people.length; j++) { const a = people[i]!, b = people[j]!; if (!a.responseId || !b.responseId) continue; const score = scorePair(answers.get(a.responseId) ?? {}, answers.get(b.responseId) ?? {}, scoring); pairScores.push({ a: a.id, b: b.id, score: score.total, sharedTopicCount: score.sharedTopics.length, detail: score }); } const avoidances = await db.select().from(participantAvoidances).where(and(eq(participantAvoidances.tenantId, session.tenantId), eq(participantAvoidances.eventId, eventId))); const seats = await db.select().from(eventSeats).where(and(eq(eventSeats.tenantId, session.tenantId), eq(eventSeats.eventId, eventId), eq(eventSeats.enabled, true))); const categories = [...new Set(people.map((p) => p.category))].sort(); const configuredPairs = (event[0].settings.seating as { allowedCategoryPairs?: string[][] } | undefined)?.allowedCategoryPairs; const allowedCategoryPairs = configuredPairs?.length ? configuredPairs : categories.flatMap((a, i) => categories.slice(i + 1).map((b) => [a, b])); const eligible = people.filter((p) => p.checkedIn === "checked_in"); const result = buildDeterministicAssignments({ candidates: people.map((p) => ({ id: p.id, category: p.category, checkedIn: p.checkedIn === "checked_in", answerKey: p.responseId ?? "" })), seats: seats.map((s, order) => ({ id: s.id, tableId: s.tableId, order })), pairs: pairScores, allowedCategoryPairs, blockedPairs: avoidances.map((a) => [a.participantId, a.avoidedParticipantId]) }); const assignedSeat = new Map(result.assignments.map((a) => [a.participantId, a.seatId])); const now = new Date(); const run = await db.transaction(async (tx) => { const [created] = await tx.insert(seatingRuns).values({ tenantId: session.tenantId, eventId, algorithmVersion: "deterministic-v1", configSnapshot: { weights, allowedCategoryPairs }, targetSnapshot: { participantIds: eligible.map((p) => p.id), seatIds: seats.map((s) => s.id) }, status: "draft", scoreSummary: { pairCount: pairScores.length, unassignedParticipantIds: result.unassignedParticipantIds, warnings: result.warnings }, createdBy: session.userId }).returning(); if (!created) throw new Error("RUN_CREATE_FAILED"); if (eligible.length) await tx.insert(seatAssignments).values(eligible.map((person) => ({ tenantId: session.tenantId, eventId, seatingRunId: created.id, participantId: person.id, seatId: assignedSeat.get(person.id) ?? null, score: Math.round(pairScores.find((p) => p.a === person.id || p.b === person.id)?.score ?? 0), explanation: { mode: "fixed_text", message: "回答傾向と共通テーマをもとにご案内しています" } }))); await tx.insert(auditLogs).values({ tenantId: session.tenantId, actorUserId: session.userId, eventId, action: "seating.run.create", targetType: "seating_run", targetId: created.id, after: { assignmentCount: result.assignments.length, unassignedCount: result.unassignedParticipantIds.length }, requestId, createdAt: now }); return created; }); return NextResponse.json({ data: { run, ...result } }, { status: 201 }); }
+const weights = {
+  values: 40,
+  marriage_intent: 25,
+  relationship_pace: 15,
+  conversation_style: 10,
+  topic_overlap: 10,
+} as const;
+export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  const session = await requireStaffSession().catch(() => null);
+  if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  try {
+    requirePermission(session.role, "seating:write");
+  } catch {
+    return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
+  }
+  const db = getDatabase();
+  const runs = await db
+    .select()
+    .from(seatingRuns)
+    .where(and(eq(seatingRuns.tenantId, session.tenantId), eq(seatingRuns.eventId, eventId)))
+    .orderBy(desc(seatingRuns.createdAt));
+  const assignments = runs.length
+    ? await db
+        .select()
+        .from(seatAssignments)
+        .where(
+          and(
+            eq(seatAssignments.tenantId, session.tenantId),
+            eq(seatAssignments.eventId, eventId),
+            inArray(
+              seatAssignments.seatingRunId,
+              runs.map((r) => r.id),
+            ),
+          ),
+        )
+    : [];
+  const people = await db
+    .select({
+      id: participants.id,
+      participantNumber: participants.participantNumber,
+      fullName: applications.fullName,
+      category: applications.participantCategory,
+      checkinStatus: checkins.status,
+    })
+    .from(participants)
+    .innerJoin(
+      applications,
+      and(eq(applications.id, participants.applicationId), eq(applications.tenantId, participants.tenantId)),
+    )
+    .leftJoin(
+      checkins,
+      and(
+        eq(checkins.tenantId, participants.tenantId),
+        eq(checkins.eventId, participants.eventId),
+        eq(checkins.participantId, participants.id),
+      ),
+    )
+    .where(and(eq(participants.tenantId, session.tenantId), eq(participants.eventId, eventId)));
+  const seats = await db
+    .select({
+      id: eventSeats.id,
+      seatCode: eventSeats.seatCode,
+      tableCode: eventTables.tableCode,
+      enabled: eventSeats.enabled,
+    })
+    .from(eventSeats)
+    .innerJoin(
+      eventTables,
+      and(
+        eq(eventTables.id, eventSeats.tableId),
+        eq(eventTables.tenantId, eventSeats.tenantId),
+        eq(eventTables.eventId, eventSeats.eventId),
+      ),
+    )
+    .where(and(eq(eventSeats.tenantId, session.tenantId), eq(eventSeats.eventId, eventId)));
+  return NextResponse.json({
+    data: {
+      runs: runs.map((run) => ({ ...run, assignments: assignments.filter((a) => a.seatingRunId === run.id) })),
+      participants: people,
+      seats,
+    },
+  });
+}
+export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const requestId = randomUUID();
+  const { eventId } = await params;
+  const session = await requireStaffSession().catch(() => null);
+  if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  try {
+    requirePermission(session.role, "seating:write");
+  } catch {
+    return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
+  }
+  const db = getDatabase();
+  const event = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId)))
+    .limit(1);
+  if (!event[0]) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
+  const people = await db
+    .select({
+      id: participants.id,
+      category: applications.participantCategory,
+      checkedIn: checkins.status,
+      responseId: questionnaireResponses.id,
+    })
+    .from(participants)
+    .innerJoin(
+      applications,
+      and(eq(applications.id, participants.applicationId), eq(applications.tenantId, participants.tenantId)),
+    )
+    .leftJoin(
+      checkins,
+      and(
+        eq(checkins.tenantId, participants.tenantId),
+        eq(checkins.eventId, participants.eventId),
+        eq(checkins.participantId, participants.id),
+      ),
+    )
+    .leftJoin(
+      questionnaireResponses,
+      and(
+        eq(questionnaireResponses.tenantId, participants.tenantId),
+        eq(questionnaireResponses.eventId, participants.eventId),
+        eq(questionnaireResponses.participantId, participants.id),
+        eq(questionnaireResponses.status, "submitted"),
+      ),
+    )
+    .where(
+      and(
+        eq(participants.tenantId, session.tenantId),
+        eq(participants.eventId, eventId),
+        inArray(participants.status, ["confirmed", "attended"]),
+      ),
+    );
+  const responseIds = people.flatMap((p) => (p.responseId ? [p.responseId] : []));
+  const answerRows = responseIds.length
+    ? await db
+        .select({
+          responseId: questionnaireAnswers.responseId,
+          axis: questionnaireQuestions.axis,
+          declined: questionnaireAnswers.declined,
+          optionCodes: questionnaireAnswers.optionCodes,
+        })
+        .from(questionnaireAnswers)
+        .innerJoin(
+          questionnaireQuestions,
+          and(
+            eq(questionnaireQuestions.id, questionnaireAnswers.questionId),
+            eq(questionnaireQuestions.tenantId, questionnaireAnswers.tenantId),
+          ),
+        )
+        .where(
+          and(
+            eq(questionnaireAnswers.tenantId, session.tenantId),
+            eq(questionnaireAnswers.eventId, eventId),
+            inArray(questionnaireAnswers.responseId, responseIds),
+          ),
+        )
+    : [];
+  const answers = new Map<string, SeatingAnswers>();
+  for (const row of answerRows) {
+    const current = answers.get(row.responseId) ?? {};
+    const numeric = Number(row.optionCodes[0]);
+    current[row.axis as SeatingAxis] = {
+      selections: row.optionCodes,
+      declined: row.declined,
+      ...(Number.isFinite(numeric) ? { ordinal: numeric } : {}),
+    };
+    answers.set(row.responseId, current);
+  }
+  const scoring = {
+    weights: { ...weights },
+    maxOrdinalDistance: { marriage_intent: 4, relationship_pace: 4 },
+    paceFlexibleCode: "flexible",
+    conversationComplement:
+      (event[0].settings.seating as { conversationComplement?: Record<string, Record<string, number>> } | undefined)
+        ?.conversationComplement ?? {},
+  };
+  const pairScores: Array<{
+    a: string;
+    b: string;
+    score: number;
+    sharedTopicCount: number;
+    detail: ReturnType<typeof scorePair>;
+  }> = [];
+  for (let i = 0; i < people.length; i++)
+    for (let j = i + 1; j < people.length; j++) {
+      const a = people[i]!,
+        b = people[j]!;
+      if (!a.responseId || !b.responseId) continue;
+      const score = scorePair(answers.get(a.responseId) ?? {}, answers.get(b.responseId) ?? {}, scoring);
+      pairScores.push({
+        a: a.id,
+        b: b.id,
+        score: score.total,
+        sharedTopicCount: score.sharedTopics.length,
+        detail: score,
+      });
+    }
+  const avoidances = await db
+    .select()
+    .from(participantAvoidances)
+    .where(and(eq(participantAvoidances.tenantId, session.tenantId), eq(participantAvoidances.eventId, eventId)));
+  const seats = await db
+    .select()
+    .from(eventSeats)
+    .where(
+      and(eq(eventSeats.tenantId, session.tenantId), eq(eventSeats.eventId, eventId), eq(eventSeats.enabled, true)),
+    );
+  const categories = [...new Set(people.map((p) => p.category))].sort();
+  const configuredPairs = (event[0].settings.seating as { allowedCategoryPairs?: string[][] } | undefined)
+    ?.allowedCategoryPairs;
+  const allowedCategoryPairs = configuredPairs?.length
+    ? configuredPairs
+    : categories.flatMap((a, i) => categories.slice(i + 1).map((b) => [a, b]));
+  const eligible = people.filter((p) => p.checkedIn === "checked_in");
+  const result = buildDeterministicAssignments({
+    candidates: people.map((p) => ({
+      id: p.id,
+      category: p.category,
+      checkedIn: p.checkedIn === "checked_in",
+      answerKey: p.responseId ?? "",
+    })),
+    seats: seats.map((s, order) => ({ id: s.id, tableId: s.tableId, order })),
+    pairs: pairScores,
+    allowedCategoryPairs,
+    blockedPairs: avoidances.map((a) => [a.participantId, a.avoidedParticipantId]),
+  });
+  const assignedSeat = new Map(result.assignments.map((a) => [a.participantId, a.seatId]));
+  const now = new Date();
+  const run = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(seatingRuns)
+      .values({
+        tenantId: session.tenantId,
+        eventId,
+        algorithmVersion: "deterministic-v1",
+        configSnapshot: { weights, allowedCategoryPairs },
+        targetSnapshot: { participantIds: eligible.map((p) => p.id), seatIds: seats.map((s) => s.id) },
+        status: "draft",
+        scoreSummary: {
+          pairCount: pairScores.length,
+          unassignedParticipantIds: result.unassignedParticipantIds,
+          warnings: result.warnings,
+        },
+        createdBy: session.userId,
+      })
+      .returning();
+    if (!created) throw new Error("RUN_CREATE_FAILED");
+    if (eligible.length)
+      await tx.insert(seatAssignments).values(
+        eligible.map((person) => ({
+          tenantId: session.tenantId,
+          eventId,
+          seatingRunId: created.id,
+          participantId: person.id,
+          seatId: assignedSeat.get(person.id) ?? null,
+          score: Math.round(pairScores.find((p) => p.a === person.id || p.b === person.id)?.score ?? 0),
+          explanation: { mode: "fixed_text", message: "回答傾向と共通テーマをもとにご案内しています" },
+        })),
+      );
+    await tx.insert(auditLogs).values({
+      tenantId: session.tenantId,
+      actorUserId: session.userId,
+      eventId,
+      action: "seating.run.create",
+      targetType: "seating_run",
+      targetId: created.id,
+      after: { assignmentCount: result.assignments.length, unassignedCount: result.unassignedParticipantIds.length },
+      requestId,
+      createdAt: now,
+    });
+    return created;
+  });
+  return NextResponse.json({ data: { run, ...result } }, { status: 201 });
+}

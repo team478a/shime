@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { generateTableLayout, parseTableLayoutCsv, templateNameAfterSourceCopy, validateTableLayout } from "../../apps/web/src/lib/table-layout";
-import { canonicalizeVenueLayoutTables, nextVenueLayoutTemplateVersion } from "../../packages/core/src/templates/venue-layout";
+import {
+  generateTableLayout,
+  parseTableLayoutCsv,
+  templateNameAfterSourceCopy,
+  validateTableLayout,
+} from "../../apps/web/src/lib/table-layout";
+import {
+  canonicalizeVenueLayoutTables,
+  nextVenueLayoutTemplateVersion,
+} from "../../packages/core/src/templates/venue-layout";
 
 describe("table layout setup", () => {
   it("generates numbered tables and seats", () => {
@@ -24,11 +32,16 @@ describe("table layout setup", () => {
   });
 
   it("reports duplicate and capacity problems before save", () => {
-    const result = validateTableLayout([
-      { tableCode: "T01", capacity: 1, seats: "S01, S02" },
-      { tableCode: "T02", capacity: 2, seats: "S02" },
-    ], 4);
-    expect(result.errors).toEqual(expect.arrayContaining(["席コードが重複しています。", "T01の席数が定員を超えています。"]));
+    const result = validateTableLayout(
+      [
+        { tableCode: "T01", capacity: 1, seats: "S01, S02" },
+        { tableCode: "T02", capacity: 2, seats: "S02" },
+      ],
+      4,
+    );
+    expect(result.errors).toEqual(
+      expect.arrayContaining(["席コードが重複しています。", "T01の席数が定員を超えています。"]),
+    );
     expect(result.warnings).toEqual(["イベント定員4名に対して、席が3席です。"]);
   });
 
@@ -42,15 +55,24 @@ describe("table layout setup", () => {
   });
 
   it("reuses the exact template name after copying a template source", () => {
-    expect(templateNameAfterSourceCopy("会場A レイアウト", {
-      id: "template:1",
-      kind: "template",
-      label: "検証会場 4席（v3）",
-      templateId: "1",
-      templateName: "検証会場 4席",
-      rows: [],
-    })).toBe("検証会場 4席");
-    expect(templateNameAfterSourceCopy("会場A レイアウト", { id: "event:1", kind: "event", label: "過去イベント", rows: [] })).toBe("会場A レイアウト");
+    expect(
+      templateNameAfterSourceCopy("会場A レイアウト", {
+        id: "template:1",
+        kind: "template",
+        label: "検証会場 4席（v3）",
+        templateId: "1",
+        templateName: "検証会場 4席",
+        rows: [],
+      }),
+    ).toBe("検証会場 4席");
+    expect(
+      templateNameAfterSourceCopy("会場A レイアウト", {
+        id: "event:1",
+        kind: "event",
+        label: "過去イベント",
+        rows: [],
+      }),
+    ).toBe("会場A レイアウト");
   });
 
   it("increments venue layout versions without using the display name", () => {

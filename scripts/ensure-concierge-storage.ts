@@ -2,11 +2,13 @@ import "dotenv/config.js";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-const env = z.object({
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
-  SUPABASE_CONCIERGE_BUCKET: z.string().min(1).default("shime-private-concierge"),
-}).parse(process.env);
+const env = z
+  .object({
+    SUPABASE_URL: z.string().url(),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
+    SUPABASE_CONCIERGE_BUCKET: z.string().min(1).default("shime-private-concierge"),
+  })
+  .parse(process.env);
 
 async function main() {
   const client = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {

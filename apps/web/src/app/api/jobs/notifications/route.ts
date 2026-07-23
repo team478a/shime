@@ -2,19 +2,10 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  getDatabase,
-  jobSchedules,
-  notificationAttempts,
-  notifications,
-  userIdentities,
-} from "@shime/db";
+import { getDatabase, jobSchedules, notificationAttempts, notifications, userIdentities } from "@shime/db";
 import { getLineProvider } from "@shime/web/server/line-provider";
 import { writeOperationalLog } from "@shime/web/server/operational-log";
-import {
-  hasValidBearerSecret,
-  notificationFailureCode,
-} from "@shime/web/server/operational-security";
+import { hasValidBearerSecret, notificationFailureCode } from "@shime/web/server/operational-security";
 
 const envSchema = z.object({ INTERNAL_JOB_SECRET: z.string().min(32) });
 
@@ -37,7 +28,10 @@ export async function POST(request: Request) {
 
   const startedAt = Date.now();
   const db = getDatabase();
-  const enabledSchedules = await db.select().from(jobSchedules).where(and(eq(jobSchedules.jobKey, "notification_dispatch"), eq(jobSchedules.enabled, true)));
+  const enabledSchedules = await db
+    .select()
+    .from(jobSchedules)
+    .where(and(eq(jobSchedules.jobKey, "notification_dispatch"), eq(jobSchedules.enabled, true)));
   const enabledTenantIds = enabledSchedules.map((schedule) => schedule.tenantId);
   const queued = await db
     .select()
@@ -46,7 +40,9 @@ export async function POST(request: Request) {
       and(
         eq(notifications.status, "queued"),
         lte(notifications.scheduledAt, new Date()),
-        enabledTenantIds.length ? inArray(notifications.tenantId, enabledTenantIds) : eq(notifications.tenantId, "00000000-0000-0000-0000-000000000000"),
+        enabledTenantIds.length
+          ? inArray(notifications.tenantId, enabledTenantIds)
+          : eq(notifications.tenantId, "00000000-0000-0000-0000-000000000000"),
       ),
     )
     .orderBy(asc(notifications.scheduledAt))
@@ -97,9 +93,9 @@ export async function POST(request: Request) {
         throw new Error("INVALID_NOTIFICATION_PAYLOAD");
       }
 
-      const result = await (await getLineProvider(item.tenantId)).sendPush(identities[0].lineUserId, [
-        { type: "text", text },
-      ]);
+      const result = await (
+        await getLineProvider(item.tenantId)
+      ).sendPush(identities[0].lineUserId, [{ type: "text", text }]);
       await db.transaction(async (tx) => {
         await tx
           .update(notifications)
@@ -148,7 +144,16 @@ export async function POST(request: Request) {
   }
 
   const processed = sent + failed;
-  if (enabledTenantIds.length) await db.update(jobSchedules).set({ lastRunAt: new Date(), lastRunStatus: failed > 0 ? "warning" : "success", lastRunSummary: { processed, sent, failed }, updatedAt: new Date() }).where(and(eq(jobSchedules.jobKey, "notification_dispatch"), inArray(jobSchedules.tenantId, enabledTenantIds)));
+  if (enabledTenantIds.length)
+    await db
+      .update(jobSchedules)
+      .set({
+        lastRunAt: new Date(),
+        lastRunStatus: failed > 0 ? "warning" : "success",
+        lastRunSummary: { processed, sent, failed },
+        updatedAt: new Date(),
+      })
+      .where(and(eq(jobSchedules.jobKey, "notification_dispatch"), inArray(jobSchedules.tenantId, enabledTenantIds)));
   writeOperationalLog({
     level: failed > 0 ? "warn" : "info",
     event: "notification_job_completed",
@@ -165,4 +170,6 @@ export async function POST(request: Request) {
   );
 }
 
-export async function GET(request: Request) { return POST(request); }
+export async function GET(request: Request) {
+  return POST(request);
+}

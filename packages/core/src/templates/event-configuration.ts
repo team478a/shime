@@ -36,19 +36,31 @@ export const questionnaireQuestionTemplateSchema = z.object({
   options: z.array(questionnaireOptionTemplateSchema).min(2).max(30),
 });
 
-export const questionnaireTemplatePayloadSchema = z.object({
-  schemaVersion: z.literal(EVENT_CONFIGURATION_SCHEMA_VERSION),
-  code: z.string().regex(/^[a-z0-9_-]{2,80}$/),
-  name: z.string().trim().min(1).max(160),
-  questions: z.array(questionnaireQuestionTemplateSchema).length(5),
-}).superRefine((value, context) => {
-  if (new Set(value.questions.map((question) => question.axis)).size !== 5) context.addIssue({ code: "custom", message: "Five unique axes are required" });
-  if (value.questions.reduce((sum, question) => sum + question.weight, 0) !== 100) context.addIssue({ code: "custom", message: "Weights must total 100" });
-});
+export const questionnaireTemplatePayloadSchema = z
+  .object({
+    schemaVersion: z.literal(EVENT_CONFIGURATION_SCHEMA_VERSION),
+    code: z.string().regex(/^[a-z0-9_-]{2,80}$/),
+    name: z.string().trim().min(1).max(160),
+    questions: z.array(questionnaireQuestionTemplateSchema).length(5),
+  })
+  .superRefine((value, context) => {
+    if (new Set(value.questions.map((question) => question.axis)).size !== 5)
+      context.addIssue({ code: "custom", message: "Five unique axes are required" });
+    if (value.questions.reduce((sum, question) => sum + question.weight, 0) !== 100)
+      context.addIssue({ code: "custom", message: "Weights must total 100" });
+  });
 
 export const eventConfigurationTemplateInputSchema = z.discriminatedUnion("templateType", [
-  z.object({ templateType: z.literal(APPLICATION_FORM_TEMPLATE_TYPE), name: z.string().trim().min(1).max(160), payload: applicationFormTemplatePayloadSchema }),
-  z.object({ templateType: z.literal(QUESTIONNAIRE_TEMPLATE_TYPE), name: z.string().trim().min(1).max(160), payload: questionnaireTemplatePayloadSchema }),
+  z.object({
+    templateType: z.literal(APPLICATION_FORM_TEMPLATE_TYPE),
+    name: z.string().trim().min(1).max(160),
+    payload: applicationFormTemplatePayloadSchema,
+  }),
+  z.object({
+    templateType: z.literal(QUESTIONNAIRE_TEMPLATE_TYPE),
+    name: z.string().trim().min(1).max(160),
+    payload: questionnaireTemplatePayloadSchema,
+  }),
 ]);
 
 export function canonicalizeEventConfigurationPayload(payload: unknown): string {
@@ -57,7 +69,7 @@ export function canonicalizeEventConfigurationPayload(payload: unknown): string 
 
 export function nextEventConfigurationTemplateVersion(currentVersion?: number): number {
   if (currentVersion === undefined) return 1;
-  if (!Number.isInteger(currentVersion) || currentVersion < 1) throw new Error("Invalid event configuration template version");
+  if (!Number.isInteger(currentVersion) || currentVersion < 1)
+    throw new Error("Invalid event configuration template version");
   return currentVersion + 1;
 }
-

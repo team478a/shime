@@ -20,12 +20,14 @@ export async function getStaffSession() {
     .from(staffSessions)
     .innerJoin(users, and(eq(users.id, staffSessions.userId), eq(users.tenantId, staffSessions.tenantId)))
     .innerJoin(staffRoles, and(eq(staffRoles.userId, users.id), eq(staffRoles.tenantId, users.tenantId)))
-    .where(and(
-      eq(staffSessions.tokenHash, hashSessionToken(token, getEnv().SESSION_PEPPER)),
-      isNull(staffSessions.revokedAt),
-      gt(staffSessions.expiresAt, now),
-      eq(users.status, "active"),
-    ))
+    .where(
+      and(
+        eq(staffSessions.tokenHash, hashSessionToken(token, getEnv().SESSION_PEPPER)),
+        isNull(staffSessions.revokedAt),
+        gt(staffSessions.expiresAt, now),
+        eq(users.status, "active"),
+      ),
+    )
     .limit(1);
   return rows[0] ?? null;
 }

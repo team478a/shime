@@ -15,17 +15,26 @@ export function validateFormFieldRequirement(fieldKey: string, requirement: "req
   if (protectedFields.has(fieldKey) && requirement === "hidden") throw new Error(`${fieldKey} cannot be hidden`);
 }
 
-export function validateContactFields(fields: ReadonlyArray<{ fieldKey: string; requirement: "required" | "optional" | "hidden" }>): void {
-  const hasContact = fields.some((field) => ["phone", "email"].includes(field.fieldKey) && field.requirement !== "hidden");
+export function validateContactFields(
+  fields: ReadonlyArray<{ fieldKey: string; requirement: "required" | "optional" | "hidden" }>,
+): void {
+  const hasContact = fields.some(
+    (field) => ["phone", "email"].includes(field.fieldKey) && field.requirement !== "hidden",
+  );
   if (!hasContact) throw new Error("At least one of phone or email must be visible");
 }
 
-export function validateSeatConfiguration(tables: ReadonlyArray<{ tableCode?: string; capacity: number; seats: ReadonlyArray<{ seatCode: string }> }>, eventCapacity: number) {
+export function validateSeatConfiguration(
+  tables: ReadonlyArray<{ tableCode?: string; capacity: number; seats: ReadonlyArray<{ seatCode: string }> }>,
+  eventCapacity: number,
+) {
   const tableCodes = tables.map((table) => table.tableCode).filter((code): code is string => typeof code === "string");
-  if (tableCodes.length && new Set(tableCodes).size !== tableCodes.length) throw new Error("Table codes must be unique within an event");
+  if (tableCodes.length && new Set(tableCodes).size !== tableCodes.length)
+    throw new Error("Table codes must be unique within an event");
   const codes = tables.flatMap((table) => table.seats.map((seat) => seat.seatCode));
   if (new Set(codes).size !== codes.length) throw new Error("Seat codes must be unique within an event");
-  if (tables.some((table) => table.capacity < 1 || table.capacity < table.seats.length)) throw new Error("Table capacity cannot be lower than its seat count");
+  if (tables.some((table) => table.capacity < 1 || table.capacity < table.seats.length))
+    throw new Error("Table capacity cannot be lower than its seat count");
   return { exceedsEventCapacity: codes.length > eventCapacity };
 }
 
@@ -62,13 +71,20 @@ export function includeEventOperationalReadiness(
   resources: EventOperationalResources,
 ): { complete: boolean; issues: EventConfigurationIssue[] } {
   const issues = [...configuration.issues];
-  const visibleKeys = new Set(resources.formFields.filter((field) => field.requirement !== "hidden").map((field) => field.fieldKey));
-  if (!["full_name", "birth_date", "participant_category"].every((key) => visibleKeys.has(key)) || !["phone", "email"].some((key) => visibleKeys.has(key))) {
+  const visibleKeys = new Set(
+    resources.formFields.filter((field) => field.requirement !== "hidden").map((field) => field.fieldKey),
+  );
+  if (
+    !["full_name", "birth_date", "participant_category"].every((key) => visibleKeys.has(key)) ||
+    !["phone", "email"].some((key) => visibleKeys.has(key))
+  ) {
     issues.push({ key: "formFields", label: "申込フォーム必須項目", kind: "missing" });
   }
   if (resources.tableCount < 1) issues.push({ key: "eventTables", label: "テーブル設定", kind: "missing" });
-  if (resources.enabledSeatCount < resources.capacity) issues.push({ key: "eventSeats", label: `有効な席（定員${resources.capacity}席以上）`, kind: "missing" });
-  if (!resources.hasDreamSettings) issues.push({ key: "dreamSettings", label: "Dream・感情カード設定", kind: "missing" });
+  if (resources.enabledSeatCount < resources.capacity)
+    issues.push({ key: "eventSeats", label: `有効な席（定員${resources.capacity}席以上）`, kind: "missing" });
+  if (!resources.hasDreamSettings)
+    issues.push({ key: "dreamSettings", label: "Dream・感情カード設定", kind: "missing" });
   if (!resources.hasQuestionnaire) issues.push({ key: "questionnaire", label: "席案内5問設定", kind: "missing" });
   return { complete: issues.length === 0, issues };
 }
@@ -121,18 +137,23 @@ export function evaluateEventConfiguration(event: EventConfigurationSnapshot): {
   requireDate("preferenceClosesAt", "希望入力締切日時", event.preferenceClosesAt);
 
   const categories = event.settings.participantCategories;
-  if (!Array.isArray(categories) || categories.length < 2 || categories.some((category) => {
-    if (!category || typeof category !== "object") return true;
-    const item = category as Record<string, unknown>;
-    return !hasText(item.code) || !hasText(item.label);
-  })) {
+  if (
+    !Array.isArray(categories) ||
+    categories.length < 2 ||
+    categories.some((category) => {
+      if (!category || typeof category !== "object") return true;
+      const item = category as Record<string, unknown>;
+      return !hasText(item.code) || !hasText(item.label);
+    })
+  ) {
     issues.push({ key: "participantCategories", label: "参加区分（2区分以上）", kind: "missing" });
   }
 
   for (const [key, label] of requiredSettings) {
     const value = event.settings[key];
     if (["conversationRounds", "retentionDays"].includes(key)) {
-      if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) issues.push({ key, label, kind: "missing" });
+      if (typeof value !== "number" || !Number.isInteger(value) || value <= 0)
+        issues.push({ key, label, kind: "missing" });
     } else if (!hasText(value)) {
       issues.push({ key, label, kind: "missing" });
     }

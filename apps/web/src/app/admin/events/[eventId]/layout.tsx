@@ -19,11 +19,13 @@ export default async function EventAdminLayout({
   if (!session) redirect("/admin/login");
   const { eventId } = await params;
   if (session.eventId && session.eventId !== eventId) notFound();
-  const event = (await getDatabase()
-    .select({ id: events.id, name: events.name, status: events.status })
-    .from(events)
-    .where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId)))
-    .limit(1))[0];
+  const event = (
+    await getDatabase()
+      .select({ id: events.id, name: events.name, status: events.status })
+      .from(events)
+      .where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId)))
+      .limit(1)
+  )[0];
   if (!event) notFound();
 
   return (
@@ -32,8 +34,10 @@ export default async function EventAdminLayout({
         <p className="eyebrow">CURRENT EVENT</p>
         <h2>{event.name}</h2>
         <dl className="admin-event-meta">
-          <dt>状態</dt><dd>{getEventStatusLabel(event.status)}</dd>
-          <dt>権限</dt><dd>{STAFF_ROLE_LABELS[session.role]}</dd>
+          <dt>状態</dt>
+          <dd>{getEventStatusLabel(event.status)}</dd>
+          <dt>権限</dt>
+          <dd>{STAFF_ROLE_LABELS[session.role]}</dd>
         </dl>
         <AdminEventNavigation groups={getEventAdminNavigation(session.role, eventId)} />
       </aside>

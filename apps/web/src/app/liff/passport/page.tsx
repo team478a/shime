@@ -56,13 +56,15 @@ export default function PassportPage() {
       const response = await fetch(`/api/liff/events/${eventId}/passport`, { method: "POST" });
       const body = await response.json();
       if (!response.ok) {
-        setMessage(body.code === "DREAM_REQUIREMENT_NOT_SATISFIED"
-          ? "先に夢登録を完了してください。"
-          : body.code === "QUESTIONNAIRE_NOT_SUBMITTED"
-            ? "先に席案内の5問を提出してください。"
-            : body.code === "QUESTIONNAIRE_NOT_CONFIGURED"
-              ? "運営側で5問がまだ設定されていません。"
-              : "SHIME® PASSを発行できませんでした。");
+        setMessage(
+          body.code === "DREAM_REQUIREMENT_NOT_SATISFIED"
+            ? "先に夢登録を完了してください。"
+            : body.code === "QUESTIONNAIRE_NOT_SUBMITTED"
+              ? "先に席案内の5問を提出してください。"
+              : body.code === "QUESTIONNAIRE_NOT_CONFIGURED"
+                ? "運営側で5問がまだ設定されていません。"
+                : "SHIME® PASSを発行できませんでした。",
+        );
         return;
       }
       setPassport(body.data);
@@ -86,11 +88,13 @@ export default function PassportPage() {
       const payload = formatQrPayload(body.data.qrToken);
       const dataUrl = await QRCode.toDataURL(payload, { width: 480, margin: 3, errorCorrectionLevel: "M" });
       setQrPayload(payload);
-      setExpiresAt(new Date(body.data.expiresAt).toLocaleString("ja-JP", {
-        timeZone: "Asia/Tokyo",
-        dateStyle: "short",
-        timeStyle: "short",
-      }));
+      setExpiresAt(
+        new Date(body.data.expiresAt).toLocaleString("ja-JP", {
+          timeZone: "Asia/Tokyo",
+          dateStyle: "short",
+          timeStyle: "short",
+        }),
+      );
       setQr(dataUrl);
     } catch {
       setMessage("受付QRを表示できませんでした。参加者番号で手動受付をご利用ください。");
@@ -99,25 +103,84 @@ export default function PassportPage() {
     }
   }
 
-  return <main><section className="panel participant-pass participant-content">
-    <ParticipantPageHeader eyebrow="SHIME® PASS" title="SHIME® PASS" description="イベント参加の準備状況と、当日の受付情報をまとめています。" current="pass" eventId={eventId} />
-    {eventId && loadState === "idle" && <ParticipantNotice>SHIME® PASSを確認しています…</ParticipantNotice>}
-    {(!eventId || loadState === "error") && <ParticipantNotice tone="error">SHIME® PASSを確認できませんでした。LINEの案内から開き直してください。</ParticipantNotice>}
-    {loadState === "loaded" && !passport && <button onClick={issue} disabled={Boolean(busyAction)}>{busyAction === "passport" ? "発行中…" : "SHIME® PASSを発行"}</button>}
-    {passport && <>
-      <dl className="pass-details"><dt>参加者番号</dt><dd>{passport.participantNumber}</dd><dt>準備状況</dt><dd>{getPassportStatusLabel(passport.status)}</dd></dl>
-      <button onClick={issueQr} disabled={Boolean(busyAction)}>{busyAction === "qr" ? "QR生成中…" : qr ? "QRを再発行" : "受付QRを表示"}</button>
-      {qr && <div className="qr-section">
-        <Image className="passport-qr" src={qr} alt="受付用QRコード" width={480} height={480} unoptimized priority />
-        <p className="qr-expiry">有効期限: {expiresAt}（日本時間）</p>
-        <div className="actions">
-          <a className="button-link secondary" href={qr} target="_blank" rel="noreferrer">QR画像を別画面で開く</a>
-          <a className="button-link secondary" href={qr} download={`shime-reception-${passport.participantNumber}.png`}>QR画像を保存</a>
-          <button type="button" className="secondary" onClick={async () => setMessage(await copyText(qrPayload) ? "受付コードをコピーしました。" : "コピーできません。参加者番号で手動受付をお願いします。")}>受付コードをコピー</button>
-        </div>
-        <p className="participant-privacy">スタッフの確認画面で受付が確定します。QRが表示できない場合は、参加者番号をスタッフに伝えて手動受付を利用してください。</p>
-      </div>}
-    </>}
-    {message && <ParticipantNotice>{message}</ParticipantNotice>}
-  </section></main>;
+  return (
+    <main>
+      <section className="panel participant-pass participant-content">
+        <ParticipantPageHeader
+          eyebrow="SHIME® PASS"
+          title="SHIME® PASS"
+          description="イベント参加の準備状況と、当日の受付情報をまとめています。"
+          current="pass"
+          eventId={eventId}
+        />
+        {eventId && loadState === "idle" && <ParticipantNotice>SHIME® PASSを確認しています…</ParticipantNotice>}
+        {(!eventId || loadState === "error") && (
+          <ParticipantNotice tone="error">
+            SHIME® PASSを確認できませんでした。LINEの案内から開き直してください。
+          </ParticipantNotice>
+        )}
+        {loadState === "loaded" && !passport && (
+          <button onClick={issue} disabled={Boolean(busyAction)}>
+            {busyAction === "passport" ? "発行中…" : "SHIME® PASSを発行"}
+          </button>
+        )}
+        {passport && (
+          <>
+            <dl className="pass-details">
+              <dt>参加者番号</dt>
+              <dd>{passport.participantNumber}</dd>
+              <dt>準備状況</dt>
+              <dd>{getPassportStatusLabel(passport.status)}</dd>
+            </dl>
+            <button onClick={issueQr} disabled={Boolean(busyAction)}>
+              {busyAction === "qr" ? "QR生成中…" : qr ? "QRを再発行" : "受付QRを表示"}
+            </button>
+            {qr && (
+              <div className="qr-section">
+                <Image
+                  className="passport-qr"
+                  src={qr}
+                  alt="受付用QRコード"
+                  width={480}
+                  height={480}
+                  unoptimized
+                  priority
+                />
+                <p className="qr-expiry">有効期限: {expiresAt}（日本時間）</p>
+                <div className="actions">
+                  <a className="button-link secondary" href={qr} target="_blank" rel="noreferrer">
+                    QR画像を別画面で開く
+                  </a>
+                  <a
+                    className="button-link secondary"
+                    href={qr}
+                    download={`shime-reception-${passport.participantNumber}.png`}
+                  >
+                    QR画像を保存
+                  </a>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={async () =>
+                      setMessage(
+                        (await copyText(qrPayload))
+                          ? "受付コードをコピーしました。"
+                          : "コピーできません。参加者番号で手動受付をお願いします。",
+                      )
+                    }
+                  >
+                    受付コードをコピー
+                  </button>
+                </div>
+                <p className="participant-privacy">
+                  スタッフの確認画面で受付が確定します。QRが表示できない場合は、参加者番号をスタッフに伝えて手動受付を利用してください。
+                </p>
+              </div>
+            )}
+          </>
+        )}
+        {message && <ParticipantNotice>{message}</ParticipantNotice>}
+      </section>
+    </main>
+  );
 }

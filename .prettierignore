@@ -1,0 +1,13 @@
+.next
+coverage
+node_modules
+.vercel
+.codex
+.agents
+pnpm-lock.yaml
+packages/db/migrations
+public
+docs
+*.csv
+.env
+.env.*

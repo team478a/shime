@@ -15,9 +15,7 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=31536000; includeSubDomains",
   },
-  ...(!isProduction
-    ? [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }]
-    : []),
+  ...(!isProduction ? [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }] : []),
 ];
 
 const nextConfig: NextConfig = {

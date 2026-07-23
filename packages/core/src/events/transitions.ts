@@ -1,6 +1,13 @@
 export const EVENT_STATUSES = [
-  "draft", "accepting", "registration_closed", "checkin_open", "in_progress",
-  "preference_open", "preference_closed", "result_confirmed", "completed",
+  "draft",
+  "accepting",
+  "registration_closed",
+  "checkin_open",
+  "in_progress",
+  "preference_open",
+  "preference_closed",
+  "result_confirmed",
+  "completed",
 ] as const;
 
 export type EventStatus = (typeof EVENT_STATUSES)[number];

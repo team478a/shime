@@ -7,10 +7,11 @@ const outputDirectory = path.join(root, "apps", "web", "public", "downloads");
 
 async function main() {
   await mkdir(outputDirectory, { recursive: true });
-  await Promise.all(PUBLIC_DOWNLOADS.map(({ sourceName, outputName }) => copyFile(
-    path.join(root, "docs", "shime", sourceName),
-    path.join(outputDirectory, outputName),
-  )));
+  await Promise.all(
+    PUBLIC_DOWNLOADS.map(({ sourceName, outputName }) =>
+      copyFile(path.join(root, "docs", "shime", sourceName), path.join(outputDirectory, outputName)),
+    ),
+  );
   console.info(`${PUBLIC_DOWNLOADS.length} public operation documents synchronized.`);
 }
 

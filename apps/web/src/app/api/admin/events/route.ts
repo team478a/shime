@@ -5,7 +5,12 @@ import { z } from "zod";
 import { defaultEventFormFields, requirePermission } from "@shime/core";
 import { auditLogs, eventFormFields, events, getDatabase } from "@shime/db";
 import { requireStaffSession } from "../../../../server/auth";
-import { eventSettingsFields, getEventConfigurationReadiness, getEventConfigurationStatus, mergeEventSettings } from "../../../../server/event-settings";
+import {
+  eventSettingsFields,
+  getEventConfigurationReadiness,
+  getEventConfigurationStatus,
+  mergeEventSettings,
+} from "../../../../server/event-settings";
 
 const eventInput = z.object({
   code: z.string().regex(/^[a-z0-9-]{3,80}$/),
@@ -29,27 +34,62 @@ export async function GET() {
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   const rows = await getDatabase().select().from(events).where(eq(events.tenantId, session.tenantId));
-  return NextResponse.json({ data: await Promise.all(rows.map(async (event) => ({ ...event, configuration: await getEventConfigurationReadiness(session.tenantId, event.id, event) }))) });
+  return NextResponse.json({
+    data: await Promise.all(
+      rows.map(async (event) => ({
+        ...event,
+        configuration: await getEventConfigurationReadiness(session.tenantId, event.id, event),
+      })),
+    ),
+  });
 }
 
 export async function POST(request: Request) {
   const requestId = randomUUID();
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED", request_id: requestId }, { status: 401 });
-  try { requirePermission(session.role, "event:write"); } catch { return NextResponse.json({ code: "FORBIDDEN", request_id: requestId }, { status: 403 }); }
+  try {
+    requirePermission(session.role, "event:write");
+  } catch {
+    return NextResponse.json({ code: "FORBIDDEN", request_id: requestId }, { status: 403 });
+  }
   const parsed = eventInput.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ code: "INVALID_INPUT", field_errors: parsed.error.flatten().fieldErrors, request_id: requestId }, { status: 400 });
+  if (!parsed.success)
+    return NextResponse.json(
+      { code: "INVALID_INPUT", field_errors: parsed.error.flatten().fieldErrors, request_id: requestId },
+      { status: 400 },
+    );
   const db = getDatabase();
-  const existing = await db.select({ id: events.id }).from(events).where(and(eq(events.tenantId, session.tenantId), eq(events.code, parsed.data.code))).limit(1);
+  const existing = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(and(eq(events.tenantId, session.tenantId), eq(events.code, parsed.data.code)))
+    .limit(1);
   if (existing[0]) return NextResponse.json({ code: "EVENT_CODE_EXISTS", request_id: requestId }, { status: 409 });
   const {
-    participantCategories, participantNumber, conversationRounds, cardSetCode, retentionDays,
-    eventTermsVersion, privacyVersion, contactExchangeMode, ...eventData
+    participantCategories,
+    participantNumber,
+    conversationRounds,
+    cardSetCode,
+    retentionDays,
+    eventTermsVersion,
+    privacyVersion,
+    contactExchangeMode,
+    ...eventData
   } = parsed.data;
-  const settings = mergeEventSettings({}, {
-    participantCategories, participantNumber, conversationRounds, cardSetCode, retentionDays,
-    eventTermsVersion, privacyVersion, contactExchangeMode,
-  });
+  const settings = mergeEventSettings(
+    {},
+    {
+      participantCategories,
+      participantNumber,
+      conversationRounds,
+      cardSetCode,
+      retentionDays,
+      eventTermsVersion,
+      privacyVersion,
+      contactExchangeMode,
+    },
+  );
   const candidate = {
     ...eventData,
     endsAt: eventData.endsAt ?? null,
@@ -66,14 +106,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ code: "INVALID_DATE_RANGE", configuration, request_id: requestId }, { status: 400 });
   }
   const [created] = await db.transaction(async (tx) => {
-    const createdRows = await tx.insert(events).values({ tenantId: session.tenantId, status: "draft", ...eventData, settings }).returning();
+    const createdRows = await tx
+      .insert(events)
+      .values({ tenantId: session.tenantId, status: "draft", ...eventData, settings })
+      .returning();
     const row = createdRows[0];
     if (row) {
-      await tx.insert(eventFormFields).values(defaultEventFormFields.map((field) => ({ ...field, tenantId: session.tenantId, eventId: row.id })));
-      await tx.insert(auditLogs).values({ tenantId: session.tenantId, actorUserId: session.userId, eventId: row.id, action: "event.create", targetType: "event", targetId: row.id, after: { code: row.code, status: row.status }, requestId });
+      await tx
+        .insert(eventFormFields)
+        .values(defaultEventFormFields.map((field) => ({ ...field, tenantId: session.tenantId, eventId: row.id })));
+      await tx.insert(auditLogs).values({
+        tenantId: session.tenantId,
+        actorUserId: session.userId,
+        eventId: row.id,
+        action: "event.create",
+        targetType: "event",
+        targetId: row.id,
+        after: { code: row.code, status: row.status },
+        requestId,
+      });
     }
     return createdRows;
   });
-  const readiness = created ? await getEventConfigurationReadiness(session.tenantId, created.id, created) : configuration;
-  return NextResponse.json({ data: created ? { ...created, configuration: readiness } : created, request_id: requestId }, { status: 201 });
+  const readiness = created
+    ? await getEventConfigurationReadiness(session.tenantId, created.id, created)
+    : configuration;
+  return NextResponse.json(
+    { data: created ? { ...created, configuration: readiness } : created, request_id: requestId },
+    { status: 201 },
+  );
 }

@@ -12,33 +12,53 @@ export async function POST(_request: Request, context: Context) {
   const requestId = randomUUID();
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED", request_id: requestId }, { status: 401 });
-  try { requirePermission(session.role, "event:write"); } catch { return NextResponse.json({ code: "FORBIDDEN", request_id: requestId }, { status: 403 }); }
+  try {
+    requirePermission(session.role, "event:write");
+  } catch {
+    return NextResponse.json({ code: "FORBIDDEN", request_id: requestId }, { status: 403 });
+  }
   const { eventId, participantId } = await context.params;
-  if (session.eventId && session.eventId !== eventId) return NextResponse.json({ code: "NOT_FOUND", request_id: requestId }, { status: 404 });
+  if (session.eventId && session.eventId !== eventId)
+    return NextResponse.json({ code: "NOT_FOUND", request_id: requestId }, { status: 404 });
 
   const db = getDatabase();
-  const participant = (await db.select({ id: participants.id, userId: participants.userId }).from(participants).where(and(
-    eq(participants.id, participantId),
-    eq(participants.tenantId, session.tenantId),
-    eq(participants.eventId, eventId),
-  )).limit(1))[0];
+  const participant = (
+    await db
+      .select({ id: participants.id, userId: participants.userId })
+      .from(participants)
+      .where(
+        and(
+          eq(participants.id, participantId),
+          eq(participants.tenantId, session.tenantId),
+          eq(participants.eventId, eventId),
+        ),
+      )
+      .limit(1)
+  )[0];
   if (!participant) return NextResponse.json({ code: "NOT_FOUND", request_id: requestId }, { status: 404 });
-  if (!canReissueLinkToken(participant.userId)) return NextResponse.json({ code: "ALREADY_LINKED", request_id: requestId }, { status: 409 });
+  if (!canReissueLinkToken(participant.userId))
+    return NextResponse.json({ code: "ALREADY_LINKED", request_id: requestId }, { status: 409 });
 
   const token = createOpaqueToken(getEnv().LINK_TOKEN_PEPPER);
   const expiresAt = new Date(Date.now() + LINK_TOKEN_TTL_MS);
   const updated = await db.transaction(async (tx) => {
-    const rows = await tx.update(participants).set({
-      linkTokenHash: token.tokenHash,
-      linkTokenExpiresAt: expiresAt,
-      linkTokenUsedAt: null,
-      updatedAt: new Date(),
-    }).where(and(
-      eq(participants.id, participantId),
-      eq(participants.tenantId, session.tenantId),
-      eq(participants.eventId, eventId),
-      isNull(participants.userId),
-    )).returning({ id: participants.id });
+    const rows = await tx
+      .update(participants)
+      .set({
+        linkTokenHash: token.tokenHash,
+        linkTokenExpiresAt: expiresAt,
+        linkTokenUsedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(participants.id, participantId),
+          eq(participants.tenantId, session.tenantId),
+          eq(participants.eventId, eventId),
+          isNull(participants.userId),
+        ),
+      )
+      .returning({ id: participants.id });
     if (!rows[0]) return false;
     await tx.insert(auditLogs).values({
       tenantId: session.tenantId,

@@ -1,2 +1,29 @@
 import { defineConfig, devices } from "@playwright/test";
-export default defineConfig({ testDir: "tests/e2e", fullyParallel: false, retries: 0, reporter: "list", use: { baseURL: "http://127.0.0.1:3100", trace: "retain-on-failure" }, projects: [{ name: "mobile-chromium", use: { ...devices["iPhone 13"], browserName: "chromium" } }, { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } }], webServer: { command: "pnpm --dir apps/web dev --hostname 127.0.0.1 --port 3100", url: "http://127.0.0.1:3100", reuseExistingServer: false, timeout: 120_000, env: { DATABASE_URL: "postgresql://e2e:e2e@127.0.0.1:59999/e2e", SESSION_PEPPER: "e2e-session-pepper-at-least-32-characters", PASSWORD_PEPPER: "e2e-password-pepper-at-least-32-characters", LINK_TOKEN_PEPPER: "e2e-link-token-pepper-at-least-32-characters", QR_TOKEN_PEPPER: "e2e-qr-token-pepper-at-least-32-characters", INTERNAL_JOB_SECRET: "e2e-internal-job-secret-at-least-32-characters", APP_URL: "http://127.0.0.1:3100", APP_ENV: "test", NEXT_PUBLIC_LIFF_ID: "e2e-liff-id" } } });
+export default defineConfig({
+  testDir: "tests/e2e",
+  fullyParallel: false,
+  retries: 0,
+  reporter: "list",
+  use: { baseURL: "http://127.0.0.1:3100", trace: "retain-on-failure" },
+  projects: [
+    { name: "mobile-chromium", use: { ...devices["iPhone 13"], browserName: "chromium" } },
+    { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
+  ],
+  webServer: {
+    command: "pnpm --dir apps/web dev --hostname 127.0.0.1 --port 3100",
+    url: "http://127.0.0.1:3100",
+    reuseExistingServer: false,
+    timeout: 120_000,
+    env: {
+      DATABASE_URL: "postgresql://e2e:e2e@127.0.0.1:59999/e2e",
+      SESSION_PEPPER: "e2e-session-pepper-at-least-32-characters",
+      PASSWORD_PEPPER: "e2e-password-pepper-at-least-32-characters",
+      LINK_TOKEN_PEPPER: "e2e-link-token-pepper-at-least-32-characters",
+      QR_TOKEN_PEPPER: "e2e-qr-token-pepper-at-least-32-characters",
+      INTERNAL_JOB_SECRET: "e2e-internal-job-secret-at-least-32-characters",
+      APP_URL: "http://127.0.0.1:3100",
+      APP_ENV: "test",
+      NEXT_PUBLIC_LIFF_ID: "e2e-liff-id",
+    },
+  },
+});

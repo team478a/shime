@@ -2,4 +2,37 @@ import { and, asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { emotionCards, eventDreamSettings, events, getDatabase } from "@shime/db";
 import { requireParticipantForEvent } from "@shime/web/server/participant-auth";
-export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string }> }) { const { eventId } = await params; const auth = await requireParticipantForEvent(eventId).catch(() => null); if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); const db = getDatabase(); const settings = await db.select().from(eventDreamSettings).where(and(eq(eventDreamSettings.tenantId, auth.session.tenantId), eq(eventDreamSettings.eventId, eventId))).limit(1); if (!settings[0]?.cardSetId) return NextResponse.json({ code: "DREAM_NOT_CONFIGURED" }, { status: 409 }); const eventRows = await db.select({ registrationMode: events.dreamRegistrationMode }).from(events).where(and(eq(events.id, eventId), eq(events.tenantId, auth.session.tenantId))).limit(1); const cards = await db.select({ id: emotionCards.id, name: emotionCards.name, imageKey: emotionCards.imageKey, description: emotionCards.description }).from(emotionCards).where(and(eq(emotionCards.tenantId, auth.session.tenantId), eq(emotionCards.cardSetId, settings[0].cardSetId), eq(emotionCards.active, true))).orderBy(asc(emotionCards.displayOrder)); return NextResponse.json({ data: { cards, registrationMode: eventRows[0]?.registrationMode } }); }
+export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  const auth = await requireParticipantForEvent(eventId).catch(() => null);
+  if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  const db = getDatabase();
+  const settings = await db
+    .select()
+    .from(eventDreamSettings)
+    .where(and(eq(eventDreamSettings.tenantId, auth.session.tenantId), eq(eventDreamSettings.eventId, eventId)))
+    .limit(1);
+  if (!settings[0]?.cardSetId) return NextResponse.json({ code: "DREAM_NOT_CONFIGURED" }, { status: 409 });
+  const eventRows = await db
+    .select({ registrationMode: events.dreamRegistrationMode })
+    .from(events)
+    .where(and(eq(events.id, eventId), eq(events.tenantId, auth.session.tenantId)))
+    .limit(1);
+  const cards = await db
+    .select({
+      id: emotionCards.id,
+      name: emotionCards.name,
+      imageKey: emotionCards.imageKey,
+      description: emotionCards.description,
+    })
+    .from(emotionCards)
+    .where(
+      and(
+        eq(emotionCards.tenantId, auth.session.tenantId),
+        eq(emotionCards.cardSetId, settings[0].cardSetId),
+        eq(emotionCards.active, true),
+      ),
+    )
+    .orderBy(asc(emotionCards.displayOrder));
+  return NextResponse.json({ data: { cards, registrationMode: eventRows[0]?.registrationMode } });
+}

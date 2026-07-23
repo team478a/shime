@@ -19,11 +19,16 @@ async function main() {
   if (!process.argv[2]) throw new Error("An output directory outside the repository is required");
   const repository = path.resolve(process.cwd());
   const relative = path.relative(repository, outputDirectory);
-  if (!relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("Backup output must be outside the repository");
+  if (!relative.startsWith("..") || path.isAbsolute(relative))
+    throw new Error("Backup output must be outside the repository");
   await mkdir(outputDirectory, { recursive: true, mode: 0o700 });
   const dockerLookup = spawnSync("where.exe", ["docker.exe"], { encoding: "utf8", windowsHide: true });
-  const installedDocker = process.env.ProgramFiles ? path.join(process.env.ProgramFiles, "Docker", "Docker", "resources", "bin", "docker.exe") : "";
-  const dockerExecutable = dockerLookup.stdout?.split(/\r?\n/).find(Boolean) ?? (installedDocker && existsSync(installedDocker) ? installedDocker : undefined);
+  const installedDocker = process.env.ProgramFiles
+    ? path.join(process.env.ProgramFiles, "Docker", "Docker", "resources", "bin", "docker.exe")
+    : "";
+  const dockerExecutable =
+    dockerLookup.stdout?.split(/\r?\n/).find(Boolean) ??
+    (installedDocker && existsSync(installedDocker) ? installedDocker : undefined);
   if (!dockerExecutable) throw new Error("Docker executable was not found");
   const backupDatabaseUrl = env.DATABASE_URL;
   const database = new URL(backupDatabaseUrl);
@@ -39,20 +44,66 @@ async function main() {
   };
 
   const dumps = [
-    { name: "roles.sql", command: "pg_dumpall", args: ["--roles-only", "--no-role-passwords", "--file=/backup/roles.sql"] },
-    { name: "schema.sql", command: "pg_dump", args: ["--schema-only", "--no-owner", "--no-privileges", "--file=/backup/schema.sql"] },
-    { name: "data.sql", command: "pg_dump", args: ["--data-only", "--no-owner", "--no-privileges", "--format=plain", "--exclude-table=storage.buckets_vectors", "--exclude-table=storage.vector_indexes", "--file=/backup/data.sql"] },
+    {
+      name: "roles.sql",
+      command: "pg_dumpall",
+      args: ["--roles-only", "--no-role-passwords", "--file=/backup/roles.sql"],
+    },
+    {
+      name: "schema.sql",
+      command: "pg_dump",
+      args: ["--schema-only", "--no-owner", "--no-privileges", "--file=/backup/schema.sql"],
+    },
+    {
+      name: "data.sql",
+      command: "pg_dump",
+      args: [
+        "--data-only",
+        "--no-owner",
+        "--no-privileges",
+        "--format=plain",
+        "--exclude-table=storage.buckets_vectors",
+        "--exclude-table=storage.vector_indexes",
+        "--file=/backup/data.sql",
+      ],
+    },
   ] as const;
   for (const dump of dumps) {
     const file = path.join(outputDirectory, dump.name);
-    const result = spawnSync(dockerExecutable, ["run", "--rm", "--volume", `${outputDirectory}:/backup`, "--env", "PGHOST", "--env", "PGPORT", "--env", "PGDATABASE", "--env", "PGUSER", "--env", "PGPASSWORD", "--env", "PGSSLMODE", "postgres:17", dump.command, ...dump.args], {
-      cwd: repository,
-      env: databaseEnvironment,
-      stdio: ["ignore", "pipe", "pipe"],
-      timeout: 10 * 60 * 1000,
-    });
+    const result = spawnSync(
+      dockerExecutable,
+      [
+        "run",
+        "--rm",
+        "--volume",
+        `${outputDirectory}:/backup`,
+        "--env",
+        "PGHOST",
+        "--env",
+        "PGPORT",
+        "--env",
+        "PGDATABASE",
+        "--env",
+        "PGUSER",
+        "--env",
+        "PGPASSWORD",
+        "--env",
+        "PGSSLMODE",
+        "postgres:17",
+        dump.command,
+        ...dump.args,
+      ],
+      {
+        cwd: repository,
+        env: databaseEnvironment,
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 10 * 60 * 1000,
+      },
+    );
     if (result.status !== 0) {
-      const diagnostic = [result.error?.message, result.stderr?.toString("utf8"), result.stdout?.toString("utf8")].filter(Boolean).join("\n")
+      const diagnostic = [result.error?.message, result.stderr?.toString("utf8"), result.stdout?.toString("utf8")]
+        .filter(Boolean)
+        .join("\n")
         .replaceAll(env.DATABASE_MIGRATION_URL, "[REDACTED_DATABASE_URL]")
         .replaceAll(backupDatabaseUrl, "[REDACTED_DATABASE_URL]")
         .replaceAll(databaseEnvironment.PGPASSWORD, "[REDACTED_PASSWORD]")
@@ -65,13 +116,17 @@ async function main() {
     await chmod(file, 0o600);
   }
 
-  const files = await Promise.all(dumps.map(async ({ name }) => {
-    const file = path.join(outputDirectory, name);
-    const info = await stat(file);
-    if (info.size === 0) throw new Error(`Logical backup is empty: ${name}`);
-    const sha256 = createHash("sha256").update(await readFile(file)).digest("hex");
-    return { name, bytes: info.size, sha256 };
-  }));
+  const files = await Promise.all(
+    dumps.map(async ({ name }) => {
+      const file = path.join(outputDirectory, name);
+      const info = await stat(file);
+      if (info.size === 0) throw new Error(`Logical backup is empty: ${name}`);
+      const sha256 = createHash("sha256")
+        .update(await readFile(file))
+        .digest("hex");
+      return { name, bytes: info.size, sha256 };
+    }),
+  );
   console.info(JSON.stringify({ status: "ok", outputDirectory, files }));
 }
 

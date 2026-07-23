@@ -12,7 +12,11 @@ export default async function EventSettingsPage({ params }: { params: Promise<{ 
   if (!hasPermission(session.role, "event:write")) redirect("/admin");
   const { eventId } = await params;
   if (session.eventId && session.eventId !== eventId) notFound();
-  const rows = await getDatabase().select().from(events).where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId))).limit(1);
+  const rows = await getDatabase()
+    .select()
+    .from(events)
+    .where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId)))
+    .limit(1);
   const event = rows[0];
   if (!event) notFound();
   const initial = {
@@ -25,5 +29,18 @@ export default async function EventSettingsPage({ params }: { params: Promise<{ 
     preferenceClosesAt: event.preferenceClosesAt?.toISOString() ?? null,
   };
   const configuration = await getEventConfigurationReadiness(session.tenantId, eventId, event);
-  return <main><section className="panel settings-panel"><p className="eyebrow">EVENT SETTINGS</p><h1>イベント基本設定</h1><EventSettingsForm mode="edit" initial={initial} configuration={configuration} canDelete={hasPermission(session.role, "event:delete")} /></section></main>;
+  return (
+    <main>
+      <section className="panel settings-panel">
+        <p className="eyebrow">EVENT SETTINGS</p>
+        <h1>イベント基本設定</h1>
+        <EventSettingsForm
+          mode="edit"
+          initial={initial}
+          configuration={configuration}
+          canDelete={hasPermission(session.role, "event:delete")}
+        />
+      </section>
+    </main>
+  );
 }

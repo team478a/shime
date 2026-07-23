@@ -20,7 +20,13 @@ describe("visual seating moves", () => {
   });
 
   it("does not move a locked participant or displace a locked occupant", () => {
-    expect(moveParticipantToSeat([{ ...assignments[0]!, locked: true }], "p1", "s2")).toEqual({ ok: false, code: "SOURCE_LOCKED" });
-    expect(moveParticipantToSeat([{ ...assignments[0]! }, { ...assignments[1]!, locked: true }], "p1", "s2")).toEqual({ ok: false, code: "TARGET_LOCKED" });
+    expect(moveParticipantToSeat([{ ...assignments[0]!, locked: true }], "p1", "s2")).toEqual({
+      ok: false,
+      code: "SOURCE_LOCKED",
+    });
+    expect(moveParticipantToSeat([{ ...assignments[0]! }, { ...assignments[1]!, locked: true }], "p1", "s2")).toEqual({
+      ok: false,
+      code: "TARGET_LOCKED",
+    });
   });
 });

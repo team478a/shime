@@ -14,6 +14,8 @@ Read these files before planning or editing:
 - `docs/shime/EVENT_CONFIG_20260808.yaml`
 - `docs/shime/APPLICATION_IMPORT_TEMPLATE.csv`
 - `docs/shime/PLATFORM_OS_PRINCIPLES.md`
+- `docs/shime/REFACTORING_MASTER_PLAN_V1.md`
+- `docs/shime/REFACTORING_DEVELOPMENT_RULES_V1.md`
 
 Latest explicit user instructions override these documents.
 
@@ -40,12 +42,22 @@ Latest explicit user instructions override these documents.
 - Model reusable templates separately from event instances. Copy a versioned snapshot into an event so later template edits cannot alter historical or in-progress operations.
 - Prefer module contracts, provider interfaces, and versioned configuration over direct cross-module table coupling.
 - Keep tenant, service/module, and event scopes explicit so future horizontal expansion does not leak data or permissions across boundaries.
+- Refactor incrementally as a modular monolith; never perform a full rewrite or change UI, API contracts, or database semantics as part of a refactor.
+- Keep one refactoring phase and one business module per change. Cross-cutting Phase 0 tooling changes are the only exception.
+- New or migrated API routes handle HTTP concerns only and call use cases. Do not add new direct Drizzle access to route files.
+- Use cases must not depend on HTTP, UI, or Drizzle. They depend on repository interfaces.
+- Only repository implementations may use Drizzle for migrated modules.
+- New or migrated Client Components use module hooks instead of calling API endpoints directly.
+- Every `Record<string, unknown>` configuration introduced or touched must have an explicit Zod schema at its boundary.
+- Do not increase the architecture debt baselines enforced by `pnpm architecture:check`; lower them when a legacy dependency is removed.
 
 ## Required checks
 
 Before reporting completion, run the repository's relevant commands for:
 
 - lint
+- format check
+- architecture check
 - typecheck
 - unit tests
 - integration tests
@@ -70,4 +82,3 @@ Report:
 4. Deviations from specification
 5. Remaining P0/P1/P2 items
 6. Recommended next phase
-

@@ -15,37 +15,42 @@ async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
   const configPath = process.argv[2] ?? "docs/shime/REHEARSAL_EVENT_CONFIG_20260715.yaml";
   const expectRhA01Rechecked = process.argv.includes("--expect-rh-a01-rechecked");
-  const expectRhA01CheckinCancelled = !expectRhA01Rechecked && process.argv.includes("--expect-rh-a01-checkin-cancelled");
-  const expectRhA01ManualCheckin = expectRhA01Rechecked || (!expectRhA01CheckinCancelled && process.argv.includes("--expect-rh-a01-manual-checkin"));
-  const expectRhA01QrRotated = expectRhA01CheckinCancelled || expectRhA01ManualCheckin || process.argv.includes("--expect-rh-a01-qr-rotated");
+  const expectRhA01CheckinCancelled =
+    !expectRhA01Rechecked && process.argv.includes("--expect-rh-a01-checkin-cancelled");
+  const expectRhA01ManualCheckin =
+    expectRhA01Rechecked || (!expectRhA01CheckinCancelled && process.argv.includes("--expect-rh-a01-manual-checkin"));
+  const expectRhA01QrRotated =
+    expectRhA01CheckinCancelled || expectRhA01ManualCheckin || process.argv.includes("--expect-rh-a01-qr-rotated");
   const expectRhA01Pass = expectRhA01QrRotated || process.argv.includes("--expect-rh-a01-pass");
   const expectRhA01Linked = expectRhA01Pass || process.argv.includes("--expect-rh-a01-linked");
   const config = configSchema.parse(parseYaml(await readFile(resolve(configPath), "utf8")));
   const tenantCode = process.env.BOOTSTRAP_TENANT_CODE ?? "shime";
   const sql = postgres(process.env.DATABASE_URL, { max: 1 });
   try {
-    const rows = await sql<{
-      code: string;
-      status: string;
-      participants: number;
-      linked_participants: number;
-      linked_rh_a01: number;
-      rh_a01_dream_confirmed: number;
-      rh_a01_questionnaire_submitted: number;
-      rh_a01_pass_ready: number;
-      rh_a01_number_assigned: number;
-      rh_a01_active_qr: number;
-      rh_a01_rotated_qr: number;
-      rh_a01_checked_in: number;
-      rh_a01_manual_checkin: number;
-      rh_a01_cancelled_checkin: number;
-      rh_a01_confirm_log: number;
-      rh_a01_cancel_log: number;
-      rh_a01_cancel_audit: number;
-      active_link_tokens: number;
-      notifications: number;
-      pending_notifications: number;
-    }[]>`
+    const rows = await sql<
+      {
+        code: string;
+        status: string;
+        participants: number;
+        linked_participants: number;
+        linked_rh_a01: number;
+        rh_a01_dream_confirmed: number;
+        rh_a01_questionnaire_submitted: number;
+        rh_a01_pass_ready: number;
+        rh_a01_number_assigned: number;
+        rh_a01_active_qr: number;
+        rh_a01_rotated_qr: number;
+        rh_a01_checked_in: number;
+        rh_a01_manual_checkin: number;
+        rh_a01_cancelled_checkin: number;
+        rh_a01_confirm_log: number;
+        rh_a01_cancel_log: number;
+        rh_a01_cancel_audit: number;
+        active_link_tokens: number;
+        notifications: number;
+        pending_notifications: number;
+      }[]
+    >`
       select
         e.code,
         e.status,
@@ -81,83 +86,109 @@ async function main() {
       group by e.code, e.status
       order by e.code
     `;
-    if (rows.length !== config.events.length) throw new Error("Not all rehearsal events were found in the active tenant");
+    if (rows.length !== config.events.length)
+      throw new Error("Not all rehearsal events were found in the active tenant");
     for (const row of rows) {
-      if (row.status !== "draft" || row.participants !== 4) throw new Error(`${row.code} is not in the expected isolated draft state`);
+      if (row.status !== "draft" || row.participants !== 4)
+        throw new Error(`${row.code} is not in the expected isolated draft state`);
       if (expectRhA01Linked) {
         const isRhA = row.code === "rh-a-20260715";
         const expectedLinked = isRhA ? 1 : 0;
-        if (row.linked_participants !== expectedLinked || row.linked_rh_a01 !== expectedLinked || row.active_link_tokens !== 0) {
+        if (
+          row.linked_participants !== expectedLinked ||
+          row.linked_rh_a01 !== expectedLinked ||
+          row.active_link_tokens !== 0
+        ) {
           throw new Error(`${row.code} does not match the expected post-RH-A01 linkage state`);
         }
         if (expectRhA01Pass) {
           const expectedProgress = isRhA ? 1 : 0;
           if (
-            row.rh_a01_dream_confirmed !== expectedProgress
-            || row.rh_a01_questionnaire_submitted !== expectedProgress
-            || row.rh_a01_pass_ready !== expectedProgress
-            || row.rh_a01_number_assigned !== expectedProgress
-            || row.rh_a01_active_qr !== expectedProgress
+            row.rh_a01_dream_confirmed !== expectedProgress ||
+            row.rh_a01_questionnaire_submitted !== expectedProgress ||
+            row.rh_a01_pass_ready !== expectedProgress ||
+            row.rh_a01_number_assigned !== expectedProgress ||
+            row.rh_a01_active_qr !== expectedProgress
           ) {
             throw new Error(`${row.code} does not match the expected RH-A01 PASS-ready state`);
           }
           if (expectRhA01QrRotated && row.rh_a01_rotated_qr !== expectedProgress) {
             throw new Error(`${row.code} does not match the expected RH-A01 rotated-QR state`);
           }
-          if (expectRhA01ManualCheckin && (row.rh_a01_checked_in !== expectedProgress || row.rh_a01_manual_checkin !== expectedProgress)) {
+          if (
+            expectRhA01ManualCheckin &&
+            (row.rh_a01_checked_in !== expectedProgress || row.rh_a01_manual_checkin !== expectedProgress)
+          ) {
             throw new Error(`${row.code} does not match the expected RH-A01 manual-checkin state`);
           }
-          if (expectRhA01CheckinCancelled && (
-            row.rh_a01_checked_in !== 0
-            || row.rh_a01_manual_checkin !== 0
-            || row.rh_a01_cancelled_checkin !== expectedProgress
-            || row.rh_a01_confirm_log !== expectedProgress
-            || row.rh_a01_cancel_log !== expectedProgress
-            || row.rh_a01_cancel_audit !== expectedProgress
-          )) {
+          if (
+            expectRhA01CheckinCancelled &&
+            (row.rh_a01_checked_in !== 0 ||
+              row.rh_a01_manual_checkin !== 0 ||
+              row.rh_a01_cancelled_checkin !== expectedProgress ||
+              row.rh_a01_confirm_log !== expectedProgress ||
+              row.rh_a01_cancel_log !== expectedProgress ||
+              row.rh_a01_cancel_audit !== expectedProgress)
+          ) {
             throw new Error(`${row.code} does not match the expected RH-A01 cancelled-checkin state`);
           }
-          if (expectRhA01Rechecked && (
-            row.rh_a01_cancelled_checkin !== 0
-            || row.rh_a01_confirm_log !== (isRhA ? 2 : 0)
-            || row.rh_a01_cancel_log !== expectedProgress
-            || row.rh_a01_cancel_audit !== expectedProgress
-          )) {
+          if (
+            expectRhA01Rechecked &&
+            (row.rh_a01_cancelled_checkin !== 0 ||
+              row.rh_a01_confirm_log !== (isRhA ? 2 : 0) ||
+              row.rh_a01_cancel_log !== expectedProgress ||
+              row.rh_a01_cancel_audit !== expectedProgress)
+          ) {
             throw new Error(`${row.code} does not match the expected RH-A01 rechecked state`);
           }
         }
       } else if (row.linked_participants !== 0 || row.linked_rh_a01 !== 0 || row.active_link_tokens !== 0) {
         throw new Error(`${row.code} already has LINE linkage or an active link token`);
       }
-      if (row.notifications !== 0 || row.pending_notifications !== 0) throw new Error(`${row.code} already has notification records`);
+      if (row.notifications !== 0 || row.pending_notifications !== 0)
+        throw new Error(`${row.code} already has notification records`);
     }
-    console.info(JSON.stringify({
-      status: "ok",
-      expectation: expectRhA01Rechecked ? "rh-a01-rechecked" : expectRhA01CheckinCancelled ? "rh-a01-checkin-cancelled" : expectRhA01ManualCheckin ? "rh-a01-manual-checkin" : expectRhA01QrRotated ? "rh-a01-qr-rotated" : expectRhA01Pass ? "rh-a01-pass-ready" : expectRhA01Linked ? "rh-a01-linked" : "no-links",
-      notificationSendSafe: true,
-      events: rows.map((row) => ({
-        code: row.code,
-        eventStatus: row.status,
-        participants: row.participants,
-        linkedParticipants: row.linked_participants,
-        linkedRhA01: row.linked_rh_a01,
-        rhA01DreamConfirmed: row.rh_a01_dream_confirmed,
-        rhA01QuestionnaireSubmitted: row.rh_a01_questionnaire_submitted,
-        rhA01PassReady: row.rh_a01_pass_ready,
-        rhA01NumberAssigned: row.rh_a01_number_assigned,
-        rhA01ActiveQr: row.rh_a01_active_qr,
-        rhA01RotatedQr: row.rh_a01_rotated_qr,
-        rhA01CheckedIn: row.rh_a01_checked_in,
-        rhA01ManualCheckin: row.rh_a01_manual_checkin,
-        rhA01CancelledCheckin: row.rh_a01_cancelled_checkin,
-        rhA01ConfirmLog: row.rh_a01_confirm_log,
-        rhA01CancelLog: row.rh_a01_cancel_log,
-        rhA01CancelAudit: row.rh_a01_cancel_audit,
-        activeLinkTokens: row.active_link_tokens,
-        notifications: row.notifications,
-        pendingNotifications: row.pending_notifications,
-      })),
-    }));
+    console.info(
+      JSON.stringify({
+        status: "ok",
+        expectation: expectRhA01Rechecked
+          ? "rh-a01-rechecked"
+          : expectRhA01CheckinCancelled
+            ? "rh-a01-checkin-cancelled"
+            : expectRhA01ManualCheckin
+              ? "rh-a01-manual-checkin"
+              : expectRhA01QrRotated
+                ? "rh-a01-qr-rotated"
+                : expectRhA01Pass
+                  ? "rh-a01-pass-ready"
+                  : expectRhA01Linked
+                    ? "rh-a01-linked"
+                    : "no-links",
+        notificationSendSafe: true,
+        events: rows.map((row) => ({
+          code: row.code,
+          eventStatus: row.status,
+          participants: row.participants,
+          linkedParticipants: row.linked_participants,
+          linkedRhA01: row.linked_rh_a01,
+          rhA01DreamConfirmed: row.rh_a01_dream_confirmed,
+          rhA01QuestionnaireSubmitted: row.rh_a01_questionnaire_submitted,
+          rhA01PassReady: row.rh_a01_pass_ready,
+          rhA01NumberAssigned: row.rh_a01_number_assigned,
+          rhA01ActiveQr: row.rh_a01_active_qr,
+          rhA01RotatedQr: row.rh_a01_rotated_qr,
+          rhA01CheckedIn: row.rh_a01_checked_in,
+          rhA01ManualCheckin: row.rh_a01_manual_checkin,
+          rhA01CancelledCheckin: row.rh_a01_cancelled_checkin,
+          rhA01ConfirmLog: row.rh_a01_confirm_log,
+          rhA01CancelLog: row.rh_a01_cancel_log,
+          rhA01CancelAudit: row.rh_a01_cancel_audit,
+          activeLinkTokens: row.active_link_tokens,
+          notifications: row.notifications,
+          pendingNotifications: row.pending_notifications,
+        })),
+      }),
+    );
   } finally {
     await sql.end();
   }

@@ -8,7 +8,10 @@ export const venueLayoutTableSchema = z.object({
   tableCode: z.string().trim().min(1).max(40),
   capacity: z.number().int().positive().max(50),
   displayOrder: z.number().int().positive().max(200),
-  seats: z.array(z.object({ seatCode: z.string().trim().min(1).max(40) })).min(1).max(50),
+  seats: z
+    .array(z.object({ seatCode: z.string().trim().min(1).max(40) }))
+    .min(1)
+    .max(50),
 });
 
 export const venueLayoutPayloadSchema = z.object({
@@ -31,14 +34,16 @@ function compareText(left: string, right: string) {
 }
 
 export function canonicalizeVenueLayoutTables(tables: z.infer<typeof venueLayoutTableSchema>[]): string {
-  return JSON.stringify([...tables]
-    .sort((left, right) => left.displayOrder - right.displayOrder || compareText(left.tableCode, right.tableCode))
-    .map((table) => ({
-      tableCode: table.tableCode,
-      capacity: table.capacity,
-      displayOrder: table.displayOrder,
-      seats: [...table.seats].sort((left, right) => compareText(left.seatCode, right.seatCode)),
-    })));
+  return JSON.stringify(
+    [...tables]
+      .sort((left, right) => left.displayOrder - right.displayOrder || compareText(left.tableCode, right.tableCode))
+      .map((table) => ({
+        tableCode: table.tableCode,
+        capacity: table.capacity,
+        displayOrder: table.displayOrder,
+        seats: [...table.seats].sort((left, right) => compareText(left.seatCode, right.seatCode)),
+      })),
+  );
 }
 
 export function nextVenueLayoutTemplateVersion(currentVersion?: number): number {

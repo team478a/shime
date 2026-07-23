@@ -10,13 +10,15 @@ async function main() {
   const sql = postgres(databaseUrl, { prepare: false, max: 1 });
 
   try {
-    const [result] = await sql<{
-      tenant_count: number;
-      admin_identity_count: number;
-      credential_count: number;
-      system_admin_role_count: number;
-      event_count: number;
-    }[]>`
+    const [result] = await sql<
+      {
+        tenant_count: number;
+        admin_identity_count: number;
+        credential_count: number;
+        system_admin_role_count: number;
+        event_count: number;
+      }[]
+    >`
       select
         count(distinct t.id)::int as tenant_count,
         count(distinct ui.id)::int as admin_identity_count,
@@ -40,14 +42,16 @@ async function main() {
       where t.code = ${tenantCode}
     `;
 
-    console.info(JSON.stringify({
-      connection: "ok",
-      tenantExists: result?.tenant_count === 1,
-      adminIdentityCount: result?.admin_identity_count ?? 0,
-      credentialCount: result?.credential_count ?? 0,
-      systemAdminRoleCount: result?.system_admin_role_count ?? 0,
-      eventCount: result?.event_count ?? 0,
-    }));
+    console.info(
+      JSON.stringify({
+        connection: "ok",
+        tenantExists: result?.tenant_count === 1,
+        adminIdentityCount: result?.admin_identity_count ?? 0,
+        credentialCount: result?.credential_count ?? 0,
+        systemAdminRoleCount: result?.system_admin_role_count ?? 0,
+        eventCount: result?.event_count ?? 0,
+      }),
+    );
   } finally {
     await sql.end();
   }

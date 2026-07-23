@@ -47,6 +47,8 @@ describe("concierge template publication", () => {
       displayOrder: 1,
       active: true,
     });
-    expect(validateConciergeTemplateForPublish(payload)).toContainEqual(expect.objectContaining({ code: "CARD_MAPPING_INVALID" }));
+    expect(validateConciergeTemplateForPublish(payload)).toContainEqual(
+      expect.objectContaining({ code: "CARD_MAPPING_INVALID" }),
+    );
   });
 });

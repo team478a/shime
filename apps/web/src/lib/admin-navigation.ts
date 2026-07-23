@@ -25,8 +25,20 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
 const primaryItems: readonly AdminNavigationItem[] = [
   { key: "dashboard", label: "管理トップ", href: "/admin" },
   { key: "new-event", label: "イベント作成", href: "/admin/events/new", permission: "event:write" },
-  { key: "venue-templates", label: "会場テンプレート", href: "/admin/templates/venue-layouts", permission: "event:write", tenantScopeOnly: true },
-  { key: "concierge", label: "診断・カード管理", href: "/admin/concierge", permission: "concierge:manage", tenantScopeOnly: true },
+  {
+    key: "venue-templates",
+    label: "会場テンプレート",
+    href: "/admin/templates/venue-layouts",
+    permission: "event:write",
+    tenantScopeOnly: true,
+  },
+  {
+    key: "concierge",
+    label: "診断・カード管理",
+    href: "/admin/concierge",
+    permission: "concierge:manage",
+    tenantScopeOnly: true,
+  },
   { key: "staff", label: "管理者・権限", href: "/admin/staff", systemAdminOnly: true },
   { key: "platform", label: "外部接続・運用設定", href: "/admin/platform", systemAdminOnly: true },
 ];

@@ -1,2 +1,133 @@
-import { and, eq, inArray, or } from "drizzle-orm"; import { NextResponse } from "next/server"; import { applications, checkins, conversationPairs, events, getDatabase, participantAvoidances, participants, preferenceSubmissions, preferences } from "@shime/db"; import { requireParticipantForEvent } from "@shime/web/server/participant-auth";
-export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string }> }) { const { eventId } = await params; const auth = await requireParticipantForEvent(eventId).catch(() => null); if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); const db = getDatabase(); const event = await db.select().from(events).where(and(eq(events.tenantId, auth.session.tenantId), eq(events.id, eventId))).limit(1); if (!event[0]) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 }); const now = new Date(); if (event[0].status !== "preference_open" || (event[0].preferenceOpensAt && event[0].preferenceOpensAt > now) || (event[0].preferenceClosesAt && event[0].preferenceClosesAt <= now)) return NextResponse.json({ code: "PREFERENCE_NOT_OPEN" }, { status: 409 }); const pairs = await db.select().from(conversationPairs).where(and(eq(conversationPairs.tenantId, auth.session.tenantId), eq(conversationPairs.eventId, eventId), or(eq(conversationPairs.participantAId, auth.participant.id), eq(conversationPairs.participantBId, auth.participant.id)))); const candidateIds = pairs.map((p) => p.participantAId === auth.participant.id ? p.participantBId : p.participantAId); const avoidances = await db.select().from(participantAvoidances).where(and(eq(participantAvoidances.tenantId, auth.session.tenantId), eq(participantAvoidances.eventId, eventId), or(eq(participantAvoidances.participantId, auth.participant.id), eq(participantAvoidances.avoidedParticipantId, auth.participant.id)))); const blocked = new Set(avoidances.map((a) => a.participantId === auth.participant.id ? a.avoidedParticipantId : a.participantId)); const allowedIds = [...new Set(candidateIds.filter((id) => !blocked.has(id)))]; const candidates = allowedIds.length ? await db.select({ id: participants.id, participantNumber: participants.participantNumber, nickname: applications.nickname }).from(participants).innerJoin(applications, and(eq(applications.id, participants.applicationId), eq(applications.tenantId, participants.tenantId))).innerJoin(checkins, and(eq(checkins.tenantId, participants.tenantId), eq(checkins.eventId, participants.eventId), eq(checkins.participantId, participants.id), eq(checkins.status, "checked_in"))).where(and(eq(participants.tenantId, auth.session.tenantId), eq(participants.eventId, eventId), inArray(participants.id, allowedIds), inArray(participants.status, ["confirmed", "attended"]))) : []; const submission = await db.select().from(preferenceSubmissions).where(and(eq(preferenceSubmissions.tenantId, auth.session.tenantId), eq(preferenceSubmissions.eventId, eventId), eq(preferenceSubmissions.participantId, auth.participant.id))).limit(1); const ownPreferences = submission[0] ? await db.select({ toParticipantId: preferences.toParticipantId, rank: preferences.rank, privateNote: preferences.privateNote }).from(preferences).where(and(eq(preferences.tenantId, auth.session.tenantId), eq(preferences.eventId, eventId), eq(preferences.submissionId, submission[0].id), eq(preferences.fromParticipantId, auth.participant.id))) : []; return NextResponse.json({ data: { mode: event[0].preferenceMode, candidates, choices: ownPreferences, submissionStatus: submission[0]?.status ?? "draft", closesAt: event[0].preferenceClosesAt } }); }
+import { and, eq, inArray, or } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import {
+  applications,
+  checkins,
+  conversationPairs,
+  events,
+  getDatabase,
+  participantAvoidances,
+  participants,
+  preferenceSubmissions,
+  preferences,
+} from "@shime/db";
+import { requireParticipantForEvent } from "@shime/web/server/participant-auth";
+export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  const auth = await requireParticipantForEvent(eventId).catch(() => null);
+  if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  const db = getDatabase();
+  const event = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.tenantId, auth.session.tenantId), eq(events.id, eventId)))
+    .limit(1);
+  if (!event[0]) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
+  const now = new Date();
+  if (
+    event[0].status !== "preference_open" ||
+    (event[0].preferenceOpensAt && event[0].preferenceOpensAt > now) ||
+    (event[0].preferenceClosesAt && event[0].preferenceClosesAt <= now)
+  )
+    return NextResponse.json({ code: "PREFERENCE_NOT_OPEN" }, { status: 409 });
+  const pairs = await db
+    .select()
+    .from(conversationPairs)
+    .where(
+      and(
+        eq(conversationPairs.tenantId, auth.session.tenantId),
+        eq(conversationPairs.eventId, eventId),
+        or(
+          eq(conversationPairs.participantAId, auth.participant.id),
+          eq(conversationPairs.participantBId, auth.participant.id),
+        ),
+      ),
+    );
+  const candidateIds = pairs.map((p) =>
+    p.participantAId === auth.participant.id ? p.participantBId : p.participantAId,
+  );
+  const avoidances = await db
+    .select()
+    .from(participantAvoidances)
+    .where(
+      and(
+        eq(participantAvoidances.tenantId, auth.session.tenantId),
+        eq(participantAvoidances.eventId, eventId),
+        or(
+          eq(participantAvoidances.participantId, auth.participant.id),
+          eq(participantAvoidances.avoidedParticipantId, auth.participant.id),
+        ),
+      ),
+    );
+  const blocked = new Set(
+    avoidances.map((a) => (a.participantId === auth.participant.id ? a.avoidedParticipantId : a.participantId)),
+  );
+  const allowedIds = [...new Set(candidateIds.filter((id) => !blocked.has(id)))];
+  const candidates = allowedIds.length
+    ? await db
+        .select({
+          id: participants.id,
+          participantNumber: participants.participantNumber,
+          nickname: applications.nickname,
+        })
+        .from(participants)
+        .innerJoin(
+          applications,
+          and(eq(applications.id, participants.applicationId), eq(applications.tenantId, participants.tenantId)),
+        )
+        .innerJoin(
+          checkins,
+          and(
+            eq(checkins.tenantId, participants.tenantId),
+            eq(checkins.eventId, participants.eventId),
+            eq(checkins.participantId, participants.id),
+            eq(checkins.status, "checked_in"),
+          ),
+        )
+        .where(
+          and(
+            eq(participants.tenantId, auth.session.tenantId),
+            eq(participants.eventId, eventId),
+            inArray(participants.id, allowedIds),
+            inArray(participants.status, ["confirmed", "attended"]),
+          ),
+        )
+    : [];
+  const submission = await db
+    .select()
+    .from(preferenceSubmissions)
+    .where(
+      and(
+        eq(preferenceSubmissions.tenantId, auth.session.tenantId),
+        eq(preferenceSubmissions.eventId, eventId),
+        eq(preferenceSubmissions.participantId, auth.participant.id),
+      ),
+    )
+    .limit(1);
+  const ownPreferences = submission[0]
+    ? await db
+        .select({
+          toParticipantId: preferences.toParticipantId,
+          rank: preferences.rank,
+          privateNote: preferences.privateNote,
+        })
+        .from(preferences)
+        .where(
+          and(
+            eq(preferences.tenantId, auth.session.tenantId),
+            eq(preferences.eventId, eventId),
+            eq(preferences.submissionId, submission[0].id),
+            eq(preferences.fromParticipantId, auth.participant.id),
+          ),
+        )
+    : [];
+  return NextResponse.json({
+    data: {
+      mode: event[0].preferenceMode,
+      candidates,
+      choices: ownPreferences,
+      submissionStatus: submission[0]?.status ?? "draft",
+      closesAt: event[0].preferenceClosesAt,
+    },
+  });
+}

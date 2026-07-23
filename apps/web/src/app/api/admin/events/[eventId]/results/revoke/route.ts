@@ -1,2 +1,57 @@
-import { randomUUID } from "node:crypto"; import { and, desc, eq, isNull } from "drizzle-orm"; import { NextResponse } from "next/server"; import { z } from "zod"; import { requirePermission } from "@shime/core"; import { auditLogs, events, getDatabase, resultConfirmations } from "@shime/db"; import { requireStaffSession } from "@shime/web/server/auth";
-const input = z.object({ reason: z.string().trim().min(1).max(1000) }); export async function POST(request: Request, { params }: { params: Promise<{ eventId: string }> }) { const { eventId } = await params; const session = await requireStaffSession().catch(() => null); if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); try { requirePermission(session.role, "result:revoke"); } catch { return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 }); } const parsed = input.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ code: "REASON_REQUIRED" }, { status: 400 }); const db = getDatabase(); const rows = await db.select().from(resultConfirmations).where(and(eq(resultConfirmations.tenantId, session.tenantId), eq(resultConfirmations.eventId, eventId), isNull(resultConfirmations.revokedAt))).orderBy(desc(resultConfirmations.confirmedAt)).limit(1); const confirmation = rows[0]; if (!confirmation) return NextResponse.json({ code: "NOT_CONFIRMED" }, { status: 409 }); const now = new Date(); await db.transaction(async (tx) => { await tx.update(resultConfirmations).set({ revokedAt: now, revokedBy: session.userId, revocationReason: parsed.data.reason, updatedAt: now }).where(eq(resultConfirmations.id, confirmation.id)); await tx.update(events).set({ status: "preference_closed", resultPublishAt: null, updatedAt: now }).where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId))); await tx.insert(auditLogs).values({ tenantId: session.tenantId, actorUserId: session.userId, eventId, action: "results.revoke", targetType: "result_confirmation", targetId: confirmation.id, reason: parsed.data.reason, requestId: randomUUID() }); }); return NextResponse.json({ data: { status: "revoked" } }); }
+import { randomUUID } from "node:crypto";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requirePermission } from "@shime/core";
+import { auditLogs, events, getDatabase, resultConfirmations } from "@shime/db";
+import { requireStaffSession } from "@shime/web/server/auth";
+const input = z.object({ reason: z.string().trim().min(1).max(1000) });
+export async function POST(request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  const session = await requireStaffSession().catch(() => null);
+  if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  try {
+    requirePermission(session.role, "result:revoke");
+  } catch {
+    return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
+  }
+  const parsed = input.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ code: "REASON_REQUIRED" }, { status: 400 });
+  const db = getDatabase();
+  const rows = await db
+    .select()
+    .from(resultConfirmations)
+    .where(
+      and(
+        eq(resultConfirmations.tenantId, session.tenantId),
+        eq(resultConfirmations.eventId, eventId),
+        isNull(resultConfirmations.revokedAt),
+      ),
+    )
+    .orderBy(desc(resultConfirmations.confirmedAt))
+    .limit(1);
+  const confirmation = rows[0];
+  if (!confirmation) return NextResponse.json({ code: "NOT_CONFIRMED" }, { status: 409 });
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(resultConfirmations)
+      .set({ revokedAt: now, revokedBy: session.userId, revocationReason: parsed.data.reason, updatedAt: now })
+      .where(eq(resultConfirmations.id, confirmation.id));
+    await tx
+      .update(events)
+      .set({ status: "preference_closed", resultPublishAt: null, updatedAt: now })
+      .where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId)));
+    await tx.insert(auditLogs).values({
+      tenantId: session.tenantId,
+      actorUserId: session.userId,
+      eventId,
+      action: "results.revoke",
+      targetType: "result_confirmation",
+      targetId: confirmation.id,
+      reason: parsed.data.reason,
+      requestId: randomUUID(),
+    });
+  });
+  return NextResponse.json({ data: { status: "revoked" } });
+}

@@ -111,7 +111,11 @@ export function CheckinConsole({ eventId, eventName }: { eventId: string; eventN
       }
       const found = (body.data?.candidates ?? []) as Preview[];
       setCandidates(found);
-      setManualMessage(found.length ? `${found.length}件見つかりました。下の候補を選んでください。` : "該当する参加者が見つかりませんでした。入力を短くしてお試しください。");
+      setManualMessage(
+        found.length
+          ? `${found.length}件見つかりました。下の候補を選んでください。`
+          : "該当する参加者が見つかりませんでした。入力を短くしてお試しください。",
+      );
     } catch {
       const failure = getCheckinSearchFailure(0);
       setManualMessage(failure.message);
@@ -169,75 +173,142 @@ export function CheckinConsole({ eventId, eventName }: { eventId: string; eventN
     }
   }
 
-  return <div className="admin-stack">
-    <section className="panel wide">
-      <h1>当日受付</h1>
-      <p className="current-operation-event"><span>受付対象イベント</span><strong>{eventName}</strong></p>
-      <h2>QR受付</h2>
-      <div id="qr-reader" className="qr-reader" />
-      {scanning
-        ? <button className="secondary" onClick={stopCamera}>カメラを停止</button>
-        : <button onClick={startCamera}>カメラでQRを読む</button>}
-      <form className="login-form" onSubmit={scan}>
-        <label>スキャナー入力／QR読取値<input name="qrToken" placeholder="SHIME1:..." required /></label>
-        <button>参加者確認</button>
-      </form>
-    </section>
+  return (
+    <div className="admin-stack">
+      <section className="panel wide">
+        <h1>当日受付</h1>
+        <p className="current-operation-event">
+          <span>受付対象イベント</span>
+          <strong>{eventName}</strong>
+        </p>
+        <h2>QR受付</h2>
+        <div id="qr-reader" className="qr-reader" />
+        {scanning ? (
+          <button className="secondary" onClick={stopCamera}>
+            カメラを停止
+          </button>
+        ) : (
+          <button onClick={startCamera}>カメラでQRを読む</button>
+        )}
+        <form className="login-form" onSubmit={scan}>
+          <label>
+            スキャナー入力／QR読取値
+            <input name="qrToken" placeholder="SHIME1:..." required />
+          </label>
+          <button>参加者確認</button>
+        </form>
+      </section>
 
-    <section className="panel wide">
-      <h2>参加者検索・手動受付</h2>
-      <p>参加者番号は先頭の文字から、氏名は一部の文字から検索できます。</p>
-      <form className="login-form" onSubmit={searchManual}>
-        <label>参加者番号または氏名<input name="query" placeholder="例: A / A01 / テスト参加者" required /></label>
-        <button disabled={manualBusy}>{manualBusy ? "検索中…" : "検索"}</button>
-      </form>
-      {manualMessage && <div className={`operation-feedback${manualError ? " operation-feedback-error" : ""}`} role={manualError ? "alert" : "status"} aria-live="polite">
-        <p>{manualMessage}</p>
-        {manualRequiresLogin && <a className="button-link" href="/admin/login">再ログインする</a>}
-      </div>}
-      {candidates.length > 0 && <div className="admin-card-list">
-        {candidates.map((candidate) => <article className="admin-list-card" key={candidate.participantId}>
-          <div>
-            <strong>{candidate.participantNumber}</strong>
-            <span>{candidate.fullName}</span>
+      <section className="panel wide">
+        <h2>参加者検索・手動受付</h2>
+        <p>参加者番号は先頭の文字から、氏名は一部の文字から検索できます。</p>
+        <form className="login-form" onSubmit={searchManual}>
+          <label>
+            参加者番号または氏名
+            <input name="query" placeholder="例: A / A01 / テスト参加者" required />
+          </label>
+          <button disabled={manualBusy}>{manualBusy ? "検索中…" : "検索"}</button>
+        </form>
+        {manualMessage && (
+          <div
+            className={`operation-feedback${manualError ? " operation-feedback-error" : ""}`}
+            role={manualError ? "alert" : "status"}
+            aria-live="polite"
+          >
+            <p>{manualMessage}</p>
+            {manualRequiresLogin && (
+              <a className="button-link" href="/admin/login">
+                再ログインする
+              </a>
+            )}
           </div>
+        )}
+        {candidates.length > 0 && (
+          <div className="admin-card-list">
+            {candidates.map((candidate) => (
+              <article className="admin-list-card" key={candidate.participantId}>
+                <div>
+                  <strong>{candidate.participantNumber}</strong>
+                  <span>{candidate.fullName}</span>
+                </div>
+                <dl>
+                  <dt>参加状態</dt>
+                  <dd>{getParticipantStatusLabel(candidate.participantStatus)}</dd>
+                  <dt>受付</dt>
+                  <dd>{candidate.alreadyCheckedIn ? "受付済み" : "未受付"}</dd>
+                </dl>
+                <button type="button" onClick={() => selectCandidate(candidate)}>
+                  この参加者を確認
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {preview && (
+        <section className="panel wide">
+          <h2>受付確認</h2>
           <dl>
-            <dt>参加状態</dt><dd>{getParticipantStatusLabel(candidate.participantStatus)}</dd>
-            <dt>受付</dt><dd>{candidate.alreadyCheckedIn ? "受付済み" : "未受付"}</dd>
+            <dt>氏名</dt>
+            <dd>{preview.fullName}</dd>
+            <dt>参加者番号</dt>
+            <dd>{preview.participantNumber}</dd>
+            <dt>参加状態</dt>
+            <dd>{getParticipantStatusLabel(preview.participantStatus)}</dd>
+            <dt>受付</dt>
+            <dd>{preview.alreadyCheckedIn ? "受付済み" : "未受付"}</dd>
           </dl>
-          <button type="button" onClick={() => selectCandidate(candidate)}>この参加者を確認</button>
-        </article>)}
-      </div>}
-    </section>
+          {preview.alreadyCheckedIn ? (
+            <button className="secondary" onClick={() => setCancelOpen((current) => !current)}>
+              受付を取り消す
+            </button>
+          ) : (
+            <button onClick={confirm}>受付を確定</button>
+          )}
+          {preview.alreadyCheckedIn && cancelOpen && (
+            <fieldset>
+              <legend>受付取消理由</legend>
+              <label>
+                理由
+                <select
+                  value={cancelPreset}
+                  onChange={(event) => setCancelPreset(event.target.value as CheckinCancellationReason)}
+                >
+                  {CHECKIN_CANCELLATION_REASONS.map((reason) => (
+                    <option key={reason} value={reason}>
+                      {reason}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                補足（任意）
+                <textarea
+                  value={cancelNote}
+                  onChange={(event) => setCancelNote(event.target.value)}
+                  maxLength={900}
+                  placeholder={cancelPreset === "その他" ? "その他の場合は必須" : "必要な場合だけ入力"}
+                />
+              </label>
+              <div className="actions">
+                <button type="button" disabled={cancelBusy} onClick={cancel}>
+                  {cancelBusy ? "取消処理中…" : "理由を確認して取り消す"}
+                </button>
+                <button type="button" className="secondary" disabled={cancelBusy} onClick={() => setCancelOpen(false)}>
+                  閉じる
+                </button>
+              </div>
+            </fieldset>
+          )}
+        </section>
+      )}
 
-    {preview && <section className="panel wide">
-      <h2>受付確認</h2>
-      <dl>
-        <dt>氏名</dt><dd>{preview.fullName}</dd>
-        <dt>参加者番号</dt><dd>{preview.participantNumber}</dd>
-        <dt>参加状態</dt><dd>{getParticipantStatusLabel(preview.participantStatus)}</dd>
-        <dt>受付</dt><dd>{preview.alreadyCheckedIn ? "受付済み" : "未受付"}</dd>
-      </dl>
-      {preview.alreadyCheckedIn
-        ? <button className="secondary" onClick={() => setCancelOpen((current) => !current)}>受付を取り消す</button>
-        : <button onClick={confirm}>受付を確定</button>}
-      {preview.alreadyCheckedIn && cancelOpen && <fieldset>
-        <legend>受付取消理由</legend>
-        <label>理由
-          <select value={cancelPreset} onChange={(event) => setCancelPreset(event.target.value as CheckinCancellationReason)}>
-            {CHECKIN_CANCELLATION_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
-          </select>
-        </label>
-        <label>補足（任意）
-          <textarea value={cancelNote} onChange={(event) => setCancelNote(event.target.value)} maxLength={900} placeholder={cancelPreset === "その他" ? "その他の場合は必須" : "必要な場合だけ入力"} />
-        </label>
-        <div className="actions">
-          <button type="button" disabled={cancelBusy} onClick={cancel}>{cancelBusy ? "取消処理中…" : "理由を確認して取り消す"}</button>
-          <button type="button" className="secondary" disabled={cancelBusy} onClick={() => setCancelOpen(false)}>閉じる</button>
-        </div>
-      </fieldset>}
-    </section>}
-
-    {message && <section className="panel wide"><p role="status">{message}</p></section>}
-  </div>;
+      {message && (
+        <section className="panel wide">
+          <p role="status">{message}</p>
+        </section>
+      )}
+    </div>
+  );
 }

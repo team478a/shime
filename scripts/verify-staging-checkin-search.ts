@@ -24,7 +24,9 @@ async function main() {
 
   const admin = await fetch(`${baseUrl}/admin`, { ...requestOptions, headers: { cookie } });
   const html = await admin.text();
-  const eventIds = [...new Set([...html.matchAll(/\/admin\/events\/([^"?\/]+)\/checkin/g)].map((match) => match[1]).filter(Boolean))];
+  const eventIds = [
+    ...new Set([...html.matchAll(/\/admin\/events\/([^"?\/]+)\/checkin/g)].map((match) => match[1]).filter(Boolean)),
+  ];
   if (!eventIds.length) throw new Error("CHECKIN_LINK_NOT_FOUND");
 
   const results = [];
@@ -35,21 +37,23 @@ async function main() {
       headers: { "content-type": "application/json", cookie },
       body: JSON.stringify({ query: "A" }),
     });
-    const body = await search.json() as { data?: { candidates?: unknown[] } };
+    const body = (await search.json()) as { data?: { candidates?: unknown[] } };
     results.push({
       status: search.status,
       candidateCount: Array.isArray(body.data?.candidates) ? body.data.candidates.length : null,
     });
   }
 
-  console.info(JSON.stringify({
-    loginStatus: login.status,
-    adminStatus: admin.status,
-    checkedEventCount: results.length,
-    successfulSearchCount: results.filter((result) => result.status === 200).length,
-    eventsWithCandidates: results.filter((result) => (result.candidateCount ?? 0) > 0).length,
-    totalCandidateCount: results.reduce((total, result) => total + (result.candidateCount ?? 0), 0),
-  }));
+  console.info(
+    JSON.stringify({
+      loginStatus: login.status,
+      adminStatus: admin.status,
+      checkedEventCount: results.length,
+      successfulSearchCount: results.filter((result) => result.status === 200).length,
+      eventsWithCandidates: results.filter((result) => (result.candidateCount ?? 0) > 0).length,
+      totalCandidateCount: results.reduce((total, result) => total + (result.candidateCount ?? 0), 0),
+    }),
+  );
 
   if (results.some((result) => result.status !== 200 || result.candidateCount === null)) process.exitCode = 1;
 }

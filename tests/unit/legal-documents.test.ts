@@ -3,11 +3,16 @@ import { isLegalDocumentType, withPublishedLegalVersion } from "../../apps/web/s
 
 describe("legal documents", () => {
   it("updates only the event-terms version while preserving other event settings", () => {
-    expect(withPublishedLegalVersion({ privacyVersion: "privacy-v1", conversationRounds: 3 }, "event_terms", "terms-v2")).toEqual({ privacyVersion: "privacy-v1", eventTermsVersion: "terms-v2", conversationRounds: 3 });
+    expect(
+      withPublishedLegalVersion({ privacyVersion: "privacy-v1", conversationRounds: 3 }, "event_terms", "terms-v2"),
+    ).toEqual({ privacyVersion: "privacy-v1", eventTermsVersion: "terms-v2", conversationRounds: 3 });
   });
 
   it("updates only the privacy version", () => {
-    expect(withPublishedLegalVersion({ eventTermsVersion: "terms-v1" }, "privacy", "privacy-v2")).toEqual({ eventTermsVersion: "terms-v1", privacyVersion: "privacy-v2" });
+    expect(withPublishedLegalVersion({ eventTermsVersion: "terms-v1" }, "privacy", "privacy-v2")).toEqual({
+      eventTermsVersion: "terms-v1",
+      privacyVersion: "privacy-v2",
+    });
   });
 
   it("accepts only supported public document types", () => {

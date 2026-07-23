@@ -1,5 +1,76 @@
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { eventQuestionnaires, getDatabase, lovePassports, questionnaireAnswers, questionnaireQuestions, questionnaireResponses } from "@shime/db";
+import {
+  eventQuestionnaires,
+  getDatabase,
+  lovePassports,
+  questionnaireAnswers,
+  questionnaireQuestions,
+  questionnaireResponses,
+} from "@shime/db";
 import { requireParticipantForEvent } from "@shime/web/server/participant-auth";
-export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) { const { eventId } = await params; const auth = await requireParticipantForEvent(eventId).catch(() => null); if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); const db = getDatabase(); const configured = await db.select().from(eventQuestionnaires).where(and(eq(eventQuestionnaires.tenantId, auth.session.tenantId), eq(eventQuestionnaires.eventId, eventId))).limit(1); if (!configured[0]) return NextResponse.json({ code: "QUESTIONNAIRE_NOT_CONFIGURED" }, { status: 409 }); const versionId = configured[0].versionId; const response = await db.select().from(questionnaireResponses).where(and(eq(questionnaireResponses.tenantId, auth.session.tenantId), eq(questionnaireResponses.eventId, eventId), eq(questionnaireResponses.participantId, auth.participant.id), eq(questionnaireResponses.versionId, versionId))).limit(1); if (!response[0]) return NextResponse.json({ code: "INCOMPLETE" }, { status: 409 }); const responseId = response[0].id; const questions = await db.select().from(questionnaireQuestions).where(and(eq(questionnaireQuestions.tenantId, auth.session.tenantId), eq(questionnaireQuestions.versionId, versionId))); const answers = await db.select().from(questionnaireAnswers).where(and(eq(questionnaireAnswers.tenantId, auth.session.tenantId), eq(questionnaireAnswers.responseId, responseId))); if (questions.length !== 5 || answers.length !== questions.length || answers.some((a) => !a.declined && a.optionCodes.length === 0)) return NextResponse.json({ code: "INCOMPLETE" }, { status: 409 }); const now = new Date(); await db.transaction(async (tx) => { await tx.update(questionnaireResponses).set({ status: "submitted", submittedAt: now, updatedAt: now }).where(eq(questionnaireResponses.id, responseId)); if (["confirmed", "skipped"].includes(auth.participant.dreamState)) await tx.update(lovePassports).set({ status: "ready", readyAt: now, updatedAt: now }).where(and(eq(lovePassports.tenantId, auth.session.tenantId), eq(lovePassports.eventId, eventId), eq(lovePassports.participantId, auth.participant.id), eq(lovePassports.status, "issued"))); }); return NextResponse.json({ data: { status: "submitted" } }); }
+export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  const auth = await requireParticipantForEvent(eventId).catch(() => null);
+  if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  const db = getDatabase();
+  const configured = await db
+    .select()
+    .from(eventQuestionnaires)
+    .where(and(eq(eventQuestionnaires.tenantId, auth.session.tenantId), eq(eventQuestionnaires.eventId, eventId)))
+    .limit(1);
+  if (!configured[0]) return NextResponse.json({ code: "QUESTIONNAIRE_NOT_CONFIGURED" }, { status: 409 });
+  const versionId = configured[0].versionId;
+  const response = await db
+    .select()
+    .from(questionnaireResponses)
+    .where(
+      and(
+        eq(questionnaireResponses.tenantId, auth.session.tenantId),
+        eq(questionnaireResponses.eventId, eventId),
+        eq(questionnaireResponses.participantId, auth.participant.id),
+        eq(questionnaireResponses.versionId, versionId),
+      ),
+    )
+    .limit(1);
+  if (!response[0]) return NextResponse.json({ code: "INCOMPLETE" }, { status: 409 });
+  const responseId = response[0].id;
+  const questions = await db
+    .select()
+    .from(questionnaireQuestions)
+    .where(
+      and(eq(questionnaireQuestions.tenantId, auth.session.tenantId), eq(questionnaireQuestions.versionId, versionId)),
+    );
+  const answers = await db
+    .select()
+    .from(questionnaireAnswers)
+    .where(
+      and(eq(questionnaireAnswers.tenantId, auth.session.tenantId), eq(questionnaireAnswers.responseId, responseId)),
+    );
+  if (
+    questions.length !== 5 ||
+    answers.length !== questions.length ||
+    answers.some((a) => !a.declined && a.optionCodes.length === 0)
+  )
+    return NextResponse.json({ code: "INCOMPLETE" }, { status: 409 });
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(questionnaireResponses)
+      .set({ status: "submitted", submittedAt: now, updatedAt: now })
+      .where(eq(questionnaireResponses.id, responseId));
+    if (["confirmed", "skipped"].includes(auth.participant.dreamState))
+      await tx
+        .update(lovePassports)
+        .set({ status: "ready", readyAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(lovePassports.tenantId, auth.session.tenantId),
+            eq(lovePassports.eventId, eventId),
+            eq(lovePassports.participantId, auth.participant.id),
+            eq(lovePassports.status, "issued"),
+          ),
+        );
+  });
+  return NextResponse.json({ data: { status: "submitted" } });
+}

@@ -33,11 +33,7 @@ export async function GET(request: Request) {
   const startedAt = Date.now();
   try {
     await getDatabase().execute(sql`select 1`);
-    return response(
-      { status: "ready", checks: { database: "ok" }, request_id: requestId },
-      200,
-      requestId,
-    );
+    return response({ status: "ready", checks: { database: "ok" }, request_id: requestId }, 200, requestId);
   } catch {
     writeOperationalLog({
       level: "error",
@@ -47,10 +43,6 @@ export async function GET(request: Request) {
       code: "DATABASE_UNAVAILABLE",
       durationMs: Date.now() - startedAt,
     });
-    return response(
-      { status: "unavailable", checks: { database: "failed" }, request_id: requestId },
-      503,
-      requestId,
-    );
+    return response({ status: "unavailable", checks: { database: "failed" }, request_id: requestId }, 503, requestId);
   }
 }

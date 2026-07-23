@@ -19,8 +19,8 @@
       "@shime/core": ["./packages/core/src/index.ts"],
       "@shime/core/*": ["./packages/core/src/*"],
       "@shime/db": ["./packages/db/src/index.ts"],
-      "@shime/db/*": ["./packages/db/src/*"]
-      ,"@shime/web/*": ["./apps/web/src/*"]
+      "@shime/db/*": ["./packages/db/src/*"],
+      "@shime/web/*": ["./apps/web/src/*"]
     }
   }
 }

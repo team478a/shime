@@ -19,8 +19,7 @@ export function LiffLinkClient({
   const [ready, setReady] = useState(false);
   const [linked, setLinked] = useState(false);
   const [error, setError] = useState("");
-  const invalidError =
-    !liffId || !eventId ? "LINE起動URLが正しくありません。" : "";
+  const invalidError = !liffId || !eventId ? "LINE起動URLが正しくありません。" : "";
 
   useEffect(() => {
     if (!liffId || !eventId) return;
@@ -44,9 +43,7 @@ export function LiffLinkClient({
         else if (linkToken) setReady(true);
         else setError("本人連携済みのLINEアカウントから開いてください。");
       } catch {
-        setError(
-          "LINE認証を完了できませんでした。時間をおいて再度お試しください。",
-        );
+        setError("LINE認証を完了できませんでした。時間をおいて再度お試しください。");
       }
     })();
   }, [eventId, linkToken, liffId]);
@@ -66,9 +63,7 @@ export function LiffLinkClient({
       }),
     });
     if (!response.ok) {
-      setError(
-        "本人確認に失敗しました。入力内容またはURLの有効期限をご確認ください。",
-      );
+      setError("本人確認に失敗しました。入力内容またはURLの有効期限をご確認ください。");
       return;
     }
     setLinked(true);
@@ -85,7 +80,9 @@ export function LiffLinkClient({
           />
           {eventName && <p className="linked-event-name">{eventName}</p>}
           <ParticipantNotice tone="success">SHIME®をご利用いただけます。</ParticipantNotice>
-          <a className="button-link" href={buildParticipantJourneyUrl("dream", eventId)}>Dream登録へ進む</a>
+          <a className="button-link" href={buildParticipantJourneyUrl("dream", eventId)}>
+            Dream登録へ進む
+          </a>
         </section>
       </main>
     );
@@ -106,12 +103,7 @@ export function LiffLinkClient({
             <p>申込時の電話番号下4桁、または生年月日を入力してください。</p>
             <label>
               電話番号下4桁
-              <input
-                name="phoneLastFour"
-                inputMode="numeric"
-                pattern="[0-9]{4}"
-                maxLength={4}
-              />
+              <input name="phoneLastFour" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} />
             </label>
             <label>
               生年月日

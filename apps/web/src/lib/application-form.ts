@@ -40,13 +40,48 @@ type StoredField = Readonly<{
 
 const fallbackFields: readonly StoredField[] = [
   { fieldKey: "full_name", label: "氏名", type: "text", requirement: "required", displayOrder: 1, validation: {} },
-  { fieldKey: "full_name_kana", label: "氏名かな", type: "text", requirement: "optional", displayOrder: 2, validation: {} },
+  {
+    fieldKey: "full_name_kana",
+    label: "氏名かな",
+    type: "text",
+    requirement: "optional",
+    displayOrder: 2,
+    validation: {},
+  },
   { fieldKey: "birth_date", label: "生年月日", type: "date", requirement: "required", displayOrder: 3, validation: {} },
   { fieldKey: "phone", label: "電話番号", type: "tel", requirement: "optional", displayOrder: 4, validation: {} },
-  { fieldKey: "email", label: "メールアドレス", type: "email", requirement: "optional", displayOrder: 5, validation: {} },
-  { fieldKey: "nickname", label: "ニックネーム", type: "text", requirement: "optional", displayOrder: 6, validation: {} },
-  { fieldKey: "residence_area", label: "居住エリア", type: "text", requirement: "optional", displayOrder: 7, validation: {} },
-  { fieldKey: "participant_category", label: "参加区分", type: "select", requirement: "required", displayOrder: 8, validation: {} },
+  {
+    fieldKey: "email",
+    label: "メールアドレス",
+    type: "email",
+    requirement: "optional",
+    displayOrder: 5,
+    validation: {},
+  },
+  {
+    fieldKey: "nickname",
+    label: "ニックネーム",
+    type: "text",
+    requirement: "optional",
+    displayOrder: 6,
+    validation: {},
+  },
+  {
+    fieldKey: "residence_area",
+    label: "居住エリア",
+    type: "text",
+    requirement: "optional",
+    displayOrder: 7,
+    validation: {},
+  },
+  {
+    fieldKey: "participant_category",
+    label: "参加区分",
+    type: "select",
+    requirement: "required",
+    displayOrder: 8,
+    validation: {},
+  },
 ];
 
 export function buildPublicApplicationFields(
@@ -55,12 +90,16 @@ export function buildPublicApplicationFields(
 ): PublicApplicationField[] {
   const source = storedFields.length ? storedFields : fallbackFields;
   return source
-    .filter((field): field is StoredField & { fieldKey: PublicApplicationFieldKey; requirement: "required" | "optional" } =>
-      field.fieldKey in PUBLIC_APPLICATION_FIELD_MAP && field.requirement !== "hidden")
+    .filter(
+      (field): field is StoredField & { fieldKey: PublicApplicationFieldKey; requirement: "required" | "optional" } =>
+        field.fieldKey in PUBLIC_APPLICATION_FIELD_MAP && field.requirement !== "hidden",
+    )
     .sort((a, b) => a.displayOrder - b.displayOrder)
     .map((field) => {
       const configuredOptions = Array.isArray(field.validation.options)
-        ? field.validation.options.filter((option): option is string => typeof option === "string").map((option) => ({ value: option, label: option }))
+        ? field.validation.options
+            .filter((option): option is string => typeof option === "string")
+            .map((option) => ({ value: option, label: option }))
         : [];
       return {
         fieldKey: field.fieldKey,
@@ -69,9 +108,10 @@ export function buildPublicApplicationFields(
         type: field.type,
         requirement: field.requirement,
         displayOrder: field.displayOrder,
-        options: field.fieldKey === "participant_category"
-          ? participantCategories.map((category) => ({ value: category.code, label: category.label }))
-          : configuredOptions,
+        options:
+          field.fieldKey === "participant_category"
+            ? participantCategories.map((category) => ({ value: category.code, label: category.label }))
+            : configuredOptions,
       };
     });
 }

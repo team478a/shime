@@ -52,7 +52,10 @@ export async function sanitizeConciergeCardImage(input: {
 
   let metadata: Metadata;
   try {
-    metadata = await sharp(input.bytes, { failOn: "error", limitInputPixels: CONCIERGE_IMAGE_LIMITS.maxPixels }).metadata();
+    metadata = await sharp(input.bytes, {
+      failOn: "error",
+      limitInputPixels: CONCIERGE_IMAGE_LIMITS.maxPixels,
+    }).metadata();
   } catch {
     throw new ConciergeImageValidationError("IMAGE_DECODE_FAILED");
   }
@@ -62,9 +65,13 @@ export async function sanitizeConciergeCardImage(input: {
   const width = metadata.width ?? 0;
   const height = metadata.height ?? 0;
   const pixelCount = width * height;
-  if (width < CONCIERGE_IMAGE_LIMITS.minWidth || height < CONCIERGE_IMAGE_LIMITS.minHeight
-      || width > CONCIERGE_IMAGE_LIMITS.maxWidth || height > CONCIERGE_IMAGE_LIMITS.maxHeight
-      || pixelCount > CONCIERGE_IMAGE_LIMITS.maxPixels) {
+  if (
+    width < CONCIERGE_IMAGE_LIMITS.minWidth ||
+    height < CONCIERGE_IMAGE_LIMITS.minHeight ||
+    width > CONCIERGE_IMAGE_LIMITS.maxWidth ||
+    height > CONCIERGE_IMAGE_LIMITS.maxHeight ||
+    pixelCount > CONCIERGE_IMAGE_LIMITS.maxPixels
+  ) {
     throw new ConciergeImageValidationError("IMAGE_DIMENSIONS_INVALID");
   }
 

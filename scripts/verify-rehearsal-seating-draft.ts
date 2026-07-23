@@ -13,13 +13,15 @@ async function main() {
   const sql = postgres(process.env.DATABASE_URL, { max: 1 });
 
   try {
-    const rows = await sql<{
-      status: string;
-      assignments: number;
-      assigned: number;
-      locked: number;
-      a01_locked: number;
-    }[]>`
+    const rows = await sql<
+      {
+        status: string;
+        assignments: number;
+        assigned: number;
+        locked: number;
+        a01_locked: number;
+      }[]
+    >`
       select sr.status,
         count(sa.id)::int as assignments,
         count(sa.seat_id)::int as assigned,
@@ -46,14 +48,16 @@ async function main() {
     if (latest.status !== "draft" || latest.assignments !== 2 || latest.assigned !== 2 || latest.a01_locked !== 1) {
       throw new Error("LATEST_SEATING_DRAFT_NOT_EXPECTED");
     }
-    console.info(JSON.stringify({
-      status: "ok",
-      runStatus: latest.status,
-      assignments: latest.assignments,
-      assigned: latest.assigned,
-      locked: latest.locked,
-      a01Locked: latest.a01_locked,
-    }));
+    console.info(
+      JSON.stringify({
+        status: "ok",
+        runStatus: latest.status,
+        assignments: latest.assignments,
+        assigned: latest.assigned,
+        locked: latest.locked,
+        a01Locked: latest.a01_locked,
+      }),
+    );
   } finally {
     await sql.end();
   }

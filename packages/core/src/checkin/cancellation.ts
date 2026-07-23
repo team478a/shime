@@ -1,9 +1,4 @@
-export const CHECKIN_CANCELLATION_REASONS = [
-  "参加者都合",
-  "受付操作の訂正",
-  "重複受付の修正",
-  "その他",
-] as const;
+export const CHECKIN_CANCELLATION_REASONS = ["参加者都合", "受付操作の訂正", "重複受付の修正", "その他"] as const;
 
 export type CheckinCancellationReason = (typeof CHECKIN_CANCELLATION_REASONS)[number];
 

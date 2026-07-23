@@ -17,8 +17,7 @@ export function resolveLineCredentials(
 ) {
   return credentialsSchema.parse({
     channelId: config?.channelId ?? environment.LINE_CHANNEL_ID,
-    channelAccessToken:
-      secrets.accessToken ?? environment.LINE_CHANNEL_ACCESS_TOKEN,
+    channelAccessToken: secrets.accessToken ?? environment.LINE_CHANNEL_ACCESS_TOKEN,
     channelSecret: secrets.channelSecret ?? environment.LINE_CHANNEL_SECRET,
   });
 }
@@ -28,12 +27,7 @@ async function settings(tenantId: string) {
     await getDatabase()
       .select()
       .from(tenantServiceSettings)
-      .where(
-        and(
-          eq(tenantServiceSettings.tenantId, tenantId),
-          eq(tenantServiceSettings.serviceKey, "line"),
-        ),
-      )
+      .where(and(eq(tenantServiceSettings.tenantId, tenantId), eq(tenantServiceSettings.serviceKey, "line")))
       .limit(1)
   )[0];
 }
@@ -41,9 +35,7 @@ async function settings(tenantId: string) {
 async function loadLineCredentials(tenantId: string) {
   const setting = await settings(tenantId);
   if (setting && !setting.enabled) throw new Error("LINE_DISABLED");
-  const secrets = setting?.encryptedSecrets
-    ? decryptSecrets(setting.encryptedSecrets)
-    : {};
+  const secrets = setting?.encryptedSecrets ? decryptSecrets(setting.encryptedSecrets) : {};
   return resolveLineCredentials(setting?.config, secrets, process.env);
 }
 

@@ -3,14 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermission } from "@shime/core";
-import {
-  auditLogs,
-  emotionCards,
-  emotionCardSets,
-  eventDreamSettings,
-  events,
-  getDatabase,
-} from "@shime/db";
+import { auditLogs, emotionCards, emotionCardSets, eventDreamSettings, events, getDatabase } from "@shime/db";
 import { requireStaffSession } from "@shime/web/server/auth";
 import { mergeEventSettings } from "@shime/web/server/event-settings";
 const input = z.object({
@@ -36,14 +29,10 @@ const input = z.object({
       .max(100),
   }),
 });
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ eventId: string }> },
-) {
+export async function PUT(request: Request, { params }: { params: Promise<{ eventId: string }> }) {
   const requestId = randomUUID();
   const session = await requireStaffSession().catch(() => null);
-  if (!session)
-    return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   try {
     requirePermission(session.role, "event:write");
   } catch {
@@ -59,8 +48,7 @@ export async function PUT(
       { status: 400 },
     );
   const { eventId } = await params;
-  if (session.eventId && session.eventId !== eventId)
-    return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
+  if (session.eventId && session.eventId !== eventId) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
   const db = getDatabase();
   const target = await db
     .select({ id: events.id, settings: events.settings })
@@ -68,8 +56,7 @@ export async function PUT(
     .where(and(eq(events.id, eventId), eq(events.tenantId, session.tenantId)))
     .limit(1);
   const targetEvent = target[0];
-  if (!targetEvent)
-    return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
+  if (!targetEvent) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
   await db.transaction(async (tx) => {
     const existingSets = await tx
       .select()
@@ -105,12 +92,7 @@ export async function PUT(
     await tx
       .update(emotionCards)
       .set({ active: false, updatedAt: new Date() })
-      .where(
-        and(
-          eq(emotionCards.tenantId, session.tenantId),
-          eq(emotionCards.cardSetId, cardSet.id),
-        ),
-      );
+      .where(and(eq(emotionCards.tenantId, session.tenantId), eq(emotionCards.cardSetId, cardSet.id)));
     for (const [index, card] of parsed.data.cardSet.cards.entries())
       await tx
         .insert(emotionCards)
@@ -124,11 +106,7 @@ export async function PUT(
           active: true,
         })
         .onConflictDoUpdate({
-          target: [
-            emotionCards.tenantId,
-            emotionCards.cardSetId,
-            emotionCards.displayOrder,
-          ],
+          target: [emotionCards.tenantId, emotionCards.cardSetId, emotionCards.displayOrder],
           set: {
             name: card.name,
             imageKey: card.imageKey,
@@ -146,9 +124,7 @@ export async function PUT(
         }),
         updatedAt: new Date(),
       })
-      .where(
-        and(eq(events.id, eventId), eq(events.tenantId, session.tenantId)),
-      );
+      .where(and(eq(events.id, eventId), eq(events.tenantId, session.tenantId)));
     await tx
       .insert(eventDreamSettings)
       .values({
@@ -173,23 +149,21 @@ export async function PUT(
           updatedAt: new Date(),
         },
       });
-    await tx
-      .insert(auditLogs)
-      .values({
-        tenantId: session.tenantId,
-        actorUserId: session.userId,
-        eventId,
-        action: "dream.settings.update",
-        targetType: "event",
-        targetId: eventId,
-        after: {
-          registrationMode: parsed.data.registrationMode,
-          aiEnabled: parsed.data.aiEnabled,
-          cardSetCode: parsed.data.cardSet.code,
-          cardCount: parsed.data.cardSet.cards.length,
-        },
-        requestId,
-      });
+    await tx.insert(auditLogs).values({
+      tenantId: session.tenantId,
+      actorUserId: session.userId,
+      eventId,
+      action: "dream.settings.update",
+      targetType: "event",
+      targetId: eventId,
+      after: {
+        registrationMode: parsed.data.registrationMode,
+        aiEnabled: parsed.data.aiEnabled,
+        cardSetCode: parsed.data.cardSet.code,
+        cardCount: parsed.data.cardSet.cards.length,
+      },
+      requestId,
+    });
   });
   return NextResponse.json({ ok: true });
 }

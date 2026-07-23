@@ -62,17 +62,14 @@ export function PlatformConsole() {
     const v = new FormData(form);
     const raw = Object.fromEntries(v);
     let body: Record<string, unknown> = { section, ...raw };
-    if (["line", "openai", "schedule"].includes(section))
-      body.enabled = v.get("enabled") === "on";
+    if (["line", "openai", "schedule"].includes(section)) body.enabled = v.get("enabled") === "on";
     if (section === "operations")
       body = {
         section,
         customDomain: String(v.get("customDomain") ?? "").trim() || null,
         healthcheckUrl: String(v.get("healthcheckUrl") ?? "").trim() || null,
         monitoringEnabled: v.get("monitoringEnabled") === "on",
-        notificationFailureThreshold: Number(
-          v.get("notificationFailureThreshold"),
-        ),
+        notificationFailureThreshold: Number(v.get("notificationFailureThreshold")),
       };
     const r = await fetch("/api/admin/platform", {
       method: "PUT",
@@ -94,17 +91,10 @@ export function PlatformConsole() {
     });
     const b = await r.json();
     setBusy(false);
-    setMessage(
-      r.ok
-        ? `${target}の接続は正常です。`
-        : `${target}の接続失敗: ${b.data?.code ?? b.code}`,
-    );
+    setMessage(r.ok ? `${target}の接続は正常です。` : `${target}の接続失敗: ${b.data?.code ?? b.code}`);
     await load();
   }
-  async function saveTemplate(
-    e: FormEvent<HTMLFormElement>,
-    templateKey: string,
-  ) {
+  async function saveTemplate(e: FormEvent<HTMLFormElement>, templateKey: string) {
     e.preventDefault();
     setBusy(true);
     const v = new FormData(e.currentTarget);
@@ -119,11 +109,7 @@ export function PlatformConsole() {
     });
     const b = await r.json();
     setBusy(false);
-    setMessage(
-      r.ok
-        ? "通知テンプレートの新しい版を保存しました。"
-        : `保存失敗: ${b.code}`,
-    );
+    setMessage(r.ok ? "通知テンプレートの新しい版を保存しました。" : `保存失敗: ${b.code}`);
     if (r.ok) await load();
   }
   if (!data)
@@ -138,9 +124,7 @@ export function PlatformConsole() {
       <section className="panel wide">
         <p className="eyebrow">PLATFORM OPERATIONS</p>
         <h1>外部接続・運用設定</h1>
-        <p>
-          秘密値は保存後に再表示しません。空欄で保存すると現在の値を維持します。
-        </p>
+        <p>秘密値は保存後に再表示しません。空欄で保存すると現在の値を維持します。</p>
         {message && <p role="status">{message}</p>}
         <a className="button-link secondary" href="/admin">
           管理トップへ
@@ -155,10 +139,7 @@ export function PlatformConsole() {
             : "未設定"}{" "}
           / 最終確認: {data.line.lastCheckStatus ?? "未実施"}
         </p>
-        <p className="hint">
-          保存したLIFF IDは参加者画面へ即時反映されます。以下をLINE
-          Developersへ設定してください。
-        </p>
+        <p className="hint">保存したLIFF IDは参加者画面へ即時反映されます。以下をLINE Developersへ設定してください。</p>
         <dl>
           <dt>LIFF起動URL</dt>
           <dd>
@@ -187,12 +168,7 @@ export function PlatformConsole() {
           }}
         >
           <label>
-            <input
-              name="enabled"
-              type="checkbox"
-              defaultChecked={data.line.enabled}
-            />{" "}
-            LINE接続を有効化
+            <input name="enabled" type="checkbox" defaultChecked={data.line.enabled} /> LINE接続を有効化
           </label>
           <label>
             LINE Login Channel ID
@@ -204,28 +180,15 @@ export function PlatformConsole() {
           </label>
           <label>
             Messaging API Channel Secret
-            <input
-              name="channelSecret"
-              type="password"
-              autoComplete="new-password"
-            />
+            <input name="channelSecret" type="password" autoComplete="new-password" />
           </label>
           <label>
             Channel Access Token
-            <input
-              name="accessToken"
-              type="password"
-              autoComplete="new-password"
-            />
+            <input name="accessToken" type="password" autoComplete="new-password" />
           </label>
           <div className="actions">
             <button disabled={busy}>保存</button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={busy}
-              onClick={() => test("line")}
-            >
+            <button type="button" className="secondary" disabled={busy} onClick={() => test("line")}>
               接続確認
             </button>
           </div>
@@ -248,12 +211,7 @@ export function PlatformConsole() {
           }}
         >
           <label>
-            <input
-              name="enabled"
-              type="checkbox"
-              defaultChecked={data.openai.enabled}
-            />{" "}
-            OpenAIによるDream文案を有効化
+            <input name="enabled" type="checkbox" defaultChecked={data.openai.enabled} /> OpenAIによるDream文案を有効化
           </label>
           <label>
             モデル
@@ -263,17 +221,10 @@ export function PlatformConsole() {
             新しいAPIキー
             <input name="apiKey" type="password" autoComplete="new-password" />
           </label>
-          <p className="hint">
-            AIが失敗・タイムアウトした場合は固定文へ自動で戻ります。
-          </p>
+          <p className="hint">AIが失敗・タイムアウトした場合は固定文へ自動で戻ります。</p>
           <div className="actions">
             <button disabled={busy}>保存</button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={busy}
-              onClick={() => test("openai")}
-            >
+            <button type="button" className="secondary" disabled={busy} onClick={() => test("openai")}>
               接続確認
             </button>
           </div>
@@ -291,26 +242,14 @@ export function PlatformConsole() {
         >
           <label>
             独自ドメイン
-            <input
-              name="customDomain"
-              defaultValue={data.operations.customDomain ?? ""}
-              placeholder="example.jp"
-            />
+            <input name="customDomain" defaultValue={data.operations.customDomain ?? ""} placeholder="example.jp" />
           </label>
           <label>
             Healthcheck URL
-            <input
-              name="healthcheckUrl"
-              type="url"
-              defaultValue={data.operations.healthcheckUrl ?? ""}
-            />
+            <input name="healthcheckUrl" type="url" defaultValue={data.operations.healthcheckUrl ?? ""} />
           </label>
           <label>
-            <input
-              name="monitoringEnabled"
-              type="checkbox"
-              defaultChecked={data.operations.monitoringEnabled}
-            />{" "}
+            <input name="monitoringEnabled" type="checkbox" defaultChecked={data.operations.monitoringEnabled} />{" "}
             監視を有効化
           </label>
           <label>
@@ -324,12 +263,7 @@ export function PlatformConsole() {
           </label>
           <div className="actions">
             <button disabled={busy}>保存</button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={busy}
-              onClick={() => test("health")}
-            >
+            <button type="button" className="secondary" disabled={busy} onClick={() => test("health")}>
               Health確認
             </button>
             <button
@@ -346,8 +280,7 @@ export function PlatformConsole() {
       <section className="panel wide">
         <h2>定期ジョブ</h2>
         <p>
-          最終実行: {data.schedule.lastRunAt ?? "未実施"} /{" "}
-          {data.schedule.lastRunStatus ?? "—"}
+          最終実行: {data.schedule.lastRunAt ?? "未実施"} / {data.schedule.lastRunStatus ?? "—"}
         </p>
         <form
           className="login-form"
@@ -357,19 +290,11 @@ export function PlatformConsole() {
           }}
         >
           <label>
-            <input
-              name="enabled"
-              type="checkbox"
-              defaultChecked={data.schedule.enabled}
-            />{" "}
-            LINE通知送信ジョブを有効化
+            <input name="enabled" type="checkbox" defaultChecked={data.schedule.enabled} /> LINE通知送信ジョブを有効化
           </label>
           <label>
             Cron式
-            <input
-              name="cronExpression"
-              defaultValue={data.schedule.cronExpression}
-            />
+            <input name="cronExpression" defaultValue={data.schedule.cronExpression} />
           </label>
           <label>
             タイムゾーン
@@ -381,11 +306,7 @@ export function PlatformConsole() {
       <section className="panel wide">
         <h2>通知テンプレート</h2>
         {data.templates.map((t) => (
-          <form
-            className="login-form"
-            key={t.id}
-            onSubmit={(e) => saveTemplate(e, t.templateKey)}
-          >
+          <form className="login-form" key={t.id} onSubmit={(e) => saveTemplate(e, t.templateKey)}>
             <h3>
               {t.templateKey} v{t.version}
             </h3>

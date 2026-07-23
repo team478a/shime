@@ -18,11 +18,13 @@ describe("administrator bootstrap configuration", () => {
 
   it("requires explicit tenant confirmation in production", () => {
     expect(() => parseAdminBootstrapConfig({ ...base, APP_ENV: "production" })).toThrow();
-    expect(() => parseAdminBootstrapConfig({
-      ...base,
-      APP_ENV: "production",
-      BOOTSTRAP_CONFIRM_PRODUCTION: "shime",
-    })).not.toThrow();
+    expect(() =>
+      parseAdminBootstrapConfig({
+        ...base,
+        APP_ENV: "production",
+        BOOTSTRAP_CONFIRM_PRODUCTION: "shime",
+      }),
+    ).not.toThrow();
   });
 
   it("does not accept a missing administrator password", () => {

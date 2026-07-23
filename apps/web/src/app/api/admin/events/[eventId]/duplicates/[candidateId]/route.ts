@@ -5,6 +5,54 @@ import { z } from "zod";
 import { requirePermission } from "@shime/core";
 import { auditLogs, duplicateCandidates, getDatabase } from "@shime/db";
 import { requireStaffSession } from "../../../../../../../server/auth";
-const input = z.object({ resolution: z.enum(["same_person", "different_person", "on_hold"]), reason: z.string().trim().min(1).max(1000) });
+const input = z.object({
+  resolution: z.enum(["same_person", "different_person", "on_hold"]),
+  reason: z.string().trim().min(1).max(1000),
+});
 type Context = { params: Promise<{ eventId: string; candidateId: string }> };
-export async function PATCH(request: Request, context: Context) { const requestId = randomUUID(); const session = await requireStaffSession().catch(() => null); if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); try { requirePermission(session.role, "application:duplicates"); } catch { return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 }); } const parsed = input.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 }); const { eventId, candidateId } = await context.params; const db = getDatabase(); const [updated] = await db.transaction(async (tx) => { const rows = await tx.update(duplicateCandidates).set({ resolution: parsed.data.resolution, resolvedBy: session.userId, resolvedAt: new Date(), updatedAt: new Date() }).where(and(eq(duplicateCandidates.id, candidateId), eq(duplicateCandidates.eventId, eventId), eq(duplicateCandidates.tenantId, session.tenantId))).returning(); if (rows[0]) await tx.insert(auditLogs).values({ tenantId: session.tenantId, actorUserId: session.userId, eventId, action: "duplicate_candidate.resolve", targetType: "duplicate_candidate", targetId: candidateId, after: { resolution: parsed.data.resolution }, reason: parsed.data.reason, requestId }); return rows; }); return updated ? NextResponse.json({ data: updated }) : NextResponse.json({ code: "NOT_FOUND" }, { status: 404 }); }
+export async function PATCH(request: Request, context: Context) {
+  const requestId = randomUUID();
+  const session = await requireStaffSession().catch(() => null);
+  if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  try {
+    requirePermission(session.role, "application:duplicates");
+  } catch {
+    return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
+  }
+  const parsed = input.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 });
+  const { eventId, candidateId } = await context.params;
+  const db = getDatabase();
+  const [updated] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(duplicateCandidates)
+      .set({
+        resolution: parsed.data.resolution,
+        resolvedBy: session.userId,
+        resolvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(duplicateCandidates.id, candidateId),
+          eq(duplicateCandidates.eventId, eventId),
+          eq(duplicateCandidates.tenantId, session.tenantId),
+        ),
+      )
+      .returning();
+    if (rows[0])
+      await tx.insert(auditLogs).values({
+        tenantId: session.tenantId,
+        actorUserId: session.userId,
+        eventId,
+        action: "duplicate_candidate.resolve",
+        targetType: "duplicate_candidate",
+        targetId: candidateId,
+        after: { resolution: parsed.data.resolution },
+        reason: parsed.data.reason,
+        requestId,
+      });
+    return rows;
+  });
+  return updated ? NextResponse.json({ data: updated }) : NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
+}

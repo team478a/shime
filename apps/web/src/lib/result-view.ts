@@ -31,13 +31,25 @@ function normalizeSearchText(value: string) {
   return value.normalize("NFKC").toLocaleLowerCase("ja").replace(/\s+/g, "");
 }
 
-export function filterResultCandidates<T extends SearchCandidate>(candidates: T[], people: SearchPerson[], query: string, statusFilter: ResultStatusFilter) {
+export function filterResultCandidates<T extends SearchCandidate>(
+  candidates: T[],
+  people: SearchPerson[],
+  query: string,
+  statusFilter: ResultStatusFilter,
+) {
   const personMap = new Map(people.map((person) => [person.id, person]));
   const normalizedQuery = normalizeSearchText(query);
   return candidates.filter((candidate) => {
-    const statusGroup = candidate.status === "approved" ? "approved" : candidate.status === "declined" ? "declined" : "pending";
+    const statusGroup =
+      candidate.status === "approved" ? "approved" : candidate.status === "declined" ? "declined" : "pending";
     if (statusFilter !== "all" && statusGroup !== statusFilter) return false;
     if (!normalizedQuery) return true;
-    return [personMap.get(candidate.participantAId), personMap.get(candidate.participantBId)].some((person) => person && [person.participantNumber ?? "", person.fullName].some((value) => normalizeSearchText(value).includes(normalizedQuery)));
+    return [personMap.get(candidate.participantAId), personMap.get(candidate.participantBId)].some(
+      (person) =>
+        person &&
+        [person.participantNumber ?? "", person.fullName].some((value) =>
+          normalizeSearchText(value).includes(normalizedQuery),
+        ),
+    );
   });
 }

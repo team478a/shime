@@ -27,7 +27,10 @@ export type TableLayoutValidation = Readonly<{
 }>;
 
 export function splitSeatCodes(value: string): string[] {
-  return value.split(",").map((seatCode) => seatCode.trim()).filter(Boolean);
+  return value
+    .split(",")
+    .map((seatCode) => seatCode.trim())
+    .filter(Boolean);
 }
 
 export function generateTableLayout(input: {
@@ -38,9 +41,12 @@ export function generateTableLayout(input: {
 }): TableLayoutRow[] {
   const prefix = input.prefix.trim();
   if (!prefix || prefix.length > 20) throw new Error("テーブル記号は1〜20文字で入力してください。");
-  if (!Number.isInteger(input.firstTableNumber) || input.firstTableNumber < 0) throw new Error("開始番号は0以上の整数で入力してください。");
-  if (!Number.isInteger(input.tableCount) || input.tableCount < 1 || input.tableCount > 200) throw new Error("テーブル数は1〜200で入力してください。");
-  if (!Number.isInteger(input.seatsPerTable) || input.seatsPerTable < 1 || input.seatsPerTable > 50) throw new Error("1卓の席数は1〜50で入力してください。");
+  if (!Number.isInteger(input.firstTableNumber) || input.firstTableNumber < 0)
+    throw new Error("開始番号は0以上の整数で入力してください。");
+  if (!Number.isInteger(input.tableCount) || input.tableCount < 1 || input.tableCount > 200)
+    throw new Error("テーブル数は1〜200で入力してください。");
+  if (!Number.isInteger(input.seatsPerTable) || input.seatsPerTable < 1 || input.seatsPerTable > 50)
+    throw new Error("1卓の席数は1〜50で入力してください。");
 
   return Array.from({ length: input.tableCount }, (_, tableIndex) => {
     const tableCode = `${prefix}${String(input.firstTableNumber + tableIndex).padStart(2, "0")}`;
@@ -94,12 +100,15 @@ export function validateTableLayout(rows: TableLayoutRow[], eventCapacity: numbe
   if (new Set(allSeatCodes).size !== allSeatCodes.length) errors.push("席コードが重複しています。");
   rows.forEach((row, index) => {
     const seatCount = splitSeatCodes(row.seats).length;
-    if (!Number.isInteger(row.capacity) || row.capacity < 1) errors.push(`テーブル${index + 1}の定員を確認してください。`);
+    if (!Number.isInteger(row.capacity) || row.capacity < 1)
+      errors.push(`テーブル${index + 1}の定員を確認してください。`);
     if (!seatCount) errors.push(`テーブル${index + 1}に席を1つ以上登録してください。`);
     if (seatCount > row.capacity) errors.push(`${row.tableCode || `テーブル${index + 1}`}の席数が定員を超えています。`);
   });
-  if (allSeatCodes.length < eventCapacity) warnings.push(`イベント定員${eventCapacity}名に対して、席が${allSeatCodes.length}席です。`);
-  if (allSeatCodes.length > eventCapacity) warnings.push(`イベント定員${eventCapacity}名を${allSeatCodes.length - eventCapacity}席超えています。`);
+  if (allSeatCodes.length < eventCapacity)
+    warnings.push(`イベント定員${eventCapacity}名に対して、席が${allSeatCodes.length}席です。`);
+  if (allSeatCodes.length > eventCapacity)
+    warnings.push(`イベント定員${eventCapacity}名を${allSeatCodes.length - eventCapacity}席超えています。`);
 
   return { tableCount: rows.length, seatCount: allSeatCodes.length, errors: [...new Set(errors)], warnings };
 }

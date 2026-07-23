@@ -13,22 +13,36 @@ const { db, client } = createDatabase(config.databaseUrl);
 try {
   const passwordHash = await hashPassword(config.password, config.passwordPepper);
   const result = await db.transaction(async (tx) => {
-    const tenantRows = await tx.select({ id: tenants.id }).from(tenants).where(eq(tenants.code, config.tenantCode)).limit(1);
-    const tenant = tenantRows[0] ?? (await tx.insert(tenants).values({
-      code: config.tenantCode,
-      name: config.tenantName,
-      timezone: "Asia/Tokyo",
-    }).returning({ id: tenants.id }))[0];
+    const tenantRows = await tx
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.code, config.tenantCode))
+      .limit(1);
+    const tenant =
+      tenantRows[0] ??
+      (
+        await tx
+          .insert(tenants)
+          .values({
+            code: config.tenantCode,
+            name: config.tenantName,
+            timezone: "Asia/Tokyo",
+          })
+          .returning({ id: tenants.id })
+      )[0];
     if (!tenant) throw new Error("Failed to create bootstrap tenant");
 
-    const identityRows = await tx.select({ userId: userIdentities.userId, userType: users.type })
+    const identityRows = await tx
+      .select({ userId: userIdentities.userId, userType: users.type })
       .from(userIdentities)
       .innerJoin(users, and(eq(users.id, userIdentities.userId), eq(users.tenantId, userIdentities.tenantId)))
-      .where(and(
-        eq(userIdentities.tenantId, tenant.id),
-        eq(userIdentities.provider, "password"),
-        eq(userIdentities.providerUserId, config.loginId),
-      ))
+      .where(
+        and(
+          eq(userIdentities.tenantId, tenant.id),
+          eq(userIdentities.provider, "password"),
+          eq(userIdentities.providerUserId, config.loginId),
+        ),
+      )
       .limit(1);
     const existingIdentity = identityRows[0];
     if (existingIdentity?.userType !== undefined && existingIdentity.userType !== "staff") {
@@ -38,7 +52,10 @@ try {
     let userId = existingIdentity?.userId;
     let created = false;
     if (!userId) {
-      const [user] = await tx.insert(users).values({ tenantId: tenant.id, type: "staff", displayName: config.displayName }).returning({ id: users.id });
+      const [user] = await tx
+        .insert(users)
+        .values({ tenantId: tenant.id, type: "staff", displayName: config.displayName })
+        .returning({ id: users.id });
       if (!user) throw new Error("Failed to create bootstrap administrator");
       userId = user.id;
       created = true;
@@ -51,7 +68,8 @@ try {
       });
     }
 
-    const credentialRows = await tx.select({ userId: passwordCredentials.userId })
+    const credentialRows = await tx
+      .select({ userId: passwordCredentials.userId })
       .from(passwordCredentials)
       .where(and(eq(passwordCredentials.tenantId, tenant.id), eq(passwordCredentials.userId, userId)))
       .limit(1);
@@ -60,24 +78,30 @@ try {
       await tx.insert(passwordCredentials).values({ tenantId: tenant.id, userId, passwordHash });
       passwordChanged = true;
     } else if (config.rotatePassword) {
-      await tx.update(passwordCredentials).set({
-        passwordHash,
-        passwordChangedAt: new Date(),
-        failedAttempts: 0,
-        lockedUntil: null,
-        updatedAt: new Date(),
-      }).where(and(eq(passwordCredentials.tenantId, tenant.id), eq(passwordCredentials.userId, userId)));
+      await tx
+        .update(passwordCredentials)
+        .set({
+          passwordHash,
+          passwordChangedAt: new Date(),
+          failedAttempts: 0,
+          lockedUntil: null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(passwordCredentials.tenantId, tenant.id), eq(passwordCredentials.userId, userId)));
       passwordChanged = true;
     }
 
-    const roleRows = await tx.select({ id: staffRoles.id })
+    const roleRows = await tx
+      .select({ id: staffRoles.id })
       .from(staffRoles)
-      .where(and(
-        eq(staffRoles.tenantId, tenant.id),
-        eq(staffRoles.userId, userId),
-        eq(staffRoles.role, "system_admin"),
-        isNull(staffRoles.eventId),
-      ))
+      .where(
+        and(
+          eq(staffRoles.tenantId, tenant.id),
+          eq(staffRoles.userId, userId),
+          eq(staffRoles.role, "system_admin"),
+          isNull(staffRoles.eventId),
+        ),
+      )
       .limit(1);
     if (!roleRows[0]) {
       await tx.insert(staffRoles).values({ tenantId: tenant.id, userId, role: "system_admin", eventId: null });

@@ -25,7 +25,11 @@ export function AdminPrimaryNavigation({ items }: Readonly<{ items: readonly Adm
         <summary>管理メニュー</summary>
         <div>
           {items.map((item) => (
-            <Link key={item.key} href={item.href} aria-current={isCurrentPath(pathname, item.href) ? "page" : undefined}>
+            <Link
+              key={item.key}
+              href={item.href}
+              aria-current={isCurrentPath(pathname, item.href) ? "page" : undefined}
+            >
               {item.label}
             </Link>
           ))}

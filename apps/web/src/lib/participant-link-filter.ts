@@ -8,7 +8,11 @@ export type ParticipantLinkFilterRow = {
   linked: boolean;
 };
 
-export function filterParticipantLinkRows<T extends ParticipantLinkFilterRow>(rows: T[], query: string, filter: ParticipantLinkFilter): T[] {
+export function filterParticipantLinkRows<T extends ParticipantLinkFilterRow>(
+  rows: T[],
+  query: string,
+  filter: ParticipantLinkFilter,
+): T[] {
   const normalizedQuery = query.trim();
   return rows.filter((row) => {
     if (filter === "linked" && !row.linked) return false;

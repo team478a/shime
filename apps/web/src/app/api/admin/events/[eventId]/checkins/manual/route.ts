@@ -32,20 +32,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
       checkedInAt: checkins.checkedInAt,
     })
     .from(participants)
-    .innerJoin(applications, and(
-      eq(applications.id, participants.applicationId),
-      eq(applications.tenantId, participants.tenantId),
-      eq(applications.eventId, participants.eventId),
-    ))
-    .leftJoin(checkins, and(
-      eq(checkins.tenantId, participants.tenantId),
-      eq(checkins.eventId, participants.eventId),
-      eq(checkins.participantId, participants.id),
-    ))
-    .where(and(
-      eq(participants.tenantId, session.tenantId),
-      eq(participants.eventId, eventId),
-    ))
+    .innerJoin(
+      applications,
+      and(
+        eq(applications.id, participants.applicationId),
+        eq(applications.tenantId, participants.tenantId),
+        eq(applications.eventId, participants.eventId),
+      ),
+    )
+    .leftJoin(
+      checkins,
+      and(
+        eq(checkins.tenantId, participants.tenantId),
+        eq(checkins.eventId, participants.eventId),
+        eq(checkins.participantId, participants.id),
+      ),
+    )
+    .where(and(eq(participants.tenantId, session.tenantId), eq(participants.eventId, eventId)))
     .orderBy(asc(participants.participantNumber), asc(applications.fullName))
     .limit(1_000);
   const candidates = rows.filter((row) => matchesCheckinSearch(row, query)).slice(0, 20);

@@ -13,13 +13,15 @@ async function main() {
   const sql = postgres(process.env.DATABASE_URL, { max: 1 });
   try {
     const result = await sql.begin(async (tx) => {
-      const targets = await tx<{
-        tenant_id: string;
-        event_id: string;
-        participant_id: string;
-        participant_user_id: string | null;
-        version_id: string;
-      }[]>`
+      const targets = await tx<
+        {
+          tenant_id: string;
+          event_id: string;
+          participant_id: string;
+          participant_user_id: string | null;
+          version_id: string;
+        }[]
+      >`
         select t.id as tenant_id, e.id as event_id, p.id as participant_id,
           p.user_id as participant_user_id, eq.version_id
         from tenants t
@@ -54,7 +56,8 @@ async function main() {
       `;
       let responseId = existingResponses[0]?.id;
       let responseCreated = false;
-      if (existingResponses[0] && existingResponses[0].status !== "submitted") throw new Error("EXISTING_RESPONSE_MUST_NOT_BE_OVERWRITTEN");
+      if (existingResponses[0] && existingResponses[0].status !== "submitted")
+        throw new Error("EXISTING_RESPONSE_MUST_NOT_BE_OVERWRITTEN");
       if (!responseId) {
         const responses = await tx<{ id: string }[]>`
           insert into questionnaire_responses
@@ -73,7 +76,8 @@ async function main() {
           where q.tenant_id = ${target.tenant_id} and q.version_id = ${target.version_id}
           order by q.display_order
         `;
-        if (questions.length !== 5 || questions.some((question) => !question.option_code)) throw new Error("FIVE_CONFIGURED_QUESTIONS_REQUIRED");
+        if (questions.length !== 5 || questions.some((question) => !question.option_code))
+          throw new Error("FIVE_CONFIGURED_QUESTIONS_REQUIRED");
         for (const question of questions) {
           await tx`
             insert into questionnaire_answers

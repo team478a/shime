@@ -1,2 +1,82 @@
-import { and, eq } from "drizzle-orm"; import { NextResponse } from "next/server"; import { detectMutualCandidates } from "@shime/core"; import { events, getDatabase, lovePassports, matchCandidates, preferenceSubmissions, preferences } from "@shime/db"; import { requireParticipantForEvent } from "@shime/web/server/participant-auth";
-export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) { const { eventId } = await params; const auth = await requireParticipantForEvent(eventId).catch(() => null); if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 }); const db = getDatabase(); const event = await db.select().from(events).where(and(eq(events.tenantId, auth.session.tenantId), eq(events.id, eventId))).limit(1); const now = new Date(); if (!event[0] || event[0].status !== "preference_open" || (event[0].preferenceClosesAt && event[0].preferenceClosesAt <= now)) return NextResponse.json({ code: "PREFERENCE_NOT_OPEN" }, { status: 409 }); const own = await db.select().from(preferenceSubmissions).where(and(eq(preferenceSubmissions.tenantId, auth.session.tenantId), eq(preferenceSubmissions.eventId, eventId), eq(preferenceSubmissions.participantId, auth.participant.id))).limit(1); if (!own[0]) return NextResponse.json({ code: "SAVE_REQUIRED" }, { status: 409 }); const ownId = own[0].id; await db.transaction(async (tx) => { await tx.update(preferenceSubmissions).set({ status: "submitted", submittedAt: now, updatedAt: now }).where(eq(preferenceSubmissions.id, ownId)); const edges = await tx.select({ fromParticipantId: preferences.fromParticipantId, toParticipantId: preferences.toParticipantId, rank: preferences.rank }).from(preferences).innerJoin(preferenceSubmissions, and(eq(preferenceSubmissions.id, preferences.submissionId), eq(preferenceSubmissions.tenantId, preferences.tenantId), eq(preferenceSubmissions.status, "submitted"))).where(and(eq(preferences.tenantId, auth.session.tenantId), eq(preferences.eventId, eventId))); const detected = detectMutualCandidates(edges); await tx.delete(matchCandidates).where(and(eq(matchCandidates.tenantId, auth.session.tenantId), eq(matchCandidates.eventId, eventId))); if (detected.length) await tx.insert(matchCandidates).values(detected.map((candidate) => ({ tenantId: auth.session.tenantId, eventId, ...candidate, status: "candidate" as const }))); await tx.update(lovePassports).set({ status: "preference_submitted", updatedAt: now }).where(and(eq(lovePassports.tenantId, auth.session.tenantId), eq(lovePassports.eventId, eventId), eq(lovePassports.participantId, auth.participant.id))); }); return NextResponse.json({ data: { status: "submitted", submittedAt: now } }); }
+import { and, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { detectMutualCandidates } from "@shime/core";
+import { events, getDatabase, lovePassports, matchCandidates, preferenceSubmissions, preferences } from "@shime/db";
+import { requireParticipantForEvent } from "@shime/web/server/participant-auth";
+export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  const auth = await requireParticipantForEvent(eventId).catch(() => null);
+  if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  const db = getDatabase();
+  const event = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.tenantId, auth.session.tenantId), eq(events.id, eventId)))
+    .limit(1);
+  const now = new Date();
+  if (
+    !event[0] ||
+    event[0].status !== "preference_open" ||
+    (event[0].preferenceClosesAt && event[0].preferenceClosesAt <= now)
+  )
+    return NextResponse.json({ code: "PREFERENCE_NOT_OPEN" }, { status: 409 });
+  const own = await db
+    .select()
+    .from(preferenceSubmissions)
+    .where(
+      and(
+        eq(preferenceSubmissions.tenantId, auth.session.tenantId),
+        eq(preferenceSubmissions.eventId, eventId),
+        eq(preferenceSubmissions.participantId, auth.participant.id),
+      ),
+    )
+    .limit(1);
+  if (!own[0]) return NextResponse.json({ code: "SAVE_REQUIRED" }, { status: 409 });
+  const ownId = own[0].id;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(preferenceSubmissions)
+      .set({ status: "submitted", submittedAt: now, updatedAt: now })
+      .where(eq(preferenceSubmissions.id, ownId));
+    const edges = await tx
+      .select({
+        fromParticipantId: preferences.fromParticipantId,
+        toParticipantId: preferences.toParticipantId,
+        rank: preferences.rank,
+      })
+      .from(preferences)
+      .innerJoin(
+        preferenceSubmissions,
+        and(
+          eq(preferenceSubmissions.id, preferences.submissionId),
+          eq(preferenceSubmissions.tenantId, preferences.tenantId),
+          eq(preferenceSubmissions.status, "submitted"),
+        ),
+      )
+      .where(and(eq(preferences.tenantId, auth.session.tenantId), eq(preferences.eventId, eventId)));
+    const detected = detectMutualCandidates(edges);
+    await tx
+      .delete(matchCandidates)
+      .where(and(eq(matchCandidates.tenantId, auth.session.tenantId), eq(matchCandidates.eventId, eventId)));
+    if (detected.length)
+      await tx.insert(matchCandidates).values(
+        detected.map((candidate) => ({
+          tenantId: auth.session.tenantId,
+          eventId,
+          ...candidate,
+          status: "candidate" as const,
+        })),
+      );
+    await tx
+      .update(lovePassports)
+      .set({ status: "preference_submitted", updatedAt: now })
+      .where(
+        and(
+          eq(lovePassports.tenantId, auth.session.tenantId),
+          eq(lovePassports.eventId, eventId),
+          eq(lovePassports.participantId, auth.participant.id),
+        ),
+      );
+  });
+  return NextResponse.json({ data: { status: "submitted", submittedAt: now } });
+}

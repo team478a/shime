@@ -12,9 +12,7 @@ import { evaluateBackupReadiness, type BackupMode } from "@shime/core";
 const envSchema = z.object({
   DATABASE_MIGRATION_URL: z.string().startsWith("postgresql://"),
   SUPABASE_IMPORT_BUCKET: z.string().min(1),
-  SUPABASE_BACKUP_MODE: z
-    .enum(["unconfirmed", "manual", "daily", "pitr"])
-    .default("unconfirmed"),
+  SUPABASE_BACKUP_MODE: z.enum(["unconfirmed", "manual", "daily", "pitr"]).default("unconfirmed"),
 });
 
 function commandAvailable(command: string) {
@@ -25,14 +23,7 @@ function dockerExecutable() {
   if (commandAvailable("docker")) return "docker";
   const programFiles = process.env.ProgramFiles;
   if (!programFiles) return null;
-  const installedPath = path.join(
-    programFiles,
-    "Docker",
-    "Docker",
-    "resources",
-    "bin",
-    "docker.exe",
-  );
+  const installedPath = path.join(programFiles, "Docker", "Docker", "resources", "bin", "docker.exe");
   return existsSync(installedPath) ? installedPath : null;
 }
 
@@ -50,20 +41,18 @@ async function expectedMigrationCount() {
   return entries.filter((entry) => /^\d{4}_.+\.sql$/.test(entry)).length;
 }
 
-export async function collectBackupReadiness(input: {
-  databaseUrl: string;
-  bucket: string;
-  backupMode: BackupMode;
-}) {
+export async function collectBackupReadiness(input: { databaseUrl: string; bucket: string; backupMode: BackupMode }) {
   const sql = postgres(input.databaseUrl, { max: 1, prepare: false });
   try {
-    const [stats] = await sql<{
-      migration_count: number;
-      public_table_count: number;
-      bucket_exists: boolean;
-      bucket_private: boolean;
-      storage_object_count: number;
-    }[]>`
+    const [stats] = await sql<
+      {
+        migration_count: number;
+        public_table_count: number;
+        bucket_exists: boolean;
+        bucket_private: boolean;
+        storage_object_count: number;
+      }[]
+    >`
       select
         (select count(*)::int from drizzle.__drizzle_migrations) as migration_count,
         (select count(*)::int from information_schema.tables where table_schema = 'public') as public_table_count,
@@ -106,11 +95,12 @@ async function main() {
 const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : "";
 if (import.meta.url === invokedPath) {
   void main().catch((error: unknown) => {
-    const code = error instanceof z.ZodError
-      ? "BACKUP_READINESS_ENV_INVALID"
-      : error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
-        ? error.message
-        : "BACKUP_READINESS_FAILED";
+    const code =
+      error instanceof z.ZodError
+        ? "BACKUP_READINESS_ENV_INVALID"
+        : error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
+          ? error.message
+          : "BACKUP_READINESS_FAILED";
     console.error(code);
     process.exitCode = 1;
   });

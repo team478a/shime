@@ -1,18 +1,12 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 
-const SAFE_FAILURE_CODES = new Set([
-  "LINE_IDENTITY_MISSING",
-  "INVALID_NOTIFICATION_PAYLOAD",
-]);
+const SAFE_FAILURE_CODES = new Set(["LINE_IDENTITY_MISSING", "INVALID_NOTIFICATION_PAYLOAD"]);
 
 function digest(value: string) {
   return createHash("sha256").update(value, "utf8").digest();
 }
 
-export function hasValidBearerSecret(
-  authorization: string | null,
-  expectedSecret: string,
-) {
+export function hasValidBearerSecret(authorization: string | null, expectedSecret: string) {
   if (!authorization?.startsWith("Bearer ")) return false;
   const providedSecret = authorization.slice("Bearer ".length);
   return timingSafeEqual(digest(providedSecret), digest(expectedSecret));

@@ -16,4 +16,3 @@ export function operationsMetricState(metric: OperationsMetric): "empty" | "atte
   if (metric.total === 0 || metric.completed === 0) return "empty";
   return metric.completed >= metric.total ? "complete" : "attention";
 }
-

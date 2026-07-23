@@ -5,7 +5,11 @@ export function isLegalDocumentType(value: string): value is LegalDocumentType {
   return legalDocumentTypes.includes(value as LegalDocumentType);
 }
 
-export function withPublishedLegalVersion(settings: Record<string, unknown>, documentType: LegalDocumentType, version: string): Record<string, unknown> {
+export function withPublishedLegalVersion(
+  settings: Record<string, unknown>,
+  documentType: LegalDocumentType,
+  version: string,
+): Record<string, unknown> {
   return {
     ...settings,
     [documentType === "event_terms" ? "eventTermsVersion" : "privacyVersion"]: version,
