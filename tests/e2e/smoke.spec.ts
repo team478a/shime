@@ -26,6 +26,12 @@ test("AIコンシェルジュ仕様レビューを公開URLから取得できる
   expect(response.status()).toBe(200);
   expect(await response.text()).toContain("# SHIME® 婚活AIコンシェルジュ 段階開発指示書レビュー");
 });
+test("AIコンシェルジュPhase 0進捗を公開URLから取得できる", async ({ request }) => {
+  const response = await request.get("/downloads/SHIME_CONCIERGE_PHASE0_STATUS.md");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toContain("text/markdown");
+  expect(await response.text()).toContain("# SHIME® 婚活AIコンシェルジュ Phase 0 進捗・未決事項");
+});
 test("スマートフォン幅で参加者画面が横にはみ出さない", async ({ page }, testInfo) => { test.skip(!testInfo.project.name.startsWith("mobile")); for (const path of ["/liff/dream", "/liff/questionnaire", "/liff/passport", "/liff/preferences", "/liff/result"]) { await page.goto(path); const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth); expect(overflow, path).toBe(false); } });
 test("参加者画面にEMOKATSU婚活とSHIME PASSの共通表示がある", async ({ page }) => {
   await page.goto("/liff/passport");

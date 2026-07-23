@@ -29,6 +29,11 @@ export const PUBLIC_DOWNLOADS = [
     outputName: "SHIME_CONCIERGE_SPEC_REVIEW.md",
     label: "AIコンシェルジュ仕様レビュー",
   },
+  {
+    sourceName: "CONCIERGE_PHASE0_STATUS.md",
+    outputName: "SHIME_CONCIERGE_PHASE0_STATUS.md",
+    label: "AIコンシェルジュ Phase 0進捗・未決事項",
+  },
 ] as const satisfies readonly PublicDownload[];
 
 export function getAdminPublicDownloads() {
