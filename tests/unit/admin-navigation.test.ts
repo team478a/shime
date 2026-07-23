@@ -8,11 +8,12 @@ function eventKeys(role: "reception" | "operator" | "manager" | "system_admin") 
 
 describe("admin navigation", () => {
   it("shows system settings only to system administrators", () => {
-    expect(getAdminPrimaryNavigation("manager").map((item) => item.key)).toEqual(["dashboard", "new-event", "venue-templates"]);
+    expect(getAdminPrimaryNavigation("manager").map((item) => item.key)).toEqual(["dashboard", "new-event", "venue-templates", "concierge"]);
     expect(getAdminPrimaryNavigation("system_admin").map((item) => item.key)).toEqual([
       "dashboard",
       "new-event",
       "venue-templates",
+      "concierge",
       "staff",
       "platform",
     ]);

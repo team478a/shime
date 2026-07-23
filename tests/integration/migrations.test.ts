@@ -19,6 +19,9 @@ describe("database migrations", () => {
     expect(names).toContain("audit_logs");
     expect(names).toContain("resource_templates");
     expect(names).toContain("resource_template_applications");
+    expect(names).toContain("concierge_card_asset_versions");
+    expect(names).toContain("concierge_template_versions");
+    expect(names).toContain("event_concierge_snapshots");
   }, 20_000);
   it("prevents duplicate check-in records for one event participant", async () => { client = new PGlite(); const db = drizzle(client); await migrate(db, { migrationsFolder: "packages/db/migrations" }); await client.exec(`
     insert into tenants(id, code, name, status, timezone) values ('00000000-0000-0000-0000-000000000001','t','Test','active','Asia/Tokyo');

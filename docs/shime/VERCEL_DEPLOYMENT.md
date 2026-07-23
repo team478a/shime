@@ -24,6 +24,7 @@ Use the Supabase Transaction Pooler on port 6543 for `DATABASE_URL`. Keep the di
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_IMPORT_BUCKET`
+- `SUPABASE_CONCIERGE_BUCKET`（Conciergeカード画像用の非公開bucket）
 - `SESSION_PEPPER`
 - `PASSWORD_PEPPER`
 - `LINK_TOKEN_PEPPER`

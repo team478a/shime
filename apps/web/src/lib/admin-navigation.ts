@@ -26,6 +26,7 @@ const primaryItems: readonly AdminNavigationItem[] = [
   { key: "dashboard", label: "管理トップ", href: "/admin" },
   { key: "new-event", label: "イベント作成", href: "/admin/events/new", permission: "event:write" },
   { key: "venue-templates", label: "会場テンプレート", href: "/admin/templates/venue-layouts", permission: "event:write", tenantScopeOnly: true },
+  { key: "concierge", label: "診断・カード管理", href: "/admin/concierge", permission: "concierge:manage", tenantScopeOnly: true },
   { key: "staff", label: "管理者・権限", href: "/admin/staff", systemAdminOnly: true },
   { key: "platform", label: "外部接続・運用設定", href: "/admin/platform", systemAdminOnly: true },
 ];
@@ -42,6 +43,7 @@ const eventItemTemplates: readonly AdminNavigationGroup[] = [
       { key: "form-fields", label: "申込フォーム項目", href: "form-fields", permission: "event:write" },
       { key: "dream", label: "Dream設定", href: "dream", permission: "event:write" },
       { key: "questionnaire", label: "席案内5問", href: "questionnaire", permission: "event:write" },
+      { key: "concierge-event", label: "診断テンプレート適用", href: "concierge", permission: "concierge:manage" },
     ],
   },
   {

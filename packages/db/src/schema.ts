@@ -50,6 +50,7 @@ export const questionnaireStatus = pgEnum("questionnaire_status", ["draft", "sub
 export const seatingRunStatus = pgEnum("seating_run_status", ["draft", "published", "superseded"]);
 export const preferenceSubmissionStatus = pgEnum("preference_submission_status", ["draft", "submitted"]);
 export const matchCandidateStatus = pgEnum("match_candidate_status", ["candidate", "pending", "approved", "declined", "revoked"]);
+export const conciergeVersionStatus = pgEnum("concierge_version_status", ["draft", "published", "archived"]);
 
 export const tenants = pgTable("tenants", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -456,4 +457,91 @@ export const resourceTemplateApplications = pgTable("resource_template_applicati
 }, (table) => [
   index("resource_template_applications_template_idx").on(table.tenantId, table.templateId, table.appliedAt),
   index("resource_template_applications_target_idx").on(table.tenantId, table.moduleKey, table.targetType, table.targetId),
+]);
+
+export const conciergeCardAssets = pgTable("concierge_card_assets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  moduleKey: varchar("module_key", { length: 80 }).default("concierge").notNull(),
+  code: varchar("code", { length: 80 }).notNull(),
+  name: varchar("name", { length: 160 }).notNull(),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("concierge_card_assets_code_uidx").on(table.tenantId, table.moduleKey, table.code),
+  index("concierge_card_assets_tenant_idx").on(table.tenantId, table.moduleKey, table.archivedAt),
+]);
+
+export const conciergeCardAssetVersions = pgTable("concierge_card_asset_versions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  assetId: uuid("asset_id").notNull().references(() => conciergeCardAssets.id),
+  version: integer("version").notNull(),
+  status: conciergeVersionStatus("status").default("draft").notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  message: text("message").notNull(),
+  altText: varchar("alt_text", { length: 500 }).notNull(),
+  storageObjectKey: text("storage_object_key").notNull(),
+  mimeType: varchar("mime_type", { length: 80 }).notNull(),
+  byteSize: integer("byte_size").notNull(),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  pixelCount: integer("pixel_count").notNull(),
+  contentHash: varchar("content_hash", { length: 64 }).notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("concierge_card_asset_versions_number_uidx").on(table.tenantId, table.assetId, table.version),
+  uniqueIndex("concierge_card_asset_versions_hash_uidx").on(table.tenantId, table.contentHash),
+  index("concierge_card_asset_versions_status_idx").on(table.tenantId, table.status, table.createdAt),
+]);
+
+export const conciergeTemplates = pgTable("concierge_templates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  moduleKey: varchar("module_key", { length: 80 }).default("concierge").notNull(),
+  templateKey: varchar("template_key", { length: 120 }).notNull(),
+  name: varchar("name", { length: 160 }).notNull(),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("concierge_templates_key_uidx").on(table.tenantId, table.moduleKey, table.templateKey),
+  index("concierge_templates_tenant_idx").on(table.tenantId, table.moduleKey, table.archivedAt),
+]);
+
+export const conciergeTemplateVersions = pgTable("concierge_template_versions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  templateId: uuid("template_id").notNull().references(() => conciergeTemplates.id),
+  version: integer("version").notNull(),
+  schemaVersion: integer("schema_version").default(1).notNull(),
+  status: conciergeVersionStatus("status").default("draft").notNull(),
+  payload: jsonb("payload_json").$type<Record<string, unknown>>().notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("concierge_template_versions_number_uidx").on(table.tenantId, table.templateId, table.version),
+  index("concierge_template_versions_status_idx").on(table.tenantId, table.templateId, table.status),
+]);
+
+export const eventConciergeSnapshots = pgTable("event_concierge_snapshots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  eventId: uuid("event_id").notNull().references(() => events.id),
+  templateVersionId: uuid("template_version_id").notNull().references(() => conciergeTemplateVersions.id),
+  templateVersion: integer("template_version").notNull(),
+  snapshot: jsonb("snapshot_json").$type<Record<string, unknown>>().notNull(),
+  snapshotHash: varchar("snapshot_hash", { length: 64 }).notNull(),
+  enabled: boolean("enabled").default(false).notNull(),
+  appliedBy: uuid("applied_by").notNull().references(() => users.id),
+  appliedAt: timestamp("applied_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("event_concierge_snapshots_event_uidx").on(table.tenantId, table.eventId),
+  index("event_concierge_snapshots_version_idx").on(table.tenantId, table.templateVersionId),
 ]);

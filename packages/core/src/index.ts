@@ -23,3 +23,5 @@ export * from "./export/csv";
 export * from "./operations/backup-readiness";
 export * from "./templates/venue-layout";
 export * from "./templates/event-configuration";
+export * from "./concierge/template";
+export * from "./storage/provider";

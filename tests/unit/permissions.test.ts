@@ -14,4 +14,11 @@ describe("staff permissions", () => {
     expect(hasPermission("manager", "event:delete")).toBe(false);
     expect(hasPermission("system_admin", "event:delete")).toBe(true);
   });
+  it("uses dedicated concierge draft, publish, and private-answer permissions", () => {
+    expect(hasPermission("operator", "concierge:manage")).toBe(false);
+    expect(hasPermission("manager", "concierge:manage")).toBe(true);
+    expect(hasPermission("manager", "concierge:publish")).toBe(true);
+    expect(hasPermission("manager", "concierge:private-read")).toBe(false);
+    expect(hasPermission("system_admin", "concierge:private-read")).toBe(true);
+  });
 });
