@@ -18,6 +18,9 @@
 - `GET /api/liff/me/passport/:eventId`
 - `POST /api/liff/events/:eventId/passport`
 - `POST /api/liff/events/:eventId/passport/qr`
+- `PUT /api/liff/me/dream`
+- `POST /api/liff/me/dream/skip`
+- `POST /api/liff/events/:eventId/dream/suggestions`
 
 ## 実施内容
 
@@ -33,6 +36,9 @@
 - `participantHandler`を追加し、参加者セッション、tenant、event、participant文脈を共通化
 - 読み取り専用の参加者API 3件を移行
 - SHIME PASS発行とQR再発行APIを移行し、更新系でもrequestとRoute引数が維持される契約テストを追加
+- Dream保存、任意スキップ、候補生成APIを移行
+- body内event IDを使うDream APIは、既存どおり入力検証後に認証を行う順序を維持
+- Dream保存時の参加者更新と感情カード参照にtenant・event境界を明示
 - 未ログインとイベント未紐づけを既存どおり401として扱う契約を維持
 
 ## 互換性
@@ -47,7 +53,7 @@
 
 ## Phase 1の残作業
 
-1. participantHandlerのDream・感情・設問・希望入力APIへの段階適用
+1. participantHandlerの感情・設問・希望入力APIへの段階適用
 2. publicHandler
 3. jobHandler
 4. webhookHandler
@@ -64,4 +70,4 @@
 
 ## 次の推奨対象
 
-参加者向けDream APIの認証共通化を候補とする。ただし、候補生成等の業務UseCase・Repository分離と混在させず、Phase 1ではHandler適用と契約テストだけに限定する。
+参加者向け感情カード・感情選択APIの認証共通化を候補とする。ただし、カード管理等の業務UseCase・Repository分離と混在させず、Phase 1ではHandler適用と契約テストだけに限定する。
