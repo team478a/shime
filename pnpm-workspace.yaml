@@ -8,6 +8,7 @@ hoist: true
 overrides:
   "minimatch@3.1.5>brace-expansion": "1.1.16"
   "next>postcss": "8.5.16"
+  "next>sharp": "0.35.3"
   "@esbuild-kit/core-utils>esbuild": "0.25.12"
 
 allowBuilds:
