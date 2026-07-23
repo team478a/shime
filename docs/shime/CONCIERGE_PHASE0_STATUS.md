@@ -53,7 +53,7 @@ C-01〜C-20は全件について回答または未確定部分を記録した。
 
 ### 2.4 作成した設計方針
 
-- Dream用感情カードと診断用カードを分離
+- Dreamと診断でカード資産を共有し、利用設定・mapping・snapshot・回答を分離
 - 席案内5問と診断4問を分離
 - tenantとeventの二段階機能フラグ
 - template、version、event snapshotの分離
@@ -104,6 +104,21 @@ C-01〜C-20は全件について回答または未確定部分を記録した。
 
 ## 5. Conciergeの未決事項
 
+### 5.0 Phase 1A追加確定要件
+
+2026-07-23、次をPhase 1Aの確定要件として追加した。
+
+- 画像差し替えは新しい画像asset・card versionとして作成し、旧版をarchive
+- 公開済みcardの追加、削除、順序、文言、画像変更は新template versionで実施
+- AIレポート表示設定はPhase 1Aで版管理し、外部AI処理はPhase 2まで実装しない
+- 認証・権限・本人確認・個人情報・AI同意・system error文言は自由編集させない
+- 実画像signature、decode、寸法、総pixel、hash、metadata除去、再encodeを含む画像検証
+- draftは不完全保存可、publish時は4分析軸と8固定感情codeの完全性を強制
+
+詳細は`CONCIERGE_PHASE1A_CONFIRMED_REQUIREMENTS.md`を参照する。
+
+これらはPhase 1Aの受入条件を確定するが、D-01〜D-07の残りの意思決定やPhase 1A開始承認を代替しない。
+
 ### 5.1 Phase 1開始前に必要
 
 | ID | 未決事項 | 現在の推奨 | 決定者 |
@@ -111,7 +126,7 @@ C-01〜C-20は全件について回答または未確定部分を記録した。
 | D-01 | Phase 1〜3を2026-08-08本番で使うか | Event OS P0を優先し、受入未完了なら本番OFF | 事業・運営責任者 |
 | D-02 | Dreamと診断の順序、必須／任意 | 別機能としてevent単位で設定 | Product責任者 |
 | D-03 | 診断templateの所有・共有範囲 | tenant+module所有、event snapshot | Product・技術責任者 |
-| D-04 | 既存感情カードを再利用するか | 診断用tableへ分離 | 技術責任者 |
+| D-04 | Dreamと診断のcard資産共有方法 | 画像・名称・メッセージ資産は共有し、用途別設定・snapshot・回答は分離。既存tableを意味変更しない物理schemaは設計レビューで確定 | 技術責任者 |
 | D-05 | 8感情の正式表示label | 内部code固定、labelを版管理 | Client・監修者 |
 | D-06 | 診断4問、選択肢、必須性、再編集 | 未確定値を実装へ仮置きしない | Client・監修者 |
 | D-07 | 診断原文の閲覧権限と目的 | 専用権限、本人問い合わせ、理由・監査必須 | 個人情報管理責任者 |
@@ -198,20 +213,22 @@ Phase 0成果物作成後に次を実行した。
 | --- | --- |
 | `pnpm lint` | 合格 |
 | `pnpm typecheck` | 合格 |
+| `pnpm audit:dependencies` | 既知の脆弱性なし |
 | `pnpm test:unit` | 47 files、166 tests合格 |
 | `pnpm test:integration` | 1 file、2 tests合格 |
 | `pnpm build` | production build成功 |
-| `pnpm test:e2e` | 23件合格、1件skip |
+| `pnpm test:e2e` | 25件合格、1件skip |
 | `git diff --check` | 合格 |
 | C-ID確認 | C-01〜C-20、20件確認 |
 | D-ID確認 | D-01〜D-18、18件確認 |
 
 ## 9. GitHub・配備状況
 
-- 今回のPhase 0成果物と本進捗記録はローカル作業中
-- まだcommitしていない
-- GitHubへまだpushしていない
-- Vercelへdeployしていない
+- Phase 0成果物と本進捗記録はコミット`8ef9c38`でGitHub `main`へpush済み
+- CI修正はコミット`8d32444`でpush済み
+- GitHub Actions `verify`と`e2e`は成功
+- Phase 0進捗MarkdownはVercel stagingの公開ダウンロードURLでHTTP 200を確認済み
+- 今回追加したPhase 1A確定要件は、この更新時点ではローカル文書変更
 - Supabase、LINE、OpenAI、本番環境は変更していない
 
 ## 10. 次に行う順序
@@ -226,6 +243,6 @@ Phase 0成果物作成後に次を実行した。
 
 ## 11. 現在の停止点
 
-**Concierge Phase 0は完了した。Concierge Phase 1Aは未承認であり、D-01〜D-07も未確定のため、実装へ進まず停止する。**
+**Concierge Phase 0は完了した。Concierge Phase 1Aは未承認であり、D-01〜D-03およびD-05〜D-07が未確定のため、実装へ進まず停止する。**
 
 現時点で安全に進められるのは、文書レビュー、未決事項の意思決定、Event OS本番P0の解消である。
