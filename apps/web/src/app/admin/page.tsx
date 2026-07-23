@@ -6,6 +6,7 @@ import { events, getDatabase } from "@shime/db";
 import { getStaffSession } from "../../server/auth";
 import { getEventConfigurationReadiness } from "../../server/event-settings";
 import { getEventAdminNavigation, getEventAdminQuickActions, STAFF_ROLE_LABELS } from "../../lib/admin-navigation";
+import { getAdminPublicDownloads } from "../../lib/public-downloads";
 import { getEventStatusLabel } from "../../lib/status-labels";
 
 export default async function AdminPage() {
@@ -31,9 +32,7 @@ export default async function AdminPage() {
     <details className="admin-resource-downloads">
       <summary>運用資料をダウンロード</summary>
       <div className="actions">
-        <a className="button-link secondary" href="/downloads/SHIME_COMPLETION_RECORD_20260715.md" download>2026-07-15完了記録</a>
-        <a className="button-link secondary" href="/downloads/SHIME_REHEARSAL_EXECUTION_RECORD_20260715.md" download>実機リハーサル実行記録</a>
-        <a className="button-link secondary" href="/downloads/SHIME_REHEARSAL_APPLICATIONS_12.csv" download>合成参加者12名CSV</a>
+        {getAdminPublicDownloads().map((document) => <a key={document.outputName} className="button-link secondary" href={`/downloads/${document.outputName}`} download>{document.label}</a>)}
       </div>
     </details>
     <div className="actions"><h2>イベント</h2>{canWriteEvent && <Link className="button-link" href="/admin/events/new">イベントを作成</Link>}</div>
