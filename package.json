@@ -22,6 +22,7 @@
     "smoke:openai-dream": "tsx scripts/smoke-openai-dream.ts",
     "supabase:verify": "tsx scripts/verify-supabase.ts",
     "supabase:verify-storage": "tsx scripts/verify-supabase-storage.ts",
+    "supabase:ensure-concierge-storage": "tsx scripts/ensure-concierge-storage.ts",
     "supabase:backup-readiness": "tsx scripts/check-backup-readiness.ts",
     "db:generate": "drizzle-kit generate --config packages/db/drizzle.config.ts",
     "db:migrate": "tsx packages/db/src/migrate.ts",
