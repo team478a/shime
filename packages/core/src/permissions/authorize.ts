@@ -16,6 +16,7 @@ export type Permission =
   | "result:revoke"
   | "backup:export"
   | "backup:sensitive"
+  | "staff:manage"
   | "concierge:manage"
   | "concierge:publish"
   | "concierge:private-read";
@@ -65,6 +66,7 @@ const grants: Record<StaffRole, ReadonlySet<Permission>> = {
     "result:revoke",
     "backup:export",
     "backup:sensitive",
+    "staff:manage",
     "concierge:manage",
     "concierge:publish",
     "concierge:private-read",

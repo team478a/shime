@@ -19,6 +19,10 @@ describe("staff permissions", () => {
     expect(hasPermission("manager", "event:delete")).toBe(false);
     expect(hasPermission("system_admin", "event:delete")).toBe(true);
   });
+  it("only lets system administrators manage staff accounts", () => {
+    expect(hasPermission("manager", "staff:manage")).toBe(false);
+    expect(hasPermission("system_admin", "staff:manage")).toBe(true);
+  });
   it("uses dedicated concierge draft, publish, and private-answer permissions", () => {
     expect(hasPermission("operator", "concierge:manage")).toBe(false);
     expect(hasPermission("manager", "concierge:manage")).toBe(true);
