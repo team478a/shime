@@ -15,7 +15,7 @@ export type StaffHandlerContext = {
 
 type StaffHandlerOptions = {
   permission: Permission;
-  includeRequestIdInAuthErrors?: boolean;
+  includeRequestIdInErrors?: boolean;
 };
 
 type StaffHandlerDependencies = {
@@ -35,7 +35,7 @@ export function createStaffHandler(dependencies: StaffHandlerDependencies = defa
   ) {
     return async (...args: Arguments): Promise<Response> => {
       const requestId = dependencies.createRequestId();
-      const includeRequestId = options.includeRequestIdInAuthErrors ?? true;
+      const includeRequestId = options.includeRequestIdInErrors ?? true;
       const session = await dependencies.loadSession();
 
       if (!session) {
@@ -54,7 +54,7 @@ export function createStaffHandler(dependencies: StaffHandlerDependencies = defa
       try {
         return await handle({ requestId, session }, ...args);
       } catch (error) {
-        if (error instanceof AppError) return appErrorResponse(error, requestId);
+        if (error instanceof AppError) return appErrorResponse(error, requestId, includeRequestId);
         throw error;
       }
     };
@@ -63,8 +63,37 @@ export function createStaffHandler(dependencies: StaffHandlerDependencies = defa
 
 export const staffHandler = createStaffHandler();
 
-export async function parseJsonBody<Output>(request: Request, schema: z.ZodType<Output>): Promise<Output> {
+export function createStaffEventHandler(dependencies: StaffHandlerDependencies = defaultDependencies) {
+  return function staffEventHandler<Arguments extends unknown[]>(
+    options: StaffHandlerOptions,
+    resolveEventId: (...args: Arguments) => Promise<string> | string,
+    handle: (context: StaffHandlerContext & { eventId: string }, ...args: Arguments) => Promise<Response> | Response,
+  ) {
+    return createStaffHandler(dependencies)(options, async (context, ...args: Arguments) => {
+      const eventId = await resolveEventId(...args);
+      if (context.session.eventId && context.session.eventId !== eventId) {
+        const includeRequestId = options.includeRequestIdInErrors ?? true;
+        return NextResponse.json(
+          {
+            code: "FORBIDDEN",
+            ...(includeRequestId ? { request_id: context.requestId } : {}),
+          },
+          { status: 403 },
+        );
+      }
+      return handle({ ...context, eventId }, ...args);
+    });
+  };
+}
+
+export const staffEventHandler = createStaffEventHandler();
+
+export async function parseJsonBody<Output>(
+  request: Request,
+  schema: z.ZodType<Output>,
+  errorCode = "INVALID_INPUT",
+): Promise<Output> {
   const parsed = schema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) throw new ValidationError();
+  if (!parsed.success) throw new ValidationError(errorCode);
   return parsed.data;
 }

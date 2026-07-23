@@ -38,13 +38,13 @@ export class InfrastructureError extends AppError {
   }
 }
 
-export function appErrorResponse(error: AppError, requestId: string) {
+export function appErrorResponse(error: AppError, requestId: string, includeRequestId = true) {
   return NextResponse.json(
     {
       code: error.code,
       ...(error.publicMessage ? { message: error.publicMessage } : {}),
       ...(error.fieldErrors ? { field_errors: error.fieldErrors } : {}),
-      request_id: requestId,
+      ...(includeRequestId ? { request_id: requestId } : {}),
     },
     { status: error.status },
   );

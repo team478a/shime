@@ -4,11 +4,15 @@
 
 ## 今回の対象
 
-共通API Handlerの最初の適用として、スタッフアカウント管理APIだけを移行した。
+共通API Handlerをスタッフアカウント管理APIと当日受付APIへ段階的に適用した。
 
 - `GET /api/admin/staff`
 - `POST /api/admin/staff`
 - `PATCH /api/admin/staff/:userId`
+- `POST /api/admin/events/:eventId/checkins/manual`
+- `POST /api/admin/events/:eventId/checkins/scan`
+- `POST /api/admin/events/:eventId/checkins/confirm`
+- `POST /api/admin/events/:eventId/checkins/:participantId/cancel`
 
 ## 実施内容
 
@@ -18,6 +22,9 @@
 - `AppError`、`ValidationError`、`PermissionError`、`BusinessRuleError`、`InfrastructureError`を追加
 - スタッフ管理専用権限`staff:manage`を追加し、`system_admin`だけへ付与
 - 既存staff APIのstatus codeとresponse bodyを契約テストで固定
+- event scope付き`staffEventHandler`を追加
+- イベント限定スタッフは割り当てられたイベントだけ操作可能とし、全体権限スタッフは従来どおり各イベントを操作可能
+- 受付APIの既存エラーコード、status code、response bodyを維持
 
 ## 互換性
 
@@ -31,22 +38,21 @@
 
 ## Phase 1の残作業
 
-1. event scopeを扱うstaffHandler拡張
-2. participantHandler
-3. publicHandler
-4. jobHandler
-5. webhookHandler
-6. 対象Routeの契約テストを追加しながら1モジュールずつ移行
-7. 共通AuditとValidationの適用範囲拡大
+1. participantHandler
+2. publicHandler
+3. jobHandler
+4. webhookHandler
+5. 対象Routeの契約テストを追加しながら1モジュールずつ移行
+6. 共通AuditとValidationの適用範囲拡大
 
 ## 検証結果
 
 - format-check、architecture-check、typecheck、production build成功
 - lint成功（新規警告なし）
-- Unit: 50ファイル、178テスト成功
+- Unit: 50ファイル、181テスト成功
 - Integration: 1ファイル、2テスト成功
 - E2E: 25テスト成功、対象外1テスト
 
 ## 次の推奨対象
 
-スタッフ認証済みかつevent scopeを必要とする当日受付APIを候補とする。ただし、受付UseCase・Repository分離と混在させず、Phase 1ではHandler適用と契約テストだけに限定する。
+参加者向けAPIの認証共通化を候補とする。ただし、参加者業務UseCase・Repository分離と混在させず、Phase 1ではHandler適用と契約テストだけに限定する。

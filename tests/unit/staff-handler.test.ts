@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createStaffHandler, parseJsonBody } from "../../apps/web/src/server/api/staff-handler";
+import {
+  createStaffEventHandler,
+  createStaffHandler,
+  parseJsonBody,
+} from "../../apps/web/src/server/api/staff-handler";
 
 const systemAdminSession = {
   userId: "user-1",
@@ -15,7 +19,7 @@ describe("staffHandler contract", () => {
     const handler = createStaffHandler({
       loadSession: async () => null,
       createRequestId: () => "request-1",
-    })({ permission: "staff:manage", includeRequestIdInAuthErrors: false }, async () => Response.json({ data: [] }));
+    })({ permission: "staff:manage", includeRequestIdInErrors: false }, async () => Response.json({ data: [] }));
 
     const response = await handler();
 
@@ -74,5 +78,65 @@ describe("staffHandler contract", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ code: "INVALID_INPUT", request_id: "request-5" });
+  });
+});
+
+describe("staffEventHandler contract", () => {
+  it("allows a tenant-wide staff role to access the requested event", async () => {
+    const handler = createStaffEventHandler({
+      loadSession: async () => ({ ...systemAdminSession, role: "reception" }),
+      createRequestId: () => "request-6",
+    })(
+      { permission: "checkin:write", includeRequestIdInErrors: false },
+      async (routeContext: { params: Promise<{ eventId: string }> }) => (await routeContext.params).eventId,
+      ({ eventId }) => Response.json({ eventId }),
+    );
+
+    const response = await handler({ params: Promise.resolve({ eventId: "event-1" }) });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ eventId: "event-1" });
+  });
+
+  it("rejects an event-scoped staff role accessing another event", async () => {
+    const handler = createStaffEventHandler({
+      loadSession: async () => ({ ...systemAdminSession, role: "reception", eventId: "event-1" }),
+      createRequestId: () => "request-7",
+    })(
+      { permission: "checkin:write", includeRequestIdInErrors: false },
+      async (routeContext: { params: Promise<{ eventId: string }> }) => (await routeContext.params).eventId,
+      () => Response.json({ ok: true }),
+    );
+
+    const response = await handler({ params: Promise.resolve({ eventId: "event-2" }) });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ code: "FORBIDDEN" });
+  });
+
+  it("preserves check-in validation errors without a request ID", async () => {
+    const handler = createStaffEventHandler({
+      loadSession: async () => ({ ...systemAdminSession, role: "reception" }),
+      createRequestId: () => "request-8",
+    })(
+      { permission: "checkin:write", includeRequestIdInErrors: false },
+      async (_request: Request, routeContext: { params: Promise<{ eventId: string }> }) =>
+        (await routeContext.params).eventId,
+      async (_context, request: Request) => {
+        await parseJsonBody(request, z.object({ reason: z.string().min(1) }), "REASON_REQUIRED");
+        return Response.json({ ok: true });
+      },
+    );
+
+    const response = await handler(
+      new Request("https://example.test/api/admin/events/event-1/checkins/participant-1/cancel", {
+        method: "POST",
+        body: JSON.stringify({ reason: "" }),
+      }),
+      { params: Promise.resolve({ eventId: "event-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ code: "REASON_REQUIRED" });
   });
 });

@@ -21,7 +21,7 @@ const input = z.object({
 });
 
 export const GET = staffHandler(
-  { permission: "staff:manage", includeRequestIdInAuthErrors: false },
+  { permission: "staff:manage", includeRequestIdInErrors: false },
   async ({ session }) => {
     const data = await getDatabase()
       .select({
