@@ -23,6 +23,9 @@
 - `POST /api/liff/events/:eventId/dream/suggestions`
 - `GET /api/liff/events/:eventId/emotion-cards`
 - `POST /api/liff/events/:eventId/emotion-selection`
+- `GET /api/liff/events/:eventId/questionnaire`
+- `PUT /api/liff/events/:eventId/questionnaire`
+- `POST /api/liff/events/:eventId/questionnaire/submit`
 
 ## 実施内容
 
@@ -45,6 +48,14 @@
 - 感情選択時のカードIDをイベントに設定されたカードセットへ限定
 - 感情選択と参加者状態の更新条件にtenant・event・participant境界を明示
 - 未ログインとイベント未紐づけを既存どおり401として扱う契約を維持
+- Questionnaireを`Route → UseCase → Repository → DB`へ分離
+- RouteからDrizzleと`@shime/db`への直接依存を除去
+- Questionnaireの取得、下書き保存、提出をUseCaseとして分離
+- Questionnaire Repositoryの全検索・更新にtenant、event、participant境界を明示
+- 回答保存と提出時の参加者状態更新をトランザクション内に維持
+- Questionnaire RouteをGET/PUT 43行、提出16行へ縮小
+- Questionnaire UseCaseの単体テスト4件を追加
+- API RouteのDB直接import基準値を69件から67件へ削減
 
 ## 互換性
 
@@ -58,21 +69,23 @@
 
 ## Phase 1の残作業
 
-1. participantHandlerの設問・希望入力APIへの段階適用
+1. participantHandlerの希望入力APIへの段階適用
 2. publicHandler
 3. jobHandler
 4. webhookHandler
 5. 対象Routeの契約テストを追加しながら1モジュールずつ移行
 6. 共通AuditとValidationの適用範囲拡大
 
+希望入力はMatching Module、公開申込はApplication Moduleの業務分離を伴う。以降はHandlerだけを先に適用せず、対象モジュールのUseCase・Repositoryと同時に段階移行する。
+
 ## 検証結果
 
 - format-check、architecture-check、typecheck、production build成功
-- lint成功（新規警告なし）
-- Unit: 51ファイル、185テスト成功
+- lint成功（エラー0件、既存警告のみ）
+- Unit: 52ファイル、189テスト成功
 - Integration: 1ファイル、2テスト成功
 - E2E: 25テスト成功、対象外1テスト
 
 ## 次の推奨対象
 
-参加者向け設問・回答APIの認証共通化を候補とする。ただし、設問管理等の業務UseCase・Repository分離と混在させず、Phase 1ではHandler適用と契約テストだけに限定する。
+Phase 1の次対象は`jobHandler`とする。通知配信またはヘルス監視のどちらか一方に限定し、対象業務のUseCase・Repositoryと同時に移行する。参加者の希望入力はMatching ModuleとしてPhase 3で扱い、Handlerだけを先行適用しない。

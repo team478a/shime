@@ -193,6 +193,8 @@ importers:
 
   packages/db: {}
 
+  packages/questionnaire: {}
+
 packages:
 
   '@babel/code-frame@7.29.7':
