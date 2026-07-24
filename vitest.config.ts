@@ -10,6 +10,7 @@ export default defineConfig({
       "@shime/integrations": path.resolve(__dirname, "packages/integrations/src"),
       "@shime/notifications": path.resolve(__dirname, "packages/notifications/src"),
       "@shime/questionnaire": path.resolve(__dirname, "packages/questionnaire/src"),
+      "@shime/seating": path.resolve(__dirname, "packages/seating/src"),
     },
   },
   test: {

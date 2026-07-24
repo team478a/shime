@@ -7,7 +7,7 @@ const MAX_SOURCE_LINES = 300;
 const baseline = {
   routeDbImports: 63,
   clientFilesWithFetch: 25,
-  filesOverMaxLines: 11,
+  filesOverMaxLines: 10,
 } as const;
 
 type Metrics = {

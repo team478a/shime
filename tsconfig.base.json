@@ -28,6 +28,8 @@
       "@shime/notifications/*": ["./packages/notifications/src/*"],
       "@shime/questionnaire": ["./packages/questionnaire/src/index.ts"],
       "@shime/questionnaire/*": ["./packages/questionnaire/src/*"],
+      "@shime/seating": ["./packages/seating/src/index.ts"],
+      "@shime/seating/*": ["./packages/seating/src/*"],
       "@shime/web/*": ["./apps/web/src/*"]
     }
   }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import {
   buildDeterministicAssignments,
@@ -13,7 +13,6 @@ import {
   auditLogs,
   checkins,
   eventSeats,
-  eventTables,
   events,
   getDatabase,
   participantAvoidances,
@@ -24,7 +23,9 @@ import {
   seatAssignments,
   seatingRuns,
 } from "@shime/db";
+import { staffEventHandler } from "@shime/web/server/api/staff-handler";
 import { requireStaffSession } from "@shime/web/server/auth";
+import { getSeatingWorkspace } from "@shime/web/server/seating-use-cases";
 const weights = {
   values: 40,
   marriage_intent: 25,
@@ -32,83 +33,17 @@ const weights = {
   conversation_style: 10,
   topic_overlap: 10,
 } as const;
-export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
-  const { eventId } = await params;
-  const session = await requireStaffSession().catch(() => null);
-  if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
-  try {
-    requirePermission(session.role, "seating:write");
-  } catch {
-    return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
-  }
-  const db = getDatabase();
-  const runs = await db
-    .select()
-    .from(seatingRuns)
-    .where(and(eq(seatingRuns.tenantId, session.tenantId), eq(seatingRuns.eventId, eventId)))
-    .orderBy(desc(seatingRuns.createdAt));
-  const assignments = runs.length
-    ? await db
-        .select()
-        .from(seatAssignments)
-        .where(
-          and(
-            eq(seatAssignments.tenantId, session.tenantId),
-            eq(seatAssignments.eventId, eventId),
-            inArray(
-              seatAssignments.seatingRunId,
-              runs.map((r) => r.id),
-            ),
-          ),
-        )
-    : [];
-  const people = await db
-    .select({
-      id: participants.id,
-      participantNumber: participants.participantNumber,
-      fullName: applications.fullName,
-      category: applications.participantCategory,
-      checkinStatus: checkins.status,
-    })
-    .from(participants)
-    .innerJoin(
-      applications,
-      and(eq(applications.id, participants.applicationId), eq(applications.tenantId, participants.tenantId)),
-    )
-    .leftJoin(
-      checkins,
-      and(
-        eq(checkins.tenantId, participants.tenantId),
-        eq(checkins.eventId, participants.eventId),
-        eq(checkins.participantId, participants.id),
-      ),
-    )
-    .where(and(eq(participants.tenantId, session.tenantId), eq(participants.eventId, eventId)));
-  const seats = await db
-    .select({
-      id: eventSeats.id,
-      seatCode: eventSeats.seatCode,
-      tableCode: eventTables.tableCode,
-      enabled: eventSeats.enabled,
-    })
-    .from(eventSeats)
-    .innerJoin(
-      eventTables,
-      and(
-        eq(eventTables.id, eventSeats.tableId),
-        eq(eventTables.tenantId, eventSeats.tenantId),
-        eq(eventTables.eventId, eventSeats.eventId),
-      ),
-    )
-    .where(and(eq(eventSeats.tenantId, session.tenantId), eq(eventSeats.eventId, eventId)));
-  return NextResponse.json({
-    data: {
-      runs: runs.map((run) => ({ ...run, assignments: assignments.filter((a) => a.seatingRunId === run.id) })),
-      participants: people,
-      seats,
-    },
-  });
-}
+export const GET = staffEventHandler(
+  { permission: "seating:write", includeRequestIdInErrors: false },
+  async (_request: Request, { params }: { params: Promise<{ eventId: string }> }) => (await params).eventId,
+  async ({ eventId, session }) =>
+    NextResponse.json({
+      data: await getSeatingWorkspace.execute({
+        tenantId: session.tenantId,
+        eventId,
+      }),
+    }),
+);
 export async function POST(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
   const requestId = randomUUID();
   const { eventId } = await params;

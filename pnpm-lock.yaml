@@ -201,6 +201,8 @@ importers:
 
   packages/questionnaire: {}
 
+  packages/seating: {}
+
 packages:
 
   '@babel/code-frame@7.29.7':
