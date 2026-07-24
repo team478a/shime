@@ -30,6 +30,7 @@
 - `POST /api/jobs/health-monitor`
 - `GET /api/jobs/notifications`
 - `POST /api/jobs/notifications`
+- `POST /api/webhooks/line`
 
 ## 実施内容
 
@@ -77,6 +78,15 @@
 - 通知配信Routeを171行から38行へ縮小
 - jobHandlerの通知契約テスト2件、通知配信UseCaseテスト4件を追加
 - API RouteのDB直接import基準値を66件から65件へ削減
+- `webhookHandler`を追加し、raw body、tenant code、LINE署名、Request IDの抽出を共通化
+- LINE Webhookを`Route → UseCase → Repository / Provider`へ分離
+- tenant確認、LINE設定取得、署名検証、body検証、pepper検証、保存の既存処理順序を維持
+- LINE user IDは生値を保存せず、既存どおりpepper付きSHA-256 hashだけを保存
+- Webhook eventの保存をtenant境界付きRepositoryへ移動
+- `webhookEventId`の一意制約と`onConflictDoNothing`による重複防止を維持
+- Webhook Routeを63行から14行へ縮小
+- webhookHandler契約テスト3件、LINE Webhook UseCaseテスト5件を追加
+- API RouteのDB直接import基準値を65件から64件へ削減
 
 ## 互換性
 
@@ -92,9 +102,8 @@
 
 1. participantHandlerの希望入力APIへの段階適用
 2. publicHandler
-3. webhookHandler
-4. 対象Routeの契約テストを追加しながら1モジュールずつ移行
-5. 共通AuditとValidationの適用範囲拡大
+3. 対象Routeの契約テストを追加しながら1モジュールずつ移行
+4. 共通AuditとValidationの適用範囲拡大
 
 希望入力はMatching Module、公開申込はApplication Moduleの業務分離を伴う。以降はHandlerだけを先に適用せず、対象モジュールのUseCase・Repositoryと同時に段階移行する。
 
@@ -102,10 +111,10 @@
 
 - format-check、architecture-check、typecheck、production build成功
 - lint成功（エラー0件、既存警告のみ）
-- Unit: 55ファイル、201テスト成功
+- Unit: 57ファイル、209テスト成功
 - Integration: 1ファイル、2テスト成功
-- E2E: 25テスト成功、対象外1テスト
+- E2E: 27テスト成功、対象外1テスト
 
 ## 次の推奨対象
 
-Phase 1の次対象はLINE Webhookとする。署名検証、重複イベント防止、tenant解決、イベント処理を`webhookHandler`とIntegrations UseCaseへ分離し、既存のLINE連携動作とレスポンスを維持する。公開APIはEvent ConfigurationとApplicationの2モジュールへ跨るため、一括移行しない。参加者の希望入力はMatching ModuleとしてPhase 3で扱い、Handlerだけを先行適用しない。
+Phase 1の次対象は公開イベント情報GET APIとする。Event Coreの読み取りUseCase・Repositoryと`publicHandler`を同時に導入し、申込作成APIはApplication ModuleのPhase 4まで分けて扱う。参加者の希望入力はMatching ModuleとしてPhase 3で扱い、Handlerだけを先行適用しない。
