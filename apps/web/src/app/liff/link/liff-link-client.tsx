@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import liff from "@line/liff";
 import { ParticipantNotice, ParticipantPageHeader } from "../../../components/participant-ui";
-import { buildParticipantJourneyUrl } from "../../../lib/participant-journey";
+import { ParticipantNextLink } from "../../../components/participant-journey-nav";
 
 export function LiffLinkClient({
   eventId,
@@ -80,9 +80,7 @@ export function LiffLinkClient({
           />
           {eventName && <p className="linked-event-name">{eventName}</p>}
           <ParticipantNotice tone="success">SHIME®をご利用いただけます。</ParticipantNotice>
-          <a className="button-link" href={buildParticipantJourneyUrl("dream", eventId)}>
-            Dream登録へ進む
-          </a>
+          <ParticipantNextLink eventId={eventId} />
         </section>
       </main>
     );

@@ -1,5 +1,6 @@
-import { PARTICIPANT_JOURNEY, type ParticipantJourneyKey } from "../lib/participant-journey";
+import type { ParticipantJourneyKey } from "../lib/participant-journey";
 import { ParticipantEventSummary } from "./participant-event-summary";
+import { ParticipantJourneyNav } from "./participant-journey-nav";
 
 export function ParticipantPageHeader({
   eyebrow,
@@ -20,17 +21,7 @@ export function ParticipantPageHeader({
       <h1>{title}</h1>
       <p className="participant-lead">{description}</p>
       {current && <ParticipantEventSummary eventId={eventId} />}
-      {current && (
-        <nav className="participant-journey" aria-label="イベント参加の進行">
-          <ol>
-            {PARTICIPANT_JOURNEY.map((stage) => (
-              <li key={stage.key} aria-current={stage.key === current ? "step" : undefined}>
-                <span>{stage.label}</span>
-              </li>
-            ))}
-          </ol>
-        </nav>
-      )}
+      {current && eventId && <ParticipantJourneyNav current={current} eventId={eventId} />}
     </div>
   );
 }

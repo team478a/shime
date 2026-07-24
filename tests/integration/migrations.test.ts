@@ -27,6 +27,7 @@ describe("database migrations", () => {
     expect(names).toContain("concierge_card_asset_versions");
     expect(names).toContain("concierge_template_versions");
     expect(names).toContain("event_concierge_snapshots");
+    expect(names).toContain("event_journey_versions");
   }, 20_000);
   it("prevents duplicate check-in records for one event participant", async () => {
     client = new PGlite();

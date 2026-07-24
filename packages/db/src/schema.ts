@@ -95,6 +95,7 @@ export const matchCandidateStatus = pgEnum("match_candidate_status", [
   "revoked",
 ]);
 export const conciergeVersionStatus = pgEnum("concierge_version_status", ["draft", "published", "archived"]);
+export const journeyVersionStatus = pgEnum("journey_version_status", ["draft", "published", "archived"]);
 
 export const tenants = pgTable(
   "tenants",
@@ -204,6 +205,32 @@ export const events = pgTable(
   (table) => [
     uniqueIndex("events_tenant_code_uidx").on(table.tenantId, table.code),
     index("events_tenant_status_idx").on(table.tenantId, table.status),
+  ],
+);
+
+export const eventJourneyVersions = pgTable(
+  "event_journey_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    version: integer("version").notNull(),
+    status: journeyVersionStatus("status").default("draft").notNull(),
+    steps: jsonb("steps_json").$type<unknown>().notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("event_journey_versions_number_uidx").on(table.tenantId, table.eventId, table.version),
+    index("event_journey_versions_status_idx").on(table.tenantId, table.eventId, table.status),
   ],
 );
 

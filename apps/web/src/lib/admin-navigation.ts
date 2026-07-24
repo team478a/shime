@@ -50,6 +50,7 @@ const eventItemTemplates: readonly AdminNavigationGroup[] = [
     items: [
       { key: "setup", label: "設定チェック", href: "setup", permission: "event:write" },
       { key: "settings", label: "基本設定", href: "settings", permission: "event:write" },
+      { key: "journey", label: "参加者導線", href: "journey", permission: "event:write" },
       { key: "legal", label: "規約・プライバシー", href: "legal", permission: "event:write" },
       { key: "tables", label: "テーブル・席マスター", href: "tables", permission: "event:write" },
       { key: "form-fields", label: "申込フォーム項目", href: "form-fields", permission: "event:write" },

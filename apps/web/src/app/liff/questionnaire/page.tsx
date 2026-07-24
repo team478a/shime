@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ParticipantNotice, ParticipantPageHeader } from "../../../components/participant-ui";
+import { ParticipantNextLink } from "../../../components/participant-journey-nav";
 import { isQuestionnaireComplete, type QuestionnaireAnswer } from "../../../lib/participant-questionnaire";
 import { useLiffEventId } from "../../../lib/liff-location";
 
@@ -156,11 +157,7 @@ export default function QuestionnairePage() {
             </button>
           </div>
         )}
-        {submitted && (
-          <a className="button-link" href={`/liff/passport?eventId=${eventId}`}>
-            SHIME® PASSへ
-          </a>
-        )}
+        {submitted && <ParticipantNextLink current="questionnaire" eventId={eventId} />}
         {message && <ParticipantNotice>{message}</ParticipantNotice>}
       </section>
     </main>

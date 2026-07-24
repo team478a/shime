@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { events, getDatabase } from "@shime/db";
 import { getParticipantEventStatusLabel } from "@shime/web/lib/participant-event";
 import { participantHandler } from "@shime/web/server/api/participant-handler";
+import { getParticipantJourneySettings } from "@shime/web/server/event-journey-use-cases";
 
 export const GET = participantHandler(
   async (_request: Request, { params }: { params: Promise<{ eventId: string }> }) => (await params).eventId,
@@ -22,9 +23,19 @@ export const GET = participantHandler(
         .limit(1)
     )[0];
     if (!event) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
+    const journey = await getParticipantJourneySettings.execute({
+      tenantId: session.tenantId,
+      eventId,
+    });
     const { status, ...eventData } = event;
     return NextResponse.json(
-      { data: { ...eventData, statusLabel: getParticipantEventStatusLabel(status) } },
+      {
+        data: {
+          ...eventData,
+          statusLabel: getParticipantEventStatusLabel(status),
+          participantJourney: journey?.effectiveSteps ?? [],
+        },
+      },
       { headers: { "cache-control": "private, no-store" } },
     );
   },

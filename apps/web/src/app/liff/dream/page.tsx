@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { ParticipantNotice, ParticipantPageHeader } from "../../../components/participant-ui";
+import { ParticipantNextLink } from "../../../components/participant-journey-nav";
 import { useLiffEventId } from "../../../lib/liff-location";
 
 type Card = { id: string; name: string; imageKey: string | null; description: string | null };
@@ -195,11 +196,7 @@ export default function DreamPage() {
               ))}
             </div>
           )}
-          {completed && (
-            <a className="button-link" href={`/liff/questionnaire?eventId=${eventId}`}>
-              席案内の5問へ
-            </a>
-          )}
+          {completed && <ParticipantNextLink current="dream" eventId={eventId} />}
         </section>
 
         {selected && !selectionSaved && suggestions.length === 0 && !completed && (
