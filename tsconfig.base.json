@@ -20,6 +20,8 @@
       "@shime/core/*": ["./packages/core/src/*"],
       "@shime/db": ["./packages/db/src/index.ts"],
       "@shime/db/*": ["./packages/db/src/*"],
+      "@shime/integrations": ["./packages/integrations/src/index.ts"],
+      "@shime/integrations/*": ["./packages/integrations/src/*"],
       "@shime/questionnaire": ["./packages/questionnaire/src/index.ts"],
       "@shime/questionnaire/*": ["./packages/questionnaire/src/*"],
       "@shime/web/*": ["./apps/web/src/*"]

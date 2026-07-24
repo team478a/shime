@@ -21,8 +21,9 @@ test("公開ヘルスチェックは機密情報を含まず応答する", async
   expect(response.headers()["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/);
   expect(await response.json()).toMatchObject({ status: "ok" });
 });
-test("内部ヘルスチェックと通知ジョブは未認証リクエストを拒否する", async ({ request }) => {
+test("内部ヘルスチェックと運用ジョブは未認証リクエストを拒否する", async ({ request }) => {
   expect((await request.get("/api/health/readiness")).status()).toBe(401);
+  expect((await request.get("/api/jobs/health-monitor")).status()).toBe(401);
   expect((await request.post("/api/jobs/notifications")).status()).toBe(401);
 });
 test("検証環境は検索エンジンに全ページ拒否を指示する", async ({ request }) => {

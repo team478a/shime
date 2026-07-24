@@ -26,6 +26,8 @@
 - `GET /api/liff/events/:eventId/questionnaire`
 - `PUT /api/liff/events/:eventId/questionnaire`
 - `POST /api/liff/events/:eventId/questionnaire/submit`
+- `GET /api/jobs/health-monitor`
+- `POST /api/jobs/health-monitor`
 
 ## 実施内容
 
@@ -56,6 +58,14 @@
 - Questionnaire RouteをGET/PUT 43行、提出16行へ縮小
 - Questionnaire UseCaseの単体テスト4件を追加
 - API RouteのDB直接import基準値を69件から67件へ削減
+- `jobHandler`を追加し、内部ジョブ用Bearer認証と既知エラー変換を共通化
+- ヘルス監視を`Route → UseCase → Provider / Repository`へ分離
+- 外部HTTPヘルスチェックを`HealthCheckProvider`インターフェースの背後へ移動
+- 監視対象取得と実行結果更新をtenant境界付きRepositoryへ移動
+- `last_run_summary_json`書き込みにZod Schema境界を追加
+- ヘルス監視RouteをGET/POST共通の14行へ縮小
+- jobHandler契約テスト3件、ヘルス監視UseCaseテスト3件を追加
+- API RouteのDB直接import基準値を67件から66件へ削減
 
 ## 互換性
 
@@ -71,7 +81,7 @@
 
 1. participantHandlerの希望入力APIへの段階適用
 2. publicHandler
-3. jobHandler
+3. jobHandlerの通知配信ジョブへの適用
 4. webhookHandler
 5. 対象Routeの契約テストを追加しながら1モジュールずつ移行
 6. 共通AuditとValidationの適用範囲拡大
@@ -82,10 +92,10 @@
 
 - format-check、architecture-check、typecheck、production build成功
 - lint成功（エラー0件、既存警告のみ）
-- Unit: 52ファイル、189テスト成功
+- Unit: 54ファイル、195テスト成功
 - Integration: 1ファイル、2テスト成功
 - E2E: 25テスト成功、対象外1テスト
 
 ## 次の推奨対象
 
-Phase 1の次対象は`jobHandler`とする。通知配信またはヘルス監視のどちらか一方に限定し、対象業務のUseCase・Repositoryと同時に移行する。参加者の希望入力はMatching ModuleとしてPhase 3で扱い、Handlerだけを先行適用しない。
+Phase 1の次対象は通知配信ジョブとする。`packages/notifications`にUseCase・Repository・LINE Provider利用境界を作成し、`jobHandler`を適用する。通知状態、再試行、失敗コード、既存レスポンスを変更せず、1モジュールだけを移行する。参加者の希望入力はMatching ModuleとしてPhase 3で扱い、Handlerだけを先行適用しない。

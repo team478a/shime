@@ -193,6 +193,8 @@ importers:
 
   packages/db: {}
 
+  packages/integrations: {}
+
   packages/questionnaire: {}
 
 packages:
