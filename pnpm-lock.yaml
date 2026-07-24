@@ -193,6 +193,8 @@ importers:
 
   packages/db: {}
 
+  packages/event-core: {}
+
   packages/integrations: {}
 
   packages/notifications: {}

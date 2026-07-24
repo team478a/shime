@@ -1,0 +1,9 @@
+{
+  "name": "@shime/event-core",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  }
+}

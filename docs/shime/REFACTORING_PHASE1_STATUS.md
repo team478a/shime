@@ -31,6 +31,7 @@
 - `GET /api/jobs/notifications`
 - `POST /api/jobs/notifications`
 - `POST /api/webhooks/line`
+- `GET /api/public/events/:eventId`
 
 ## 実施内容
 
@@ -87,6 +88,14 @@
 - Webhook Routeを63行から14行へ縮小
 - webhookHandler契約テスト3件、LINE Webhook UseCaseテスト5件を追加
 - API RouteのDB直接import基準値を65件から64件へ削減
+- `publicHandler`とevent scope付き`publicEventHandler`を追加
+- 公開イベント情報GETを`Route → UseCase → Repository → DB`へ分離
+- 受付中イベントだけを公開する既存条件と404レスポンスを維持
+- 申込フォーム項目の取得条件へtenant・event境界を明示
+- `validation` JSONをRepository境界でZod検証
+- 公開イベント情報RouteからDrizzleと`@shime/db`への直接依存を除去
+- publicHandler契約テスト3件、公開イベントUseCaseテスト2件を追加
+- API RouteのDB直接import基準値を64件から63件へ削減
 
 ## 互換性
 
@@ -100,10 +109,9 @@
 
 ## Phase 1の残作業
 
-1. participantHandlerの希望入力APIへの段階適用
-2. publicHandler
+1. 共通Auditの適用範囲拡大
+2. 共通Validationの未移行Routeへの段階適用
 3. 対象Routeの契約テストを追加しながら1モジュールずつ移行
-4. 共通AuditとValidationの適用範囲拡大
 
 希望入力はMatching Module、公開申込はApplication Moduleの業務分離を伴う。以降はHandlerだけを先に適用せず、対象モジュールのUseCase・Repositoryと同時に段階移行する。
 
@@ -111,10 +119,10 @@
 
 - format-check、architecture-check、typecheck、production build成功
 - lint成功（エラー0件、既存警告のみ）
-- Unit: 57ファイル、209テスト成功
+- Unit: 59ファイル、214テスト成功
 - Integration: 1ファイル、2テスト成功
 - E2E: 27テスト成功、対象外1テスト
 
 ## 次の推奨対象
 
-Phase 1の次対象は公開イベント情報GET APIとする。Event Coreの読み取りUseCase・Repositoryと`publicHandler`を同時に導入し、申込作成APIはApplication ModuleのPhase 4まで分けて扱う。参加者の希望入力はMatching ModuleとしてPhase 3で扱い、Handlerだけを先行適用しない。
+Phase 1の共通Handler群は導入済みとする。申込作成APIはApplication ModuleのPhase 4、参加者の希望入力はMatching ModuleのPhase 3でUseCase・Repositoryと同時に扱う。次はマスタープランのPhase 2としてSeating Moduleを1ユースケースずつ分離する。

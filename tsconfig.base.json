@@ -20,6 +20,8 @@
       "@shime/core/*": ["./packages/core/src/*"],
       "@shime/db": ["./packages/db/src/index.ts"],
       "@shime/db/*": ["./packages/db/src/*"],
+      "@shime/event-core": ["./packages/event-core/src/index.ts"],
+      "@shime/event-core/*": ["./packages/event-core/src/*"],
       "@shime/integrations": ["./packages/integrations/src/index.ts"],
       "@shime/integrations/*": ["./packages/integrations/src/*"],
       "@shime/notifications": ["./packages/notifications/src/index.ts"],
