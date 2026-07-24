@@ -28,6 +28,8 @@
 - `POST /api/liff/events/:eventId/questionnaire/submit`
 - `GET /api/jobs/health-monitor`
 - `POST /api/jobs/health-monitor`
+- `GET /api/jobs/notifications`
+- `POST /api/jobs/notifications`
 
 ## 実施内容
 
@@ -66,6 +68,15 @@
 - ヘルス監視RouteをGET/POST共通の14行へ縮小
 - jobHandler契約テスト3件、ヘルス監視UseCaseテスト3件を追加
 - API RouteのDB直接import基準値を67件から66件へ削減
+- 通知配信を`Route → UseCase → Repository / NotificationDeliveryProvider`へ分離
+- 通知キュー取得、排他claim、送信試行、成功・失敗記録をRepositoryへ移動
+- 通知更新条件へtenant・event境界を追加し、送信試行更新にもtenant境界を追加
+- LINE送信を`NotificationDeliveryProvider`の背後へ移動
+- 通知payloadと`last_run_summary_json`にZod Schema境界を追加
+- 既存の20件制限、送信失敗コード、再試行記録、GET/POST、Request ID、no-store、運用ログを維持
+- 通知配信Routeを171行から38行へ縮小
+- jobHandlerの通知契約テスト2件、通知配信UseCaseテスト4件を追加
+- API RouteのDB直接import基準値を66件から65件へ削減
 
 ## 互換性
 
@@ -81,10 +92,9 @@
 
 1. participantHandlerの希望入力APIへの段階適用
 2. publicHandler
-3. jobHandlerの通知配信ジョブへの適用
-4. webhookHandler
-5. 対象Routeの契約テストを追加しながら1モジュールずつ移行
-6. 共通AuditとValidationの適用範囲拡大
+3. webhookHandler
+4. 対象Routeの契約テストを追加しながら1モジュールずつ移行
+5. 共通AuditとValidationの適用範囲拡大
 
 希望入力はMatching Module、公開申込はApplication Moduleの業務分離を伴う。以降はHandlerだけを先に適用せず、対象モジュールのUseCase・Repositoryと同時に段階移行する。
 
@@ -92,10 +102,10 @@
 
 - format-check、architecture-check、typecheck、production build成功
 - lint成功（エラー0件、既存警告のみ）
-- Unit: 54ファイル、195テスト成功
+- Unit: 55ファイル、201テスト成功
 - Integration: 1ファイル、2テスト成功
 - E2E: 25テスト成功、対象外1テスト
 
 ## 次の推奨対象
 
-Phase 1の次対象は通知配信ジョブとする。`packages/notifications`にUseCase・Repository・LINE Provider利用境界を作成し、`jobHandler`を適用する。通知状態、再試行、失敗コード、既存レスポンスを変更せず、1モジュールだけを移行する。参加者の希望入力はMatching ModuleとしてPhase 3で扱い、Handlerだけを先行適用しない。
+Phase 1の次対象はLINE Webhookとする。署名検証、重複イベント防止、tenant解決、イベント処理を`webhookHandler`とIntegrations UseCaseへ分離し、既存のLINE連携動作とレスポンスを維持する。公開APIはEvent ConfigurationとApplicationの2モジュールへ跨るため、一括移行しない。参加者の希望入力はMatching ModuleとしてPhase 3で扱い、Handlerだけを先行適用しない。

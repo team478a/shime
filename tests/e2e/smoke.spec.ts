@@ -24,7 +24,16 @@ test("公開ヘルスチェックは機密情報を含まず応答する", async
 test("内部ヘルスチェックと運用ジョブは未認証リクエストを拒否する", async ({ request }) => {
   expect((await request.get("/api/health/readiness")).status()).toBe(401);
   expect((await request.get("/api/jobs/health-monitor")).status()).toBe(401);
-  expect((await request.post("/api/jobs/notifications")).status()).toBe(401);
+  const notificationResponse = await request.post("/api/jobs/notifications", {
+    headers: { "x-request-id": "e2e-notification-request" },
+  });
+  expect(notificationResponse.status()).toBe(401);
+  expect(notificationResponse.headers()["cache-control"]).toContain("no-store");
+  expect(notificationResponse.headers()["x-request-id"]).toBe("e2e-notification-request");
+  expect(await notificationResponse.json()).toEqual({
+    code: "UNAUTHORIZED",
+    request_id: "e2e-notification-request",
+  });
 });
 test("検証環境は検索エンジンに全ページ拒否を指示する", async ({ request }) => {
   const page = await request.get("/");

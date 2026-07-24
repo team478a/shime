@@ -22,6 +22,8 @@
       "@shime/db/*": ["./packages/db/src/*"],
       "@shime/integrations": ["./packages/integrations/src/index.ts"],
       "@shime/integrations/*": ["./packages/integrations/src/*"],
+      "@shime/notifications": ["./packages/notifications/src/index.ts"],
+      "@shime/notifications/*": ["./packages/notifications/src/*"],
       "@shime/questionnaire": ["./packages/questionnaire/src/index.ts"],
       "@shime/questionnaire/*": ["./packages/questionnaire/src/*"],
       "@shime/web/*": ["./apps/web/src/*"]

@@ -5,7 +5,7 @@ const SOURCE_ROOT = path.resolve("apps/web/src");
 const MAX_SOURCE_LINES = 300;
 
 const baseline = {
-  routeDbImports: 66,
+  routeDbImports: 65,
   clientFilesWithFetch: 25,
   filesOverMaxLines: 11,
 } as const;

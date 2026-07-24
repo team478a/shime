@@ -7,6 +7,7 @@ export default defineConfig({
       "@shime/core": path.resolve(__dirname, "packages/core/src"),
       "@shime/db": path.resolve(__dirname, "packages/db/src"),
       "@shime/integrations": path.resolve(__dirname, "packages/integrations/src"),
+      "@shime/notifications": path.resolve(__dirname, "packages/notifications/src"),
       "@shime/questionnaire": path.resolve(__dirname, "packages/questionnaire/src"),
     },
   },
