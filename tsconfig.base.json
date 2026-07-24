@@ -18,6 +18,8 @@
     "paths": {
       "@shime/core": ["./packages/core/src/index.ts"],
       "@shime/core/*": ["./packages/core/src/*"],
+      "@shime/checkin": ["./packages/checkin/src/index.ts"],
+      "@shime/checkin/*": ["./packages/checkin/src/*"],
       "@shime/db": ["./packages/db/src/index.ts"],
       "@shime/db/*": ["./packages/db/src/*"],
       "@shime/event-core": ["./packages/event-core/src/index.ts"],

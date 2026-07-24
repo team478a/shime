@@ -48,7 +48,12 @@ export const POST = staffEventHandler(
     const target = rows[0];
     if (!target) return NextResponse.json({ code: "INVALID_OR_EXPIRED_QR" }, { status: 404 });
     const existing = await db
-      .select({ status: checkins.status, checkedInAt: checkins.checkedInAt })
+      .select({
+        status: checkins.status,
+        checkedInAt: checkins.checkedInAt,
+        receptionCategoryLabel: checkins.receptionCategoryLabel,
+        receptionNumber: checkins.receptionNumber,
+      })
       .from(checkins)
       .where(
         and(
@@ -63,6 +68,8 @@ export const POST = staffEventHandler(
         ...target,
         alreadyCheckedIn: existing[0]?.status === "checked_in",
         checkedInAt: existing[0]?.checkedInAt,
+        receptionCategoryLabel: existing[0]?.receptionCategoryLabel,
+        receptionNumber: existing[0]?.receptionNumber,
       },
     });
   },

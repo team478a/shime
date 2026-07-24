@@ -1,26 +1,23 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import {
   buildCheckinCancellationReason,
   CHECKIN_CANCELLATION_REASONS,
   type CheckinCancellationReason,
 } from "@shime/core/checkin/cancellation";
-import { getParticipantStatusLabel } from "../../../../../lib/status-labels";
 import { getCheckinSearchFailure } from "../../../../../lib/checkin-feedback";
-
-type Preview = {
-  participantId: string;
-  participantNumber: string;
-  fullName: string;
-  participantStatus: string;
-  alreadyCheckedIn: boolean;
-  checkedInAt?: string;
-};
+import {
+  CheckinCandidateCard,
+  CheckinParticipantSummary,
+  type CheckinPreview,
+  getCheckinFailureMessage,
+  getConfirmedCheckinMessage,
+} from "./checkin-participant-summary";
 
 export function CheckinConsole({ eventId, eventName }: { eventId: string; eventName: string }) {
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [candidates, setCandidates] = useState<Preview[]>([]);
+  const [preview, setPreview] = useState<CheckinPreview | null>(null);
+  const [candidates, setCandidates] = useState<CheckinPreview[]>([]);
   const [method, setMethod] = useState<"qr" | "manual">("qr");
   const [message, setMessage] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -109,7 +106,7 @@ export function CheckinConsole({ eventId, eventName }: { eventId: string; eventN
         setManualRequiresLogin(failure.requiresLogin);
         return;
       }
-      const found = (body.data?.candidates ?? []) as Preview[];
+      const found = (body.data?.candidates ?? []) as CheckinPreview[];
       setCandidates(found);
       setManualMessage(
         found.length
@@ -126,7 +123,7 @@ export function CheckinConsole({ eventId, eventName }: { eventId: string; eventN
     }
   }
 
-  function selectCandidate(candidate: Preview) {
+  function selectCandidate(candidate: CheckinPreview) {
     setPreview(candidate);
     setCandidates([]);
     setMethod("manual");
@@ -142,8 +139,19 @@ export function CheckinConsole({ eventId, eventName }: { eventId: string; eventN
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ participantId: preview.participantId, method }),
     });
-    setMessage(response.ok ? "受付を確定しました。" : "すでに受付済みです。");
-    if (response.ok) setPreview({ ...preview, alreadyCheckedIn: true });
+    const body = await response.json().catch(() => null);
+    if (response.ok) {
+      const confirmed = {
+        ...preview,
+        alreadyCheckedIn: true,
+        receptionCategoryLabel: body?.data?.receptionCategoryLabel,
+        receptionNumber: body?.data?.receptionNumber,
+      };
+      setPreview(confirmed);
+      setMessage(getConfirmedCheckinMessage(confirmed));
+    } else {
+      setMessage(getCheckinFailureMessage(response.status));
+    }
   }
 
   async function cancel() {
@@ -226,21 +234,7 @@ export function CheckinConsole({ eventId, eventName }: { eventId: string; eventN
         {candidates.length > 0 && (
           <div className="admin-card-list">
             {candidates.map((candidate) => (
-              <article className="admin-list-card" key={candidate.participantId}>
-                <div>
-                  <strong>{candidate.participantNumber}</strong>
-                  <span>{candidate.fullName}</span>
-                </div>
-                <dl>
-                  <dt>参加状態</dt>
-                  <dd>{getParticipantStatusLabel(candidate.participantStatus)}</dd>
-                  <dt>受付</dt>
-                  <dd>{candidate.alreadyCheckedIn ? "受付済み" : "未受付"}</dd>
-                </dl>
-                <button type="button" onClick={() => selectCandidate(candidate)}>
-                  この参加者を確認
-                </button>
-              </article>
+              <CheckinCandidateCard key={candidate.participantId} candidate={candidate} onSelect={selectCandidate} />
             ))}
           </div>
         )}
@@ -249,16 +243,7 @@ export function CheckinConsole({ eventId, eventName }: { eventId: string; eventN
       {preview && (
         <section className="panel wide">
           <h2>受付確認</h2>
-          <dl>
-            <dt>氏名</dt>
-            <dd>{preview.fullName}</dd>
-            <dt>参加者番号</dt>
-            <dd>{preview.participantNumber}</dd>
-            <dt>参加状態</dt>
-            <dd>{getParticipantStatusLabel(preview.participantStatus)}</dd>
-            <dt>受付</dt>
-            <dd>{preview.alreadyCheckedIn ? "受付済み" : "未受付"}</dd>
-          </dl>
+          <CheckinParticipantSummary participant={preview} includeIdentity />
           {preview.alreadyCheckedIn ? (
             <button className="secondary" onClick={() => setCancelOpen((current) => !current)}>
               受付を取り消す

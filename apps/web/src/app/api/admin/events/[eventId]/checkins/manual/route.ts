@@ -22,6 +22,8 @@ export const POST = staffEventHandler(
         fullName: applications.fullName,
         checkinStatus: checkins.status,
         checkedInAt: checkins.checkedInAt,
+        receptionCategoryLabel: checkins.receptionCategoryLabel,
+        receptionNumber: checkins.receptionNumber,
       })
       .from(participants)
       .innerJoin(
@@ -54,6 +56,8 @@ export const POST = staffEventHandler(
           participantStatus: row.participantStatus,
           alreadyCheckedIn: row.checkinStatus === "checked_in",
           checkedInAt: row.checkedInAt,
+          receptionCategoryLabel: row.receptionCategoryLabel,
+          receptionNumber: row.receptionNumber,
         })),
       },
     });

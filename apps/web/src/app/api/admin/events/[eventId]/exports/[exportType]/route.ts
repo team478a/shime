@@ -2,14 +2,14 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createCsv, requirePermission, type CsvValue } from "@shime/core";
+import { createCsv, type CsvValue, requirePermission } from "@shime/core";
 import {
   applications,
   auditLogs,
   checkins,
+  events,
   eventSeats,
   eventTables,
-  events,
   getDatabase,
   lovePassports,
   matchCandidates,
@@ -21,6 +21,8 @@ import {
   seatingRuns,
 } from "@shime/db";
 import { requireStaffSession } from "@shime/web/server/auth";
+import { CHECKIN_EXPORT_HEADERS } from "./export-headers";
+
 const typeSchema = z.enum(["participants", "checkins", "seats", "progress", "results", "preferences"]);
 export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string; exportType: string }> }) {
   const { eventId, exportType: rawType } = await params;
@@ -86,10 +88,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
     ]);
   }
   if (type.data === "checkins") {
-    headers = ["participant_number", "status", "method", "checked_in_at", "cancelled_at", "cancellation_reason"];
+    headers = CHECKIN_EXPORT_HEADERS;
     const data = await db
       .select({
         number: participants.participantNumber,
+        receptionCategory: checkins.receptionCategory,
+        receptionCategoryLabel: checkins.receptionCategoryLabel,
+        receptionNumber: checkins.receptionNumber,
         status: checkins.status,
         method: checkins.method,
         checkedInAt: checkins.checkedInAt,
@@ -106,7 +111,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
         ),
       )
       .where(and(eq(checkins.tenantId, session.tenantId), eq(checkins.eventId, eventId)));
-    rows = data.map((r) => [r.number, r.status, r.method, r.checkedInAt, r.cancelledAt, r.reason]);
+    rows = data.map((r) => [
+      r.number,
+      r.receptionCategory,
+      r.receptionCategoryLabel,
+      r.receptionNumber,
+      r.status,
+      r.method,
+      r.checkedInAt,
+      r.cancelledAt,
+      r.reason,
+    ]);
   }
   if (type.data === "seats") {
     headers = ["participant_number", "table_code", "seat_code", "locked", "published_at"];

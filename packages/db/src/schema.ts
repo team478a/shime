@@ -807,9 +807,20 @@ export const checkins = pgTable(
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     cancelledBy: uuid("cancelled_by").references(() => users.id),
     cancellationReason: text("cancellation_reason"),
+    receptionCategory: varchar("reception_category", { length: 80 }),
+    receptionCategoryLabel: varchar("reception_category_label", { length: 80 }),
+    receptionNumber: integer("reception_number"),
     ...timestamps,
   },
-  (table) => [uniqueIndex("checkins_participant_uidx").on(table.tenantId, table.eventId, table.participantId)],
+  (table) => [
+    uniqueIndex("checkins_participant_uidx").on(table.tenantId, table.eventId, table.participantId),
+    uniqueIndex("checkins_reception_number_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.receptionCategory,
+      table.receptionNumber,
+    ),
+  ],
 );
 
 export const checkinLogs = pgTable(

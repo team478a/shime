@@ -45,4 +45,35 @@ describe("database migrations", () => {
       ),
     ).rejects.toThrow();
   }, 20_000);
+  it("keeps reception numbers unique within an event category", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    await client.exec(`
+      insert into tenants(id, code, name, status, timezone)
+      values ('10000000-0000-0000-0000-000000000001','scope','Scope','active','Asia/Tokyo');
+      insert into events(id, tenant_id, code, name, status, starts_at, capacity, dream_registration_mode, preference_mode, allow_multiple_matches)
+      values ('10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','event','Event','draft',now(),10,'optional','first_choice_only',false);
+      insert into applications(id, tenant_id, event_id, source, status, full_name, birth_date, participant_category)
+      values
+        ('10000000-0000-0000-0000-000000000003','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002','shime_form','confirmed','A1','1990-01-01','group_a'),
+        ('10000000-0000-0000-0000-000000000004','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002','shime_form','confirmed','A2','1990-01-01','group_a'),
+        ('10000000-0000-0000-0000-000000000005','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002','shime_form','confirmed','B1','1990-01-01','group_b');
+      insert into participants(id, tenant_id, event_id, application_id, status, dream_state)
+      values
+        ('10000000-0000-0000-0000-000000000006','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000003','confirmed','skipped'),
+        ('10000000-0000-0000-0000-000000000007','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000004','confirmed','skipped'),
+        ('10000000-0000-0000-0000-000000000008','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000005','confirmed','skipped');
+      insert into checkins(tenant_id,event_id,participant_id,status,method,reception_category,reception_category_label,reception_number)
+      values
+        ('10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000006','checked_in','manual','group_a','グループA',1),
+        ('10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000008','checked_in','manual','group_b','グループB',1);
+    `);
+    await expect(
+      client.exec(`
+        insert into checkins(tenant_id,event_id,participant_id,status,method,reception_category,reception_category_label,reception_number)
+        values ('10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000007','checked_in','manual','group_a','グループA',1)
+      `),
+    ).rejects.toThrow();
+  }, 20_000);
 });

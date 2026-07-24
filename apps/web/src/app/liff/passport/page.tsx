@@ -8,7 +8,17 @@ import { ParticipantNotice, ParticipantPageHeader } from "../../../components/pa
 import { getPassportStatusLabel } from "../../../lib/status-labels";
 import { useLiffEventId } from "../../../lib/liff-location";
 
-type Passport = { participantNumber: string; status: string };
+type Passport = {
+  participantNumber: string;
+  status: string;
+  receptionCategoryLabel?: string | null;
+  receptionNumber?: number | null;
+};
+
+function getReceptionNumber(passport: Passport) {
+  if (passport.receptionNumber === null || passport.receptionNumber === undefined) return null;
+  return `${passport.receptionCategoryLabel ?? ""}${passport.receptionNumber}番`;
+}
 
 async function copyText(value: string) {
   try {
@@ -129,6 +139,12 @@ export default function PassportPage() {
             <dl className="pass-details">
               <dt>参加者番号</dt>
               <dd>{passport.participantNumber}</dd>
+              {getReceptionNumber(passport) && (
+                <>
+                  <dt>受付番号</dt>
+                  <dd>{getReceptionNumber(passport)}</dd>
+                </>
+              )}
               <dt>準備状況</dt>
               <dd>{getPassportStatusLabel(passport.status)}</dd>
             </dl>
