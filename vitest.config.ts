@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@shime/checkin": path.resolve(__dirname, "packages/checkin/src"),
+      "@shime/concierge": path.resolve(__dirname, "packages/concierge/src"),
       "@shime/core": path.resolve(__dirname, "packages/core/src"),
       "@shime/db": path.resolve(__dirname, "packages/db/src"),
       "@shime/event-core": path.resolve(__dirname, "packages/event-core/src"),

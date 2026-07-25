@@ -331,9 +331,7 @@ export function createDrizzleConciergeDiagnosisRepository(): ConciergeDiagnosisR
         getDatabase()
           .select({ status: conciergeSessions.status })
           .from(conciergeSessions)
-          .where(
-            and(eq(conciergeSessions.tenantId, scope.tenantId), eq(conciergeSessions.eventId, scope.eventId)),
-          ),
+          .where(and(eq(conciergeSessions.tenantId, scope.tenantId), eq(conciergeSessions.eventId, scope.eventId))),
       ]);
       const eligibleCount = eligible[0]?.value ?? 0;
       const inProgressCount = sessions.filter((session) => session.status === "in_progress").length;

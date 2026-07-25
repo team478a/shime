@@ -77,19 +77,22 @@ async function readResponse(response: Response) {
   return body.data;
 }
 
+async function fetchDiagnosisView(eventId: string): Promise<DiagnosisView> {
+  return (await readResponse(
+    await fetch(`/api/liff/events/${encodeURIComponent(eventId)}/diagnosis`, { cache: "no-store" }),
+  )) as DiagnosisView;
+}
+
 export function useDiagnosis(eventId: string) {
   const [view, setView] = useState<DiagnosisView | null>(null);
-  const [loadState, setLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [loadState, setLoadState] = useState<"idle" | "loaded" | "error">("idle");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!eventId) return;
-    setLoadState("loading");
     try {
-      const data = (await readResponse(
-        await fetch(`/api/liff/events/${encodeURIComponent(eventId)}/diagnosis`, { cache: "no-store" }),
-      )) as DiagnosisView;
+      const data = await fetchDiagnosisView(eventId);
       setView(data);
       setMessage("");
       setLoadState("loaded");
@@ -100,8 +103,24 @@ export function useDiagnosis(eventId: string) {
   }, [eventId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!eventId) return;
+    let active = true;
+    fetchDiagnosisView(eventId)
+      .then((data) => {
+        if (!active) return;
+        setView(data);
+        setMessage("");
+        setLoadState("loaded");
+      })
+      .catch((error) => {
+        if (!active) return;
+        setMessage(error instanceof Error ? error.message : "診断を読み込めませんでした。");
+        setLoadState("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [eventId]);
 
   async function start(restart = false) {
     setBusy(true);
@@ -139,9 +158,7 @@ export function useDiagnosis(eventId: string) {
         }),
       )) as { revision: number };
       setView((current) =>
-        current?.session
-          ? { ...current, session: { ...current.session, revision: data.revision }, answers }
-          : current,
+        current?.session ? { ...current, session: { ...current.session, revision: data.revision }, answers } : current,
       );
       setMessage("回答を保存しました。");
       return data.revision;

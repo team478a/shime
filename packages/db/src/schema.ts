@@ -1539,9 +1539,7 @@ export const conciergeSessions = pgTable(
       .references(() => eventConciergeSnapshots.id),
     status: conciergeSessionStatus("status").default("in_progress").notNull(),
     revision: integer("revision").default(0).notNull(),
-    selectedCardAssetVersionId: uuid("selected_card_asset_version_id").references(
-      () => conciergeCardAssetVersions.id,
-    ),
+    selectedCardAssetVersionId: uuid("selected_card_asset_version_id").references(() => conciergeCardAssetVersions.id),
     startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     ...timestamps,

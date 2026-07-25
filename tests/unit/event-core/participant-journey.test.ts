@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_PARTICIPANT_JOURNEY,
+  DiagnosisJourneyUnavailableError,
   type ParticipantJourneyRepository,
   participantJourneyStepsSchema,
   PublishParticipantJourneyDraft,
@@ -37,11 +38,24 @@ describe("participant journey configuration", () => {
     expect(participantJourneyStepsSchema.safeParse(steps).success).toBe(false);
   });
 
-  it("keeps diagnosis disabled until its participant flow exists", () => {
+  it("blocks publishing diagnosis until its participant flow exists", async () => {
     const steps = DEFAULT_PARTICIPANT_JOURNEY.map((step) =>
       step.id === "diagnosis" ? { ...step, enabled: true } : step,
     );
-    expect(participantJourneyStepsSchema.safeParse(steps).success).toBe(false);
+    const repository: ParticipantJourneyRepository = {
+      getSettings: vi.fn().mockResolvedValue({
+        draft: { id: "version-1", version: 1, status: "draft", steps, publishedAt: null, updatedAt: scope.now },
+        published: null,
+        effectiveSteps: DEFAULT_PARTICIPANT_JOURNEY,
+      }),
+      saveDraft: vi.fn(),
+      publishDraft: vi.fn(),
+      isDiagnosisAvailable: vi.fn().mockResolvedValue(false),
+    };
+    await expect(new PublishParticipantJourneyDraft(repository).execute(scope)).rejects.toThrow(
+      DiagnosisJourneyUnavailableError,
+    );
+    expect(repository.publishDraft).not.toHaveBeenCalled();
   });
 
   it("validates before saving a draft", async () => {
@@ -56,6 +70,7 @@ describe("participant journey configuration", () => {
         updatedAt: scope.now,
       }),
       publishDraft: vi.fn(),
+      isDiagnosisAvailable: vi.fn().mockResolvedValue(true),
     };
     await new SaveParticipantJourneyDraft(repository).execute({
       ...scope,
@@ -72,6 +87,7 @@ describe("participant journey configuration", () => {
       getSettings: vi.fn(),
       saveDraft: vi.fn(),
       publishDraft: vi.fn().mockResolvedValue(null),
+      isDiagnosisAvailable: vi.fn().mockResolvedValue(true),
     };
     await new PublishParticipantJourneyDraft(repository).execute(scope);
     expect(repository.publishDraft).toHaveBeenCalledWith(scope);
