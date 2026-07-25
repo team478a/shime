@@ -29,7 +29,10 @@ export default function DiagnosisPage() {
   const [syncedSessionKey, setSyncedSessionKey] = useState<string | null>(null);
 
   const session = view?.session ?? null;
-  const sessionKey = session ? `${session.id}:${session.revision}` : null;
+  // Keyed on id + submittedAt (not revision) so a routine mid-editing save doesn't
+  // re-run this and clobber the participant's in-progress card/answer selection;
+  // it should only re-hydrate on a genuinely new or reopened answering attempt.
+  const sessionKey = session ? `${session.id}:${session.submittedAt ?? "null"}` : null;
   if (session && sessionKey !== syncedSessionKey) {
     setSyncedSessionKey(sessionKey);
     setSelectedCardId(session.selectedCardAssetVersionId ?? "");

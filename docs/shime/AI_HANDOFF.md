@@ -1,9 +1,9 @@
 # SHIME AI引継ぎ記録
 
-最終更新: 2026-07-25 15:45（Asia/Tokyo、Claude Code更新）  
+最終更新: 2026-07-25 16:10（Asia/Tokyo、Claude Code更新）  
 作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）  
 開始時の `main`: `b07d1ce`  
-作業状態: **Concierge Phase 1B 実装途中・本番反映不可**（型チェック・lint・単体/統合テスト・buildは成功、Concierge単体テスト・結合テスト・APIルート契約テストを追加済み、migrationは生成済み・staging等どの環境にも未適用）
+作業状態: **Concierge Phase 1B 実装途中・本番反映不可**（型チェック・lint・単体/統合/契約/E2Eテストがすべて成功、E2Eで見つかった実バグを1件修正済み、migrationは生成済み・staging等どの環境にも未適用）
 
 ## 中断時の安全状態
 
@@ -279,9 +279,9 @@ pnpm test:e2e                  → 未実行。診断機能のE2Eはまだ追加
 - 元P0 4（単体テスト追加: 無効/期間外/不正スナップショット、4分析軸・8感情・8カード公開条件、不正回答・重複回答、途中保存・revision conflict、4問未完了時の提出拒否、決定論的な結果、再回答許可/拒否）: **完了**（詳細は下記セクション参照）。
 - 元P0 5（integration test: 新規migrationの適用、テナント・イベント・参加者間のデータ分離、回答履歴・結果・アクセスログ）: **完了**（詳細は下記セクション参照）。
 - 元P0 6（participant API・staff API・カード画像認可の契約テスト）: **完了**（詳細は下記セクション参照）。
-- 元P0 7（スマートフォン320px相当を含むE2E）: **未着手**。
-- 元P0 8（下記の全必須チェックを成功させる）: format/architecture/lint/typecheck/test/build/audit は成功。readiness:strict は上記の理由で失敗（コード起因ではない）。test:e2e は未実行。
-- 元P0 9・10（staging Supabaseへのmigration適用、診断設定OFF維持での端末確認）: **未着手**。migration適用の前提となる元P0 5〜6のテストが揃っていないため、今回は意図的に見送った。
+- 元P0 7（スマートフォン320px相当を含むE2E）: **完了**（詳細は下記セクション参照。この過程で実バグ1件を発見・修正）。
+- 元P0 8（下記の全必須チェックを成功させる）: format/architecture/lint/typecheck/test/build/audit/test:e2e すべて成功。readiness:strict のみ上記の理由で失敗（コード起因ではない、別系統のP0）。
+- 元P0 9・10（staging Supabaseへのmigration適用、診断設定OFF維持での端末確認）: **未着手**。テストは元P0 4〜7ですべて揃ったが、staging適用は別途明示承認が必要なため、本セッションでは意図的に見送った。
 
 ## Concierge単体テスト追加（2026-07-25、Claude Code、元P0 4完了）
 
@@ -340,7 +340,40 @@ pnpm test:e2e                  → 未実行。診断機能のE2Eはまだ追加
 
 ### 次に行う作業（優先順）
 
-1. スマートフォン320px相当のE2Eを追加し、`pnpm test:e2e` を実行する（元P0 7）。これでAI_HANDOFF記載のConcierge Phase 1B単体/結合/契約/E2Eテスト系のP0がすべて揃う。
-2. 全チェック成功後、staging Supabaseへのmigration適用は別セッション・別途明示承認のもとで行う（本セッションでは未実施・未承認）。
-3. `EVENT_CONFIG_20260808.yaml` のREQUIRED_INPUT解消は本Concierge作業とは別系統のP0であり、担当・進め方を別途確認する必要がある。
-4. PR #3 のレビュー・マージ判断（`release/2026-08-08-readiness`へのマージには承認が必要、`main`への昇格はさらに別途承認が必要）。
+1. 全チェック成功後、staging Supabaseへのmigration適用は別セッション・別途明示承認のもとで行う（本セッションでは未実施・未承認）。
+2. `EVENT_CONFIG_20260808.yaml` のREQUIRED_INPUT解消は本Concierge作業とは別系統のP0であり、担当・進め方を別途確認する必要がある。
+3. PR #3 のレビュー・マージ判断（`release/2026-08-08-readiness`へのマージには承認が必要、`main`への昇格はさらに別途承認が必要）。
+
+## Concierge E2E追加と実バグ修正（2026-07-25、Claude Code、元P0 7完了）
+
+`tests/e2e/concierge-diagnosis.spec.ts` を新規追加し、既存`tests/e2e/smoke.spec.ts`の「スマートフォン幅で参加者画面が横にはみ出さない」テストの対象パスに`/liff/diagnosis`を追加した。Playwrightの`page.route()`でAPIをモックし（DB接続なし、既存の`tests/e2e/smoke.spec.ts`のDreamテストと同じ手法）、モバイル幅（iPhone 13相当）でカード選択→4問回答→確認→提出→ルールベース結果表示までの一連の操作を検証した。
+
+### このE2Eで見つけた実バグ（修正済み）
+
+E2E作成中、「4問回答して確認画面へ進む」操作で回答内容が消えてカード選択画面に戻ってしまう不具合を発見した。単体・結合・契約テストでは発見できなかった、画面の状態遷移に起因する実バグだった。
+
+原因:
+
+- `apps/web/src/app/liff/diagnosis/page.tsx` のローカル状態同期ロジックが、セッションの`id`と`revision`をキーにして「セッションが変わったら選択カード・回答・画面をサーバー状態から再同期する」処理を行っていた。
+- しかし`revision`は参加者が「途中保存」や「確認へ進む」を押すたびに通常のフローとして毎回インクリメントされる値であり、そのたびにこの再同期処理が発火し、参加者が入力中のカード選択・回答をサーバーから返ってきた（実際には`apps/web/src/hooks/use-diagnosis.ts`側の`save()`が`selectedCardAssetVersionId`をローカルの`session`に反映し忘れていたため空のままの）状態で上書きしてしまっていた。
+
+修正内容:
+
+- `apps/web/src/hooks/use-diagnosis.ts`: `save()`がPUT成功後にローカルの`session`を更新する際、`revision`だけでなく`selectedCardAssetVersionId`も正しく反映するよう修正した。
+- `apps/web/src/app/liff/diagnosis/page.tsx`: 再同期のキーを`` `${session.id}:${session.revision}` ``から`` `${session.id}:${session.submittedAt ?? "null"}` ``に変更した。これにより、新規セッション開始時・再回答のための再オープン時（`submittedAt`がタイムスタンプ⇄nullに変わる境目）だけ再同期が発火し、通常の途中保存では発火しなくなった。
+
+この2箇所の修正は、いずれもConcierge Phase 1BのWIP実装に元々あった不具合であり、今回のE2E追加によって初めて顕在化・修正されたものである。
+
+### カバー内容
+
+- カード選択→4問回答→確認→提出→ルールベース結果表示の一連の操作が、モバイル幅（iPhone 13相当）で横はみ出しなく完了できること
+- 回答が4問未満のときは「確認へ進む」ボタンが無効化されたままであること
+- 上記に加え、`smoke.spec.ts`の既存モバイル幅はみ出しチェックの対象に`/liff/diagnosis`（イベント情報なしの安全な初期表示）を追加した
+
+### 検証結果
+
+`pnpm typecheck`・`pnpm format:check`・`pnpm lint`（0 errors）・`pnpm architecture:check`・`pnpm test`（単体287件・結合12件、全成功）・`pnpm build`・`pnpm test:e2e`（29件成功・3件はデスクトッププロジェクトでのモバイル専用テストの意図的スキップ）すべて成功。
+
+`pnpm test:e2e`はこのセッションのサンドボックス環境ではPlaywrightの同梱ブラウザバージョンと実行時ブラウザのバージョン不一致（`chrome-headless-shell`欠如）により、`playwright.config.ts`に一時的に`executablePath: "/opt/pw-browsers/chromium"`を追加して実行・検証した。**この変更はコミットしていない**（他の実行環境ではこのパスが存在せず、逆にテストを壊すサンドボックス固有の回避策のため）。他の環境で`pnpm test:e2e`を実行する際にブラウザ実行ファイルが見つからない場合は、`pnpm exec playwright install`でブラウザを取得するか、実行環境に応じた`executablePath`を個別に指定すること。
+
+これで、AI_HANDOFF.md記載のConcierge Phase 1B単体・結合・契約・E2Eテストのすべてが完了した。この作業もPR #3に追加コミットとして反映した。

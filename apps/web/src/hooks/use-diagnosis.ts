@@ -158,7 +158,13 @@ export function useDiagnosis(eventId: string) {
         }),
       )) as { revision: number };
       setView((current) =>
-        current?.session ? { ...current, session: { ...current.session, revision: data.revision }, answers } : current,
+        current?.session
+          ? {
+              ...current,
+              session: { ...current.session, revision: data.revision, selectedCardAssetVersionId },
+              answers,
+            }
+          : current,
       );
       setMessage("回答を保存しました。");
       return data.revision;
