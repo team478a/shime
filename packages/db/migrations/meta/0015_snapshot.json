@@ -1,5 +1,5 @@
 {
-  "id": "0cf64488-b652-458e-902a-730fd375f76f",
+  "id": "45735271-e3f2-420a-ba40-2c6cf4651516",
   "prevId": "38552761-506d-46bd-93eb-3762a54bd69b",
   "version": "7",
   "dialect": "postgresql",
@@ -1518,6 +1518,55 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "concierge_access_logs_participant_scope_fk": {
+          "name": "concierge_access_logs_participant_scope_fk",
+          "tableFrom": "concierge_access_logs",
+          "tableTo": "participants",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id",
+            "participant_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "event_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "concierge_access_logs_session_scope_fk": {
+          "name": "concierge_access_logs_session_scope_fk",
+          "tableFrom": "concierge_access_logs",
+          "tableTo": "concierge_sessions",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id",
+            "session_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "event_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "concierge_access_logs_viewer_tenant_fk": {
+          "name": "concierge_access_logs_viewer_tenant_fk",
+          "tableFrom": "concierge_access_logs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "tenant_id",
+            "viewer_user_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1645,6 +1694,23 @@
             "session_id"
           ],
           "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "concierge_answer_revisions_session_scope_fk": {
+          "name": "concierge_answer_revisions_session_scope_fk",
+          "tableFrom": "concierge_answer_revisions",
+          "tableTo": "concierge_sessions",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id",
+            "session_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "event_id",
             "id"
           ],
           "onDelete": "no action",
@@ -1783,6 +1849,23 @@
             "session_id"
           ],
           "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "concierge_answers_session_scope_fk": {
+          "name": "concierge_answers_session_scope_fk",
+          "tableFrom": "concierge_answers",
+          "tableTo": "concierge_sessions",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id",
+            "session_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "event_id",
             "id"
           ],
           "onDelete": "no action",
@@ -2044,7 +2127,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "concierge_card_asset_versions_tenant_id_uidx": {
+          "name": "concierge_card_asset_versions_tenant_id_uidx",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tenant_id",
+            "id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -2364,6 +2456,23 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "concierge_rule_results_session_scope_fk": {
+          "name": "concierge_rule_results_session_scope_fk",
+          "tableFrom": "concierge_rule_results",
+          "tableTo": "concierge_sessions",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id",
+            "session_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "event_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2577,10 +2686,69 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "concierge_sessions_participant_scope_fk": {
+          "name": "concierge_sessions_participant_scope_fk",
+          "tableFrom": "concierge_sessions",
+          "tableTo": "participants",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id",
+            "participant_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "event_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "concierge_sessions_snapshot_scope_fk": {
+          "name": "concierge_sessions_snapshot_scope_fk",
+          "tableFrom": "concierge_sessions",
+          "tableTo": "event_concierge_snapshots",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id",
+            "snapshot_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "event_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "concierge_sessions_selected_card_tenant_fk": {
+          "name": "concierge_sessions_selected_card_tenant_fk",
+          "tableFrom": "concierge_sessions",
+          "tableTo": "concierge_card_asset_versions",
+          "columnsFrom": [
+            "tenant_id",
+            "selected_card_asset_version_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "concierge_sessions_tenant_event_id_uidx": {
+          "name": "concierge_sessions_tenant_event_id_uidx",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tenant_id",
+            "event_id",
+            "id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -4123,7 +4291,17 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "event_concierge_snapshots_tenant_event_id_uidx": {
+          "name": "event_concierge_snapshots_tenant_event_id_uidx",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tenant_id",
+            "event_id",
+            "id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -7061,7 +7239,17 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "participants_tenant_event_id_uidx": {
+          "name": "participants_tenant_event_id_uidx",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tenant_id",
+            "event_id",
+            "id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -10134,7 +10322,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "users_tenant_scope_uidx": {
+          "name": "users_tenant_scope_uidx",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tenant_id",
+            "id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

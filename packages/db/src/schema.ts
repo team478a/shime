@@ -1,5 +1,6 @@
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -8,6 +9,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
   varchar,
@@ -139,7 +141,14 @@ export const users = pgTable(
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     ...timestamps,
   },
-  (table) => [index("users_tenant_idx").on(table.tenantId)],
+  (table) => [
+    index("users_tenant_idx").on(table.tenantId),
+    // Composite-FK target: a real UNIQUE constraint (not just a unique index) is
+    // required for a composite foreign key to reference these columns. Lets
+    // viewer_user_id + tenant_id be verified together (concierge_access_logs),
+    // not just that the user id exists somewhere.
+    unique("users_tenant_scope_uidx").on(table.tenantId, table.id),
+  ],
 );
 
 export const userIdentities = pgTable(
@@ -586,6 +595,11 @@ export const participants = pgTable(
     uniqueIndex("participants_user_uidx").on(table.tenantId, table.eventId, table.userId),
     uniqueIndex("participants_number_uidx").on(table.tenantId, table.eventId, table.participantNumber),
     uniqueIndex("participants_link_token_uidx").on(table.linkTokenHash),
+    // Composite-FK target: a real UNIQUE constraint (not just a unique index) is
+    // required for a composite foreign key to reference these columns. Lets a
+    // child row's tenant_id + event_id + participant_id be verified together
+    // against this row, not just that the participant id exists.
+    unique("participants_tenant_event_id_uidx").on(table.tenantId, table.eventId, table.id),
   ],
 );
 
@@ -1438,6 +1452,11 @@ export const conciergeCardAssetVersions = pgTable(
     uniqueIndex("concierge_card_asset_versions_number_uidx").on(table.tenantId, table.assetId, table.version),
     uniqueIndex("concierge_card_asset_versions_hash_uidx").on(table.tenantId, table.contentHash),
     index("concierge_card_asset_versions_status_idx").on(table.tenantId, table.status, table.createdAt),
+    // Composite-FK target: a real UNIQUE constraint (not just a unique index) is
+    // required for a composite foreign key to reference these columns. Lets
+    // selected_card_asset_version_id + tenant_id be verified together
+    // (concierge_sessions), not just that the card id exists.
+    unique("concierge_card_asset_versions_tenant_id_uidx").on(table.tenantId, table.id),
   ],
 );
 
@@ -1518,6 +1537,11 @@ export const eventConciergeSnapshots = pgTable(
   (table) => [
     uniqueIndex("event_concierge_snapshots_event_uidx").on(table.tenantId, table.eventId),
     index("event_concierge_snapshots_version_idx").on(table.tenantId, table.templateVersionId),
+    // Composite-FK target: a real UNIQUE constraint (not just a unique index) is
+    // required for a composite foreign key to reference these columns. Lets a
+    // child row's tenant_id + event_id + snapshot_id be verified together
+    // (concierge_sessions), not just that the snapshot id exists.
+    unique("event_concierge_snapshots_tenant_event_id_uidx").on(table.tenantId, table.eventId, table.id),
   ],
 );
 
@@ -1547,6 +1571,29 @@ export const conciergeSessions = pgTable(
   (table) => [
     uniqueIndex("concierge_sessions_participant_uidx").on(table.tenantId, table.eventId, table.participantId),
     index("concierge_sessions_status_idx").on(table.tenantId, table.eventId, table.status),
+    // Composite-FK target: a real UNIQUE constraint (not just a unique index) is
+    // required for a composite foreign key to reference these columns. Lets a
+    // child row's tenant_id + event_id + session_id be verified together
+    // (answers, revisions, results, access logs), not just that the session id
+    // exists somewhere, possibly under another tenant/event.
+    unique("concierge_sessions_tenant_event_id_uidx").on(table.tenantId, table.eventId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.participantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "concierge_sessions_participant_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.snapshotId],
+      foreignColumns: [eventConciergeSnapshots.tenantId, eventConciergeSnapshots.eventId, eventConciergeSnapshots.id],
+      name: "concierge_sessions_snapshot_scope_fk",
+    }),
+    // selectedCardAssetVersionId is nullable until a card is chosen; Postgres'
+    // default MATCH SIMPLE skips the check entirely while it's null.
+    foreignKey({
+      columns: [table.tenantId, table.selectedCardAssetVersionId],
+      foreignColumns: [conciergeCardAssetVersions.tenantId, conciergeCardAssetVersions.id],
+      name: "concierge_sessions_selected_card_tenant_fk",
+    }),
   ],
 );
 
@@ -1569,6 +1616,11 @@ export const conciergeAnswers = pgTable(
   },
   (table) => [
     uniqueIndex("concierge_answers_axis_uidx").on(table.tenantId, table.eventId, table.sessionId, table.axisCode),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.sessionId],
+      foreignColumns: [conciergeSessions.tenantId, conciergeSessions.eventId, conciergeSessions.id],
+      name: "concierge_answers_session_scope_fk",
+    }),
   ],
 );
 
@@ -1596,6 +1648,11 @@ export const conciergeAnswerRevisions = pgTable(
       table.sessionId,
       table.revision,
     ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.sessionId],
+      foreignColumns: [conciergeSessions.tenantId, conciergeSessions.eventId, conciergeSessions.id],
+      name: "concierge_answer_revisions_session_scope_fk",
+    }),
   ],
 );
 
@@ -1626,6 +1683,11 @@ export const conciergeRuleResults = pgTable(
       table.submittedRevision,
     ),
     index("concierge_rule_results_session_idx").on(table.tenantId, table.eventId, table.sessionId),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.sessionId],
+      foreignColumns: [conciergeSessions.tenantId, conciergeSessions.eventId, conciergeSessions.id],
+      name: "concierge_rule_results_session_scope_fk",
+    }),
   ],
 );
 
@@ -1656,5 +1718,22 @@ export const conciergeAccessLogs = pgTable(
       table.participantId,
       table.createdAt,
     ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.participantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "concierge_access_logs_participant_scope_fk",
+    }),
+    // sessionId is nullable (a "view" before a session exists); MATCH SIMPLE
+    // skips the check entirely while it's null.
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.sessionId],
+      foreignColumns: [conciergeSessions.tenantId, conciergeSessions.eventId, conciergeSessions.id],
+      name: "concierge_access_logs_session_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.viewerUserId],
+      foreignColumns: [users.tenantId, users.id],
+      name: "concierge_access_logs_viewer_tenant_fk",
+    }),
   ],
 );

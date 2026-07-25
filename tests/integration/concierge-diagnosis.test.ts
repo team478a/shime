@@ -50,6 +50,30 @@ function seedTenantScope(scope: number, participantCount = 1) {
   };
 }
 
+/** A second event (with its own participant) inside an already-seeded tenant. */
+function seedSecondEvent(scope: number, tenantId: string) {
+  const eventId = id(scope, 50);
+  const applicationId = id(scope, 51);
+  const participantId = id(scope, 52);
+  const sql = [
+    `insert into events(id, tenant_id, code, name, status, starts_at, capacity, dream_registration_mode, preference_mode, allow_multiple_matches) values ('${eventId}','${tenantId}','e${scope}b','Event ${scope}B','draft',now(),10,'optional','first_choice_only',false);`,
+    `insert into applications(id, tenant_id, event_id, source, status, full_name, birth_date, participant_category) values ('${applicationId}','${tenantId}','${eventId}','shime_form','confirmed','P${scope}B','1990-01-01','a');`,
+    `insert into participants(id, tenant_id, event_id, application_id, status, dream_state) values ('${participantId}','${tenantId}','${eventId}','${applicationId}','confirmed','skipped');`,
+  ].join("\n");
+  return { eventId, participantId, sql };
+}
+
+/** A concierge card asset + published version inside an already-seeded tenant. */
+function seedCardAssetVersion(scope: number, tenantId: string, userId: string) {
+  const assetId = id(scope, 80);
+  const versionId = id(scope, 81);
+  const sql = [
+    `insert into concierge_card_assets(id, tenant_id, code, name, created_by) values ('${assetId}','${tenantId}','card-${scope}','Card ${scope}','${userId}');`,
+    `insert into concierge_card_asset_versions(id, tenant_id, asset_id, version, status, title, message, alt_text, storage_object_key, mime_type, byte_size, width, height, pixel_count, content_hash, created_by) values ('${versionId}','${tenantId}','${assetId}',1,'draft','Title','Message','Alt','key/${scope}.webp','image/webp',1000,512,512,262144,'${"a".repeat(64)}','${userId}');`,
+  ].join("\n");
+  return { versionId, sql };
+}
+
 describe("concierge diagnosis migration and data isolation", () => {
   it("creates the concierge diagnosis tables introduced by migration 0015", async () => {
     client = new PGlite();
@@ -220,6 +244,170 @@ describe("concierge diagnosis migration and data isolation", () => {
     await expect(
       client.exec(
         `insert into concierge_sessions(tenant_id, event_id, participant_id, snapshot_id) values ('${scope.tenantId}','00000000-0000-0000-0000-000000000099','${scope.participantIds[0]}','${scope.snapshotId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+});
+
+describe("concierge diagnosis cross-tenant / cross-event scope integrity", () => {
+  it("rejects a session whose participant belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_sessions(tenant_id, event_id, participant_id, snapshot_id) values ('${tenantA.tenantId}','${tenantA.eventId}','${tenantB.participantIds[0]}','${tenantA.snapshotId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a session whose participant belongs to a different event in the same tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    await client.exec(tenantA.sql);
+    const eventB = seedSecondEvent(1, tenantA.tenantId);
+    await client.exec(eventB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_sessions(tenant_id, event_id, participant_id, snapshot_id) values ('${tenantA.tenantId}','${tenantA.eventId}','${eventB.participantId}','${tenantA.snapshotId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a session whose snapshot belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_sessions(tenant_id, event_id, participant_id, snapshot_id) values ('${tenantA.tenantId}','${tenantA.eventId}','${tenantA.participantIds[0]}','${tenantB.snapshotId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a session whose selected card asset version belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+    const cardB = seedCardAssetVersion(2, tenantB.tenantId, tenantB.userId);
+    await client.exec(cardB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_sessions(tenant_id, event_id, participant_id, snapshot_id, selected_card_asset_version_id) values ('${tenantA.tenantId}','${tenantA.eventId}','${tenantA.participantIds[0]}','${tenantA.snapshotId}','${cardB.versionId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects an answer whose session belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_answers(tenant_id, event_id, session_id, axis_code, option_code) values ('${tenantA.tenantId}','${tenantA.eventId}','${tenantB.sessionIds[0]}','axis_1','opt_a')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects an answer revision whose session belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_answer_revisions(tenant_id, event_id, session_id, revision, answer_snapshot_json) values ('${tenantA.tenantId}','${tenantA.eventId}','${tenantB.sessionIds[0]}',1,'[]'::jsonb)`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a rule result whose session belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_rule_results(tenant_id, event_id, session_id, submitted_revision, algorithm_version, primary_emotion_code, result_snapshot_json) values ('${tenantA.tenantId}','${tenantA.eventId}','${tenantB.sessionIds[0]}',1,'concierge-rule-v1','emotion_1','{}'::jsonb)`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects an access log whose participant belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_access_logs(tenant_id, event_id, participant_id, viewer_user_id, action) values ('${tenantA.tenantId}','${tenantA.eventId}','${tenantB.participantIds[0]}','${tenantA.userId}','view')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects an access log whose session belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_access_logs(tenant_id, event_id, participant_id, session_id, viewer_user_id, action) values ('${tenantA.tenantId}','${tenantA.eventId}','${tenantA.participantIds[0]}','${tenantB.sessionIds[0]}','${tenantA.userId}','view')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects an access log whose viewer belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_access_logs(tenant_id, event_id, participant_id, viewer_user_id, action) values ('${tenantA.tenantId}','${tenantA.eventId}','${tenantA.participantIds[0]}','${tenantB.userId}','view')`,
       ),
     ).rejects.toThrow();
   }, 20_000);
