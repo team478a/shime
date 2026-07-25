@@ -1,9 +1,9 @@
 # SHIME AI引継ぎ記録
 
-最終更新: 2026-07-25 13:40（Asia/Tokyo、Claude Code更新）  
-作業ブランチ: `release/2026-08-08-readiness`（`claude/shime-codex-handoff-k76e1n` と同一コミット）  
+最終更新: 2026-07-25 14:55（Asia/Tokyo、Claude Code更新）  
+作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）  
 開始時の `main`: `b07d1ce`  
-作業状態: **Concierge Phase 1B 実装途中・本番反映不可**（型チェック・lint・単体/統合テスト・buildは成功、migrationは生成済み・未適用）
+作業状態: **Concierge Phase 1B 実装途中・本番反映不可**（型チェック・lint・単体/統合テスト・buildは成功、Concierge単体テストを追加済み、migrationは生成済み・未適用）
 
 ## 中断時の安全状態
 
@@ -276,18 +276,37 @@ pnpm test:e2e                  → 未実行。診断機能のE2Eはまだ追加
 ### 未完了内容の更新（元のP0リストとの対応）
 
 - 元P0 1〜3（migration生成前の型チェック解消、Prettier適用、lint/architecture baseline通過）: **完了**。
-- 元P0 4（単体テスト追加: 無効/期間外/不正スナップショット、4分析軸・8感情・8カード公開条件、不正回答・重複回答、途中保存・revision conflict、4問未完了時の提出拒否、決定論的な結果、再回答許可/拒否）: **未着手**。既存の1件の不整合テストを修正したのみで、新規テストは追加していない。
+- 元P0 4（単体テスト追加: 無効/期間外/不正スナップショット、4分析軸・8感情・8カード公開条件、不正回答・重複回答、途中保存・revision conflict、4問未完了時の提出拒否、決定論的な結果、再回答許可/拒否）: **完了**（詳細は下記セクション参照）。
 - 元P0 5（integration test: 新規migrationの適用、テナント・イベント・参加者間のデータ分離、回答履歴・結果・アクセスログ）: **未着手**。migrationはまだどの環境にも適用していない。
 - 元P0 6（participant API・staff API・カード画像認可の契約テスト）: **未着手**。
 - 元P0 7（スマートフォン320px相当を含むE2E）: **未着手**。
 - 元P0 8（下記の全必須チェックを成功させる）: format/architecture/lint/typecheck/test/build/audit は成功。readiness:strict は上記の理由で失敗（コード起因ではない）。test:e2e は未実行。
-- 元P0 9・10（staging Supabaseへのmigration適用、診断設定OFF維持での端末確認）: **未着手**。migration適用の前提となる元P0 4〜6のテストが揃っていないため、今回は意図的に見送った。
+- 元P0 9・10（staging Supabaseへのmigration適用、診断設定OFF維持での端末確認）: **未着手**。migration適用の前提となる元P0 5〜6のテストが揃っていないため、今回は意図的に見送った。
+
+## Concierge単体テスト追加（2026-07-25、Claude Code、元P0 4完了）
+
+`tests/unit/concierge-diagnosis-use-cases.test.ts` を新規追加した（41ケース）。`packages/concierge`のUseCase（`GetDiagnosis`・`StartDiagnosis`・`SaveDiagnosisDraft`・`SubmitDiagnosis`・`UpdateDiagnosisEventSettings`）と、ドメインロジック（`parseActiveDiagnosis`・`createDeterministicDiagnosisResult`）を対象に、Repositoryをフェイク実装で差し替える形でテストした（`tests/unit/questionnaire-use-cases.test.ts`の既存パターンに準拠）。
+
+カバー内容:
+
+- **無効・期間外・不正スナップショット**: `DIAGNOSIS_NOT_CONFIGURED`（設定なし）、`DIAGNOSIS_DISABLED`（無効化）、`DIAGNOSIS_NOT_OPEN`（開始前）、`DIAGNOSIS_CLOSED`（終了後）、`DIAGNOSIS_SNAPSHOT_INVALID`（公開条件を満たさないスナップショット）
+- **4分析軸・8感情・8カード公開条件**（`parseActiveDiagnosis`直接テスト）: 設問4未満で拒否、有効感情8未満で拒否、カードマッピングの重複（同一カード・同一感情）で拒否、マッピング先カードが`cards`配列に存在しない場合に拒否、設問・カードの表示順ソートが入力順によらず正しいことを確認
+- **不正回答・重複回答**（`SaveDiagnosisDraft`）: 存在しないカードID、同一分析軸への重複回答、選択肢に存在しないオプションコードをそれぞれ`DIAGNOSIS_INVALID_ANSWER`で拒否することを確認
+- **途中保存・revision conflict**: 未開始セッションへの保存拒否、提出済みセッションへの上書き拒否、Repositoryが`null`を返した場合の`DIAGNOSIS_REVISION_CONFLICT`、正常系での`revision`更新
+- **4問未完了時の提出拒否**: カード未選択、回答4問未満のケースをそれぞれ`DIAGNOSIS_INCOMPLETE`で拒否
+- **決定論的な結果**: 同一スナップショット・カード・回答から常に同一の結果オブジェクトが生成されることを、UseCase層（`SubmitDiagnosis`）とドメイン関数層（`createDeterministicDiagnosisResult`）の両方で確認
+- **再回答許可/拒否**: `allowResubmission`と`restart`フラグの組み合わせによる許可/拒否、再開時の`DIAGNOSIS_REVISION_CONFLICT`
+- 追加で、保存済み結果のZod境界検証（不正なJSONが保存されていた場合に結果を`null`扱いにすることの確認）、`UpdateDiagnosisEventSettings`のバリデーションもカバーした
+
+検証結果: `pnpm typecheck`・`pnpm lint`（0 errors）・`pnpm test`（単体270件・結合3件、全成功）・`pnpm build` すべて成功。新規テストファイルは`max-lines`警告（597行）が出るが、他の既存大型ファイルと同様の非ブロッキング警告であり、`architecture:check`の対象（`apps/web/src`のみ）にも含まれないため基準への影響はない。
+
+この作業はPR #3（`https://github.com/team478a/shime/pull/3`、`claude/shime-codex-handoff-k76e1n` → `release/2026-08-08-readiness`）に追加コミットとして反映した。
 
 ### 次に行う作業（優先順）
 
-1. Concierge単体テスト（元P0 4）を追加する。特に「4問未完了時の提出拒否」「重複回答」「revision conflict」「決定論的な結果」はルールベース判定の正しさに直結するため優先する。
-2. integration testを追加し、`0015_giant_rick_jones.sql` を検証用DB（pglite等、既存integration testの仕組みに合わせる）に適用してテナント/イベント/参加者間のデータ分離を確認する。
-3. participant API・staff API・カード画像認可の契約テストを追加する。
-4. 上記が揃った後にスマートフォン320px相当のE2Eを追加し、`pnpm test:e2e` を実行する。
-5. 全チェック成功後、staging Supabaseへのmigration適用は別セッション・別途明示承認のもとで行う（本セッションでは未実施・未承認）。
-6. `EVENT_CONFIG_20260808.yaml` のREQUIRED_INPUT解消は本Concierge作業とは別系統のP0であり、担当・進め方を別途確認する必要がある。
+1. integration testを追加し、`0015_giant_rick_jones.sql` を検証用DB（pglite等、既存integration testの仕組みに合わせる）に適用してテナント/イベント/参加者間のデータ分離を確認する（元P0 5）。
+2. participant API・staff API・カード画像認可の契約テストを追加する（元P0 6）。
+3. 上記が揃った後にスマートフォン320px相当のE2Eを追加し、`pnpm test:e2e` を実行する（元P0 7）。
+4. 全チェック成功後、staging Supabaseへのmigration適用は別セッション・別途明示承認のもとで行う（本セッションでは未実施・未承認）。
+5. `EVENT_CONFIG_20260808.yaml` のREQUIRED_INPUT解消は本Concierge作業とは別系統のP0であり、担当・進め方を別途確認する必要がある。
+6. PR #3 のレビュー・マージ判断（`release/2026-08-08-readiness`へのマージには承認が必要、`main`への昇格はさらに別途承認が必要）。
