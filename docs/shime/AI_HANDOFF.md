@@ -2,9 +2,21 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-25 17:30（Asia/Tokyo、Claude Code）
+最終更新: 2026-07-25 18:10（Asia/Tokyo、Claude Code。Codexへ引き継ぎ、作業停止）
 作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）
+最新コミット: `db72ca87a398ac1b43bb6468927daf4eae4f27b4`（PR #3のhead SHAと一致、未コミット変更なし）
 開始時の `main`: `b07d1ce`
+
+### Claude CodeからCodexへの引き継ぎ（2026-07-25 18:10）
+
+ユーザーの指示により、SHIME作業をここで停止しCodexへ引き継ぐ。新規実装・DB操作は行っていない。
+
+- **完了した作業**: 本ファイル記載のとおり、Concierge Phase 1Bの型チェック・lint・単体/結合/契約/E2Eテスト追加、E2Eで発見した画面状態同期バグの修正、DBのtenant/event scope整合性を強制する複合外部キーの追加。すべてPR #3（`claude/shime-codex-handoff-k76e1n` → `release/2026-08-08-readiness`）へコミット・push済み。
+- **最新コミットSHA**: `db72ca87a398ac1b43bb6468927daf4eae4f27b4`。作業ツリーはclean（未コミット変更なし）。
+- **実行済みテスト**: 単体287件・結合22件・E2E29件（すべて成功）。GitHub Actions CI（`verify`・`e2e`の2ジョブ）もPR #3のhead SHAで成功済み（2026-07-25T07:57:58Z〜08:00:00Z）。
+- **DB migrationは未適用**: `packages/db/migrations/0015_strange_mandroid.sql`はこのブランチにローカルで存在するのみで、staging・productionを含むどの環境にも適用していない。
+- **staging環境への変更は未実施**: 接続・バックアップ取得・migration適用のいずれも行っていない（このセッションにはstaging用の`DATABASE_URL`/`DATABASE_MIGRATION_URL`が設定されておらず、技術的にも実行できない状態だった）。
+- **次のアクション**: Codexが (1) PR #3が実際に`release/2026-08-08-readiness`へマージされているかをGitHub上で確認し、(2) staging Supabaseへの接続情報（プロジェクトID・ホスト名・DB名がproductionでないことを含む）を確認したうえで、staging適用の手順（本ファイル「staging migration適用の手順」参照）を進めること。
 
 Concierge Phase 1B（SHIME診断機能）は、コードレベルでは完成している。型チェック・format・lint・architecture check・単体テスト・結合テスト・APIルート契約テスト・E2Eテストがすべて成功しており、CIに相当する必須検証はすべて通過済みである。DBのtenant/event整合性を複合外部キーで強制する修正も本セッションで完了した。ただし、**migrationはこのブランチのローカルmigrationファイルとして存在するのみで、staging・productionを含むどの環境にも適用していない。** 本番反映（マージ・デプロイ・DB適用・通知送信）は一切行っていない。
 
