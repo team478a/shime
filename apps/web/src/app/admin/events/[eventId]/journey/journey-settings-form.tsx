@@ -26,6 +26,11 @@ function canMove(steps: ParticipantJourneyStep[], index: number, offset: -1 | 1)
   return move(steps, index, offset) !== steps;
 }
 
+function toggleDiagnosis(steps: ParticipantJourneyStep[]) {
+  const next = steps.map((step) => (step.id === "diagnosis" ? { ...step, enabled: !step.enabled } : step));
+  return participantJourneyStepsSchema.safeParse(next).success ? next : steps;
+}
+
 export function JourneySettingsForm({
   initialSteps,
   saveAction,
@@ -50,6 +55,15 @@ export function JourneySettingsForm({
               <small>{step.enabled ? "参加者導線で使用" : "準備中（順序のみ予約・参加者には非表示）"}</small>
             </div>
             <div className="actions">
+              {step.id === "diagnosis" && (
+                <button
+                  type="button"
+                  className={step.enabled ? "secondary" : undefined}
+                  onClick={() => setSteps((current) => toggleDiagnosis(current))}
+                >
+                  {step.enabled ? "導線から外す" : "導線に追加"}
+                </button>
+              )}
               <button
                 type="button"
                 className="secondary"
@@ -71,8 +85,7 @@ export function JourneySettingsForm({
         ))}
       </ol>
       <p className="participant-privacy">
-        現在、Dreamと席案内5問はSHIME
-        PASSより前に必要です。SHIME診断の参加者機能が完成するまでは診断を有効化できません。
+        Dreamと席案内5問はSHIME PASSより前に必要です。SHIME診断は、イベントの診断設定をONにした後で公開できます。
       </p>
       <div className="actions">
         <form action={saveAction}>

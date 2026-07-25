@@ -55,6 +55,11 @@ export default async function ParticipantJourneySettingsPage({
             新しい導線バージョンを公開しました。
           </p>
         )}
+        {status === "diagnosis-unavailable" && (
+          <p className="operation-feedback error" role="alert">
+            SHIME診断を公開できません。先にイベントの診断設定をONにしてください。
+          </p>
+        )}
         <dl>
           <dt>公開中</dt>
           <dd>{settings.published ? `バージョン ${settings.published.version}` : "既定の導線"}</dd>

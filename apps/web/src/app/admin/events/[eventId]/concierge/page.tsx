@@ -3,6 +3,7 @@ import { hasPermission } from "@shime/core";
 import { conciergeTemplates, conciergeTemplateVersions, eventConciergeSnapshots, events, getDatabase } from "@shime/db";
 import { redirect } from "next/navigation";
 import { getStaffSession } from "../../../../../server/auth";
+import { getDiagnosisStatusSummary } from "../../../../../server/concierge-diagnosis-use-cases";
 import { EventConciergeSettings } from "./event-concierge-settings";
 
 export default async function EventConciergePage({ params }: { params: Promise<{ eventId: string }> }) {
@@ -42,6 +43,9 @@ export default async function EventConciergePage({ params }: { params: Promise<{
       .where(and(eq(eventConciergeSnapshots.tenantId, session.tenantId), eq(eventConciergeSnapshots.eventId, eventId)))
       .limit(1)
   )[0];
+  const summary = current
+    ? await getDiagnosisStatusSummary.execute({ tenantId: session.tenantId, eventId })
+    : null;
   return (
     <main>
       <EventConciergeSettings
@@ -54,6 +58,9 @@ export default async function EventConciergePage({ params }: { params: Promise<{
                 templateVersion: current.templateVersion,
                 snapshotHash: current.snapshotHash,
                 enabled: current.enabled,
+                accessOpensAt: current.accessOpensAt?.toISOString() ?? null,
+                accessClosesAt: current.accessClosesAt?.toISOString() ?? null,
+                allowResubmission: current.allowResubmission,
               }
             : null
         }
@@ -62,6 +69,7 @@ export default async function EventConciergePage({ params }: { params: Promise<{
           version: version.version,
           name: names.get(version.templateId) ?? "名称不明",
         }))}
+        summary={summary}
       />
     </main>
   );

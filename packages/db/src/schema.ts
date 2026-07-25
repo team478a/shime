@@ -95,6 +95,7 @@ export const matchCandidateStatus = pgEnum("match_candidate_status", [
   "revoked",
 ]);
 export const conciergeVersionStatus = pgEnum("concierge_version_status", ["draft", "published", "archived"]);
+export const conciergeSessionStatus = pgEnum("concierge_session_status", ["in_progress", "submitted"]);
 export const journeyVersionStatus = pgEnum("journey_version_status", ["draft", "published", "archived"]);
 
 export const tenants = pgTable(
@@ -1506,6 +1507,9 @@ export const eventConciergeSnapshots = pgTable(
     snapshot: jsonb("snapshot_json").$type<Record<string, unknown>>().notNull(),
     snapshotHash: varchar("snapshot_hash", { length: 64 }).notNull(),
     enabled: boolean("enabled").default(false).notNull(),
+    accessOpensAt: timestamp("access_opens_at", { withTimezone: true }),
+    accessClosesAt: timestamp("access_closes_at", { withTimezone: true }),
+    allowResubmission: boolean("allow_resubmission").default(false).notNull(),
     appliedBy: uuid("applied_by")
       .notNull()
       .references(() => users.id),
@@ -1514,5 +1518,145 @@ export const eventConciergeSnapshots = pgTable(
   (table) => [
     uniqueIndex("event_concierge_snapshots_event_uidx").on(table.tenantId, table.eventId),
     index("event_concierge_snapshots_version_idx").on(table.tenantId, table.templateVersionId),
+  ],
+);
+
+export const conciergeSessions = pgTable(
+  "concierge_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => participants.id),
+    snapshotId: uuid("snapshot_id")
+      .notNull()
+      .references(() => eventConciergeSnapshots.id),
+    status: conciergeSessionStatus("status").default("in_progress").notNull(),
+    revision: integer("revision").default(0).notNull(),
+    selectedCardAssetVersionId: uuid("selected_card_asset_version_id").references(
+      () => conciergeCardAssetVersions.id,
+    ),
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("concierge_sessions_participant_uidx").on(table.tenantId, table.eventId, table.participantId),
+    index("concierge_sessions_status_idx").on(table.tenantId, table.eventId, table.status),
+  ],
+);
+
+export const conciergeAnswers = pgTable(
+  "concierge_answers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => conciergeSessions.id),
+    axisCode: varchar("axis_code", { length: 40 }).notNull(),
+    optionCode: varchar("option_code", { length: 80 }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("concierge_answers_axis_uidx").on(table.tenantId, table.eventId, table.sessionId, table.axisCode),
+  ],
+);
+
+export const conciergeAnswerRevisions = pgTable(
+  "concierge_answer_revisions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => conciergeSessions.id),
+    revision: integer("revision").notNull(),
+    answerSnapshot: jsonb("answer_snapshot_json").$type<unknown>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("concierge_answer_revisions_number_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.sessionId,
+      table.revision,
+    ),
+  ],
+);
+
+export const conciergeRuleResults = pgTable(
+  "concierge_rule_results",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => conciergeSessions.id),
+    submittedRevision: integer("submitted_revision").notNull(),
+    algorithmVersion: varchar("algorithm_version", { length: 80 }).notNull(),
+    primaryEmotionCode: varchar("primary_emotion_code", { length: 40 }).notNull(),
+    resultSnapshot: jsonb("result_snapshot_json").$type<unknown>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("concierge_rule_results_revision_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.sessionId,
+      table.submittedRevision,
+    ),
+    index("concierge_rule_results_session_idx").on(table.tenantId, table.eventId, table.sessionId),
+  ],
+);
+
+export const conciergeAccessLogs = pgTable(
+  "concierge_access_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => participants.id),
+    sessionId: uuid("session_id").references(() => conciergeSessions.id),
+    viewerUserId: uuid("viewer_user_id")
+      .notNull()
+      .references(() => users.id),
+    action: varchar("action", { length: 80 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("concierge_access_logs_participant_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.participantId,
+      table.createdAt,
+    ),
   ],
 );

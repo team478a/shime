@@ -2258,3 +2258,97 @@ legend {
     grid-template-columns: 1fr;
   }
 }
+
+.diagnosis-panel {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.diagnosis-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.diagnosis-card-back {
+  min-height: 9rem;
+  padding: 0.75rem;
+  border: 2px solid #c44d69;
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #c44d69, #92334c);
+  color: white;
+}
+
+.diagnosis-card-back span,
+.diagnosis-card-back strong {
+  display: block;
+}
+
+.diagnosis-selected-card {
+  display: grid;
+  grid-template-columns: minmax(7rem, 12rem) 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e1d7d4;
+  border-radius: 1rem;
+  background: #fff9f7;
+}
+
+.diagnosis-selected-card img {
+  width: 100%;
+  max-height: 16rem;
+  object-fit: contain;
+  border-radius: 0.75rem;
+}
+
+.diagnosis-selected-card.compact {
+  grid-template-columns: 5rem 1fr;
+}
+
+.diagnosis-answer-review,
+.diagnosis-status-summary {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) 2fr;
+  gap: 0;
+}
+
+.diagnosis-answer-review dt,
+.diagnosis-answer-review dd,
+.diagnosis-status-summary dt,
+.diagnosis-status-summary dd {
+  margin: 0;
+  padding: 0.75rem;
+  border-bottom: 1px solid #e8e1de;
+}
+
+.diagnosis-result,
+.admin-settings-group {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-settings-group {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid #ded7d4;
+  border-radius: 1rem;
+}
+
+@media (max-width: 720px) {
+  .diagnosis-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .diagnosis-card-back {
+    min-height: 8rem;
+  }
+
+  .diagnosis-selected-card {
+    grid-template-columns: 1fr;
+  }
+
+  .diagnosis-selected-card img {
+    max-height: 20rem;
+  }
+}
