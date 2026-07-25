@@ -1,9 +1,9 @@
 # SHIME AI引継ぎ記録
 
-最終更新: 2026-07-25 14:55（Asia/Tokyo、Claude Code更新）  
+最終更新: 2026-07-25 15:20（Asia/Tokyo、Claude Code更新）  
 作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）  
 開始時の `main`: `b07d1ce`  
-作業状態: **Concierge Phase 1B 実装途中・本番反映不可**（型チェック・lint・単体/統合テスト・buildは成功、Concierge単体テストを追加済み、migrationは生成済み・未適用）
+作業状態: **Concierge Phase 1B 実装途中・本番反映不可**（型チェック・lint・単体/統合テスト・buildは成功、Concierge単体テスト・結合テストを追加済み、migrationは生成済み・staging等どの環境にも未適用）
 
 ## 中断時の安全状態
 
@@ -277,7 +277,7 @@ pnpm test:e2e                  → 未実行。診断機能のE2Eはまだ追加
 
 - 元P0 1〜3（migration生成前の型チェック解消、Prettier適用、lint/architecture baseline通過）: **完了**。
 - 元P0 4（単体テスト追加: 無効/期間外/不正スナップショット、4分析軸・8感情・8カード公開条件、不正回答・重複回答、途中保存・revision conflict、4問未完了時の提出拒否、決定論的な結果、再回答許可/拒否）: **完了**（詳細は下記セクション参照）。
-- 元P0 5（integration test: 新規migrationの適用、テナント・イベント・参加者間のデータ分離、回答履歴・結果・アクセスログ）: **未着手**。migrationはまだどの環境にも適用していない。
+- 元P0 5（integration test: 新規migrationの適用、テナント・イベント・参加者間のデータ分離、回答履歴・結果・アクセスログ）: **完了**（詳細は下記セクション参照）。
 - 元P0 6（participant API・staff API・カード画像認可の契約テスト）: **未着手**。
 - 元P0 7（スマートフォン320px相当を含むE2E）: **未着手**。
 - 元P0 8（下記の全必須チェックを成功させる）: format/architecture/lint/typecheck/test/build/audit は成功。readiness:strict は上記の理由で失敗（コード起因ではない）。test:e2e は未実行。
@@ -302,11 +302,30 @@ pnpm test:e2e                  → 未実行。診断機能のE2Eはまだ追加
 
 この作業はPR #3（`https://github.com/team478a/shime/pull/3`、`claude/shime-codex-handoff-k76e1n` → `release/2026-08-08-readiness`）に追加コミットとして反映した。
 
+## Concierge結合テスト追加（2026-07-25、Claude Code、元P0 5完了）
+
+`tests/integration/concierge-diagnosis.test.ts` を新規追加した（9ケース）。既存の`tests/integration/migrations.test.ts`と同じ方式（PGlite + `drizzle-orm/pglite/migrator`で`packages/db/migrations`を空DBに適用し、生SQLでフィクスチャを投入）で、migration `0015_giant_rick_jones.sql`が実際のPostgreSQL互換DB上で正しく機能することを確認した。
+
+カバー内容:
+
+- migration適用後に`concierge_sessions`・`concierge_answers`・`concierge_answer_revisions`・`concierge_rule_results`・`concierge_access_logs`の全テーブルが作成されることを確認
+- 同一参加者への2件目の診断セッション作成を`concierge_sessions_participant_uidx`（tenant, event, participant）で拒否することを確認
+- 同一セッション内での同一分析軸への重複回答を`concierge_answers_axis_uidx`で拒否することを確認
+- 同一セッションでの同一revision番号の重複保存を`concierge_answer_revisions_number_uidx`で拒否することを確認（途中保存の楽観的排他制御）
+- 同一セッションでの同一submitted_revisionの重複結果保存を`concierge_rule_results_revision_uidx`で拒否することを確認（二重提出防止）
+- **参加者間のデータ分離**: 同一テナント・同一イベント内の2参加者がそれぞれ診断セッションを持つ場合、`session_id`で絞り込んだ回答クエリが自分の回答のみを返し、他方の参加者の回答を返さないことを確認
+- **テナント間のデータ分離**: 2つの独立したテナントがそれぞれ診断セッションを持つ場合、`tenant_id`で絞り込んだクエリが自テナントのセッションのみを返すことを確認
+- **アクセスログ履歴**: 参加者ごとに複数のアクション（view/start/submit等）を記録し、`created_at`順に取得した際に他参加者のログが混在しないことを確認
+- 存在しないイベントIDを参照する診断セッション作成が外部キー制約により拒否されることを確認
+
+検証結果: `pnpm typecheck`・`pnpm format:check`・`pnpm lint`（0 errors）・`pnpm architecture:check`・`pnpm test`（単体270件・結合12件、全成功）・`pnpm build` すべて成功。
+
+この作業もPR #3に追加コミットとして反映した。
+
 ### 次に行う作業（優先順）
 
-1. integration testを追加し、`0015_giant_rick_jones.sql` を検証用DB（pglite等、既存integration testの仕組みに合わせる）に適用してテナント/イベント/参加者間のデータ分離を確認する（元P0 5）。
-2. participant API・staff API・カード画像認可の契約テストを追加する（元P0 6）。
-3. 上記が揃った後にスマートフォン320px相当のE2Eを追加し、`pnpm test:e2e` を実行する（元P0 7）。
-4. 全チェック成功後、staging Supabaseへのmigration適用は別セッション・別途明示承認のもとで行う（本セッションでは未実施・未承認）。
-5. `EVENT_CONFIG_20260808.yaml` のREQUIRED_INPUT解消は本Concierge作業とは別系統のP0であり、担当・進め方を別途確認する必要がある。
-6. PR #3 のレビュー・マージ判断（`release/2026-08-08-readiness`へのマージには承認が必要、`main`への昇格はさらに別途承認が必要）。
+1. participant API・staff API・カード画像認可の契約テストを追加する（元P0 6）。
+2. 上記が揃った後にスマートフォン320px相当のE2Eを追加し、`pnpm test:e2e` を実行する（元P0 7）。
+3. 全チェック成功後、staging Supabaseへのmigration適用は別セッション・別途明示承認のもとで行う（本セッションでは未実施・未承認）。
+4. `EVENT_CONFIG_20260808.yaml` のREQUIRED_INPUT解消は本Concierge作業とは別系統のP0であり、担当・進め方を別途確認する必要がある。
+5. PR #3 のレビュー・マージ判断（`release/2026-08-08-readiness`へのマージには承認が必要、`main`への昇格はさらに別途承認が必要）。
