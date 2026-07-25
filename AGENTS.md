@@ -4,10 +4,21 @@
 
 Build the SHIME marriage-event LIFF application for the 2026-08-08 production event while treating SHIME as an extensible operations OS that can support multiple services, event types, and combined workflows.
 
+## Production priority
+
+Until the production Go decision is recorded, prioritize P0 readiness, rehearsal completion, data safety, and recovery procedures over new features or broad refactoring.
+
+Codex and Claude Code do not share conversation history. Git history, `docs/shime/AI_HANDOFF.md`, and the readiness/rehearsal records are the shared operational state.
+
 ## Source of truth
 
 Read these files before planning or editing:
 
+- `docs/shime/AI_HANDOFF.md`
+- `docs/shime/CODEX_CLAUDE_HANDOFF_RUNBOOK.md`
+- `docs/shime/PHASE8_READINESS_REPORT.md`
+- `docs/shime/REHEARSAL_EXECUTION_RECORD_20260715.md`
+- `docs/shime/PHASE8_REHEARSAL_CHECKLIST.md`
 - `docs/shime/CODEX_DEVELOPMENT_GUIDE_V1.md`
 - `docs/shime/DEVELOPMENT_SPEC_V2.md`
 - `docs/shime/IMPLEMENTATION_TASKS_V1.md`
@@ -63,6 +74,8 @@ Before reporting completion, run the repository's relevant commands for:
 - integration tests
 - production build
 
+Run readiness and E2E checks when completing a P0 or rehearsal gate.
+
 Report commands that could not run and the reason.
 
 ## Safety boundaries
@@ -71,6 +84,8 @@ Report commands that could not run and the reason.
 - Never copy production personal data into development or test fixtures.
 - Never use destructive git commands unless explicitly authorized.
 - Never overwrite check-in, preference, or result data during CSV re-import.
+- Never deploy to production or send real participant notifications without explicit authorization.
+- Never report production readiness while any P0 item remains open or unverified.
 
 ## Completion report
 
