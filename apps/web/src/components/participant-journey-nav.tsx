@@ -7,8 +7,14 @@ import {
   type ParticipantJourneyKey,
 } from "../lib/participant-journey";
 
-export function ParticipantJourneyNav({ current, eventId }: { current: ParticipantJourneyKey; eventId: string }) {
-  const { event } = useParticipantEvent(eventId);
+export function ParticipantJourneyNav({
+  current,
+  eventId,
+}: {
+  current: ParticipantJourneyKey;
+  eventId?: string | undefined;
+}) {
+  const { event } = useParticipantEvent(eventId ?? "");
   const stages = getParticipantJourney(event?.participantJourney);
 
   return (

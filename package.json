@@ -59,7 +59,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "^4.1.10",
     "balanced-match": "1.0.2",
-    "brace-expansion": "1.1.16",
+    "brace-expansion": "5.0.8",
     "concat-map": "0.0.1",
     "deep-is": "0.1.4",
     "dotenv": "^17.4.2",

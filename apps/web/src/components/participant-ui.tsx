@@ -21,7 +21,7 @@ export function ParticipantPageHeader({
       <h1>{title}</h1>
       <p className="participant-lead">{description}</p>
       {current && <ParticipantEventSummary eventId={eventId} />}
-      {current && eventId && <ParticipantJourneyNav current={current} eventId={eventId} />}
+      {current && <ParticipantJourneyNav current={current} eventId={eventId} />}
     </div>
   );
 }

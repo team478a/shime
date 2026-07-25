@@ -6,8 +6,8 @@ confirmModulesPurge: false
 hoist: true
 
 overrides:
-  "minimatch@3.1.5>brace-expansion": "1.1.16"
-  "next>postcss": "8.5.16"
+  "brace-expansion": "5.0.8"
+  "postcss": "8.5.18"
   "next>sharp": "0.35.3"
   "@esbuild-kit/core-utils>esbuild": "0.25.12"
 
@@ -16,3 +16,6 @@ allowBuilds:
   esbuild: true
   sharp: true
   unrs-resolver: true
+
+patchedDependencies:
+  minimatch@3.1.5: patches/minimatch@3.1.5.patch
