@@ -1,9 +1,9 @@
 # SHIME AI引継ぎ記録
 
-最終更新: 2026-07-25 15:20（Asia/Tokyo、Claude Code更新）  
+最終更新: 2026-07-25 15:45（Asia/Tokyo、Claude Code更新）  
 作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）  
 開始時の `main`: `b07d1ce`  
-作業状態: **Concierge Phase 1B 実装途中・本番反映不可**（型チェック・lint・単体/統合テスト・buildは成功、Concierge単体テスト・結合テストを追加済み、migrationは生成済み・staging等どの環境にも未適用）
+作業状態: **Concierge Phase 1B 実装途中・本番反映不可**（型チェック・lint・単体/統合テスト・buildは成功、Concierge単体テスト・結合テスト・APIルート契約テストを追加済み、migrationは生成済み・staging等どの環境にも未適用）
 
 ## 中断時の安全状態
 
@@ -278,7 +278,7 @@ pnpm test:e2e                  → 未実行。診断機能のE2Eはまだ追加
 - 元P0 1〜3（migration生成前の型チェック解消、Prettier適用、lint/architecture baseline通過）: **完了**。
 - 元P0 4（単体テスト追加: 無効/期間外/不正スナップショット、4分析軸・8感情・8カード公開条件、不正回答・重複回答、途中保存・revision conflict、4問未完了時の提出拒否、決定論的な結果、再回答許可/拒否）: **完了**（詳細は下記セクション参照）。
 - 元P0 5（integration test: 新規migrationの適用、テナント・イベント・参加者間のデータ分離、回答履歴・結果・アクセスログ）: **完了**（詳細は下記セクション参照）。
-- 元P0 6（participant API・staff API・カード画像認可の契約テスト）: **未着手**。
+- 元P0 6（participant API・staff API・カード画像認可の契約テスト）: **完了**（詳細は下記セクション参照）。
 - 元P0 7（スマートフォン320px相当を含むE2E）: **未着手**。
 - 元P0 8（下記の全必須チェックを成功させる）: format/architecture/lint/typecheck/test/build/audit は成功。readiness:strict は上記の理由で失敗（コード起因ではない）。test:e2e は未実行。
 - 元P0 9・10（staging Supabaseへのmigration適用、診断設定OFF維持での端末確認）: **未着手**。migration適用の前提となる元P0 5〜6のテストが揃っていないため、今回は意図的に見送った。
@@ -322,10 +322,25 @@ pnpm test:e2e                  → 未実行。診断機能のE2Eはまだ追加
 
 この作業もPR #3に追加コミットとして反映した。
 
+## Concierge APIルート契約テスト追加（2026-07-25、Claude Code、元P0 6完了）
+
+`tests/unit/concierge-diagnosis-routes.test.ts` を新規追加した（17ケース）。それまでのテストは「UseCase層をフェイクRepositoryで検証」「UseCaseをDB結合で検証」だったが、この層は「実際のroute.ts（参加者API・スタッフAPI）がHTTPレベルで正しい契約を守っているか」を検証する。
+
+既存の`participant-handler.test.ts`・`staff-handler.test.ts`は共通ラッパー自体の汎用契約テストであり、個別ルートの実コードは経由しない。今回はNext.jsのroute.ts本体（`GET`/`PUT`/`POST`/`PATCH`エクスポート）を実際にimportし、DB・Supabase Storageに依存する境界（`requireParticipantForEvent`・`requireStaffSession`・`concierge-diagnosis-use-cases`のシングルトンUseCase群・`createConciergeStorageProvider`）だけを`vi.mock`で差し替えて検証した。`vi.mock`はこのリポジトリで初めての使用だが、route.tsが実DBに直結したシングルトンをモジュールスコープで構築している構造上、DIコンストラクタ差し替え（他ハンドラで使われている方式）が使えないための最小限の選択である。あわせて`vitest.config.ts`に`@shime/web`のエイリアスを追加した（route.tsからの`@shime/web/server/...`解決に必要）。
+
+カバー内容:
+
+- **participant API**（`/api/liff/events/[eventId]/diagnosis`・`/diagnosis/start`・`/diagnosis/submit`）: 未連携参加者への401、UseCase成功結果のレスポンス整形（`storageObjectKey`を含めず`imageUrl`に変換していることを確認）、UseCaseエラーコードからHTTPステータスへの変換、不正な入力（負のrevision、UUID形式でないカードID等）をUseCase呼び出し前に400で拒否すること、`start`が空ボディを`{}`として扱うこと
+- **カード画像認可**（`/diagnosis/cards/[cardVersionId]/image`）: 対象イベントに属さないカードは404でストレージ情報を一切含まないレスポンスになること、正当なカードは307リダイレクトで署名付き短命URLへ転送し、**生のストレージオブジェクトキーがレスポンス（リダイレクト先URLを含む）に一切露出しないこと**を確認
+- **staff API**（`/api/admin/events/[eventId]/concierge-status`）: 未認証で401、権限不足で403、`GET`（概要取得）は`concierge:manage`権限で許可されるのに対し`PATCH`（設定変更）はより強い`concierge:publish`権限を要求する非対称性を明示的に確認、不正な設定入力の400拒否、正常系での設定保存
+
+検証結果: `pnpm typecheck`・`pnpm format:check`・`pnpm lint`（0 errors）・`pnpm architecture:check`・`pnpm test`（単体287件・結合12件、全成功）・`pnpm build` すべて成功。
+
+この作業もPR #3に追加コミットとして反映した。
+
 ### 次に行う作業（優先順）
 
-1. participant API・staff API・カード画像認可の契約テストを追加する（元P0 6）。
-2. 上記が揃った後にスマートフォン320px相当のE2Eを追加し、`pnpm test:e2e` を実行する（元P0 7）。
-3. 全チェック成功後、staging Supabaseへのmigration適用は別セッション・別途明示承認のもとで行う（本セッションでは未実施・未承認）。
-4. `EVENT_CONFIG_20260808.yaml` のREQUIRED_INPUT解消は本Concierge作業とは別系統のP0であり、担当・進め方を別途確認する必要がある。
-5. PR #3 のレビュー・マージ判断（`release/2026-08-08-readiness`へのマージには承認が必要、`main`への昇格はさらに別途承認が必要）。
+1. スマートフォン320px相当のE2Eを追加し、`pnpm test:e2e` を実行する（元P0 7）。これでAI_HANDOFF記載のConcierge Phase 1B単体/結合/契約/E2Eテスト系のP0がすべて揃う。
+2. 全チェック成功後、staging Supabaseへのmigration適用は別セッション・別途明示承認のもとで行う（本セッションでは未実施・未承認）。
+3. `EVENT_CONFIG_20260808.yaml` のREQUIRED_INPUT解消は本Concierge作業とは別系統のP0であり、担当・進め方を別途確認する必要がある。
+4. PR #3 のレビュー・マージ判断（`release/2026-08-08-readiness`へのマージには承認が必要、`main`への昇格はさらに別途承認が必要）。
