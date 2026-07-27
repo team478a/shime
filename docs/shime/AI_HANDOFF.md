@@ -2,55 +2,64 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-25 18:10（Asia/Tokyo、Claude Code。Codexへ引き継ぎ、作業停止）
+最終更新: 2026-07-27 23:15（Asia/Tokyo、Codex。PR #3レビュー指摘修正後、再レビュー待ち）
 作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）
-最新コミット: `db72ca87a398ac1b43bb6468927daf4eae4f27b4`（PR #3のhead SHAと一致、未コミット変更なし）
+最新実装コミット: `f04d045fcae7bd59a2365f7404d5b1068ffd1a23`
+文書同期コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照できないため、PR #3の`headRefOid`を最新PR HEADの正とする）
 開始時の `main`: `b07d1ce`
 
-### Claude CodeからCodexへの引き継ぎ（2026-07-25 18:10）
+### CodexによるPR #3レビュー指摘修正（2026-07-27 23:15）
 
-ユーザーの指示により、SHIME作業をここで停止しCodexへ引き継ぐ。新規実装・DB操作は行っていない。
+PR #3のレビューで判明したP0/P1を修正した。**修正コードとテストは成功しているが、独立した再レビューが完了するまでマージ保留を維持する。**
 
-- **完了した作業**: 本ファイル記載のとおり、Concierge Phase 1Bの型チェック・lint・単体/結合/契約/E2Eテスト追加、E2Eで発見した画面状態同期バグの修正、DBのtenant/event scope整合性を強制する複合外部キーの追加。すべてPR #3（`claude/shime-codex-handoff-k76e1n` → `release/2026-08-08-readiness`）へコミット・push済み。
-- **最新コミットSHA**: `db72ca87a398ac1b43bb6468927daf4eae4f27b4`。作業ツリーはclean（未コミット変更なし）。
-- **実行済みテスト**: 単体287件・結合22件・E2E29件（すべて成功）。GitHub Actions CI（`verify`・`e2e`の2ジョブ）もPR #3のhead SHAで成功済み（2026-07-25T07:57:58Z〜08:00:00Z）。
+- **P0修正**: `events(tenant_id, id)`へ実体のあるUNIQUE制約を追加し、`event_concierge_snapshots(tenant_id, event_id)`および`participants(tenant_id, event_id)`からイベントscopeへの複合外部キーを追加。sessionは既存のparticipant/snapshot複合FKを介して同じtenant/eventへ固定される。Drizzle schemaと未適用migration 0015を同時更新した。
+- **P0テスト**: 同一tenant/eventのsnapshot INSERT成功、cross-tenant snapshot INSERT拒否、cross-tenant participant INSERT拒否を追加。既存のsession/answer/revision/result/access-log不整合拒否も再確認した。
+- **P1修正**: 選択前APIはopaqueなカードIDと表示順だけを返し、タイトル・メッセージ・感情コード・画像URL等を返さない。カード選択時に空回答を許可する既存`saveDraft`へrevision付きで即時保存し、現在選択済み1枚だけ表面情報を返す。
+- **P1画像認可**: 画像取得UseCaseは、診断有効・利用期間内・同一tenant/event/participant session・現在選択済みカードをすべて確認する。未選択カード、他参加者のカード、無効または期間外の診断はobject keyを返さず404となる。
+- **レビュー判定**: P0/P1のコード修正は完了。PR #3は再レビューが完了するまで**マージ保留**。
+- **実装コミットSHA**: `f04d045fcae7bd59a2365f7404d5b1068ffd1a23`。
+- **実行済みテスト**: 単体293件・結合25件・E2E29件（すべて成功、E2E 3件は意図的skip）。architecture、lint、typecheck、build、dependency auditも成功。
+- **format:check**: Windows作業ツリーのCRLFにより、今回変更していない27ファイルだけをPrettierが検出して失敗。今回変更した実装・テストは個別Prettier適用済みで、Git indexはLF。コードフォーマット不良とは区別する。
 - **DB migrationは未適用**: `packages/db/migrations/0015_strange_mandroid.sql`はこのブランチにローカルで存在するのみで、staging・productionを含むどの環境にも適用していない。
-- **staging環境への変更は未実施**: 接続・バックアップ取得・migration適用のいずれも行っていない（このセッションにはstaging用の`DATABASE_URL`/`DATABASE_MIGRATION_URL`が設定されておらず、技術的にも実行できない状態だった）。
-- **次のアクション**: Codexが (1) PR #3が実際に`release/2026-08-08-readiness`へマージされているかをGitHub上で確認し、(2) staging Supabaseへの接続情報（プロジェクトID・ホスト名・DB名がproductionでないことを含む）を確認したうえで、staging適用の手順（本ファイル「staging migration適用の手順」参照）を進めること。
+- **staging環境への変更は未実施**: migration適用・デプロイ・端末確認のいずれも行っていない。
+- **PR状態**: PR #3は未マージ。`release/2026-08-08-readiness`、`main`への直接pushは行っていない。
+- **次のアクション**: PR #3のP0/P1修正を再レビューし、DB scope、選択前レスポンス、画像認可、revision conflict、既存機能への影響を再確認する。再レビューで問題がなければ初めてreleaseブランチへのマージ可否を判定する。
 
-Concierge Phase 1B（SHIME診断機能）は、コードレベルでは完成している。型チェック・format・lint・architecture check・単体テスト・結合テスト・APIルート契約テスト・E2Eテストがすべて成功しており、CIに相当する必須検証はすべて通過済みである。DBのtenant/event整合性を複合外部キーで強制する修正も本セッションで完了した。ただし、**migrationはこのブランチのローカルmigrationファイルとして存在するのみで、staging・productionを含むどの環境にも適用していない。** 本番反映（マージ・デプロイ・DB適用・通知送信）は一切行っていない。
+Concierge Phase 1B（SHIME診断機能）は、レビュー指摘の修正とローカル検証まで完了した。ただし、**再レビュー未完了のためマージ保留**であり、**migrationはstaging・productionを含むどの環境にも適用していない。** 本番反映（マージ・デプロイ・DB適用・通知送信）は一切行っていない。
 
 テスト件数（最新）:
 
-- 単体テスト: 287件成功（うちConcierge関連: UseCase/ドメインロジック41件、APIルート契約17件）
-- 結合テスト: 22件成功（うち既存migration検証3件、Concierge migration・分離12件、tenant/event scope不整合拒否10件を本セッションで追加）
+- 単体テスト: 293件成功
+- 結合テスト: 25件成功
 - E2E: 29件成功・3件は意図的スキップ（モバイル専用テストのデスクトップ project skip）
 
 検証コマンドの結果は本ファイルの「直近の検証結果」を参照。
 
-## 現在の未完了項目（この6件に限定する）
+## 現在の未完了項目
 
-1. **DB scope整合性修正** — コード・migration・単体/結合テストは本セッションで完了。staging等の実Supabase環境へ適用しての最終確認はまだ行っていない（下記「staging migration適用」で行う）。
-2. **PRレビュー・マージ判断** — PR #3・PR #2 とも未マージ。レビュー待ち。
-3. **staging migration適用** — このセッションにはstaging Supabaseへの認証情報・DB直結ネットワーク経路がなく、実行できない。認証情報とDB到達性のある環境（開発者ローカル、CI/CD等）で実施する必要がある。
-4. **staging端末確認** — 3が完了した後、診断設定をOFFのまま実施する。
-5. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定（詳細は下記）。Concierge作業とは別系統。運営側の決定が必要でコード側では対応不可。
-6. **本番準備とGo／No-Go** — 上記すべてに加え、既存の本番準備ベースライン（下記参照）の残項目が解消されるまで判定しない。
+1. **P0/P1再レビュー** — コード・migration・テスト修正は完了したが、PR #3は再レビュー未完了のためマージ保留。
+2. **PRレビュー・マージ判断** — PR #3・PR #2 とも未マージ。PR #3は今回の修正を再レビューしてから判断する。
+3. **staging migration適用** — migration 0015は未適用。再レビューとマージ判断より先には進めない。
+4. **stagingデプロイ・端末確認** — 未実施。migration適用後、診断設定をOFFのまま行う。
+5. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定。Concierge修正とは別P0で、運営側の決定が必要。
+6. **本番準備とGo／No-Go** — 上記すべてと既存の本番準備残項目が解消されるまで判定しない。
 
-## 直近の検証結果（2026-07-25、本セッション）
+## 直近の検証結果（2026-07-27、Codex）
 
 ```text
-pnpm format:check        → 成功
+pnpm format:check        → Windows CRLF環境差により失敗（今回未変更の27ファイル。Git indexはLF）
 pnpm architecture:check  → 成功
-pnpm lint                → 成功（0 errors / 69+8 warnings、すべて本WIP以前からの既存コード由来）
+pnpm lint                → 成功（0 errors / 68+9 warnings）
 pnpm typecheck           → 成功
-pnpm test                → 成功（単体287件・結合22件）
-pnpm build                → 成功
+pnpm test                → 成功（単体293件・結合25件）
+pnpm build               → 成功
 pnpm test:e2e             → 成功（29件・3件は意図的スキップ）
 pnpm audit:dependencies   → 成功（既知の脆弱性なし）
-pnpm readiness            → 完走（productionReady: false、理由は下記readiness:strictと同じ）
+pnpm readiness            → 完走（productionReady: false、REQUIRED_INPUT 15件）
 pnpm readiness:strict     → 失敗（exit code 1）。コード不具合ではない。
 ```
+
+`pnpm format:check`で検出された27ファイルは今回の変更対象外であり、`git ls-files --eol`ではindexがLF、Windows作業ツリーがCRLFだった。今回変更した実装・テストは個別にPrettierを適用し、個別チェックと`git diff --check`に成功している。無関係ファイルの一括整形は差分拡大を避けるため実施していない。
 
 `pnpm readiness:strict`の失敗理由: `docs/shime/EVENT_CONFIG_20260808.yaml`の`REQUIRED_INPUT`未確定項目が15件残っているため。対象キー:
 
