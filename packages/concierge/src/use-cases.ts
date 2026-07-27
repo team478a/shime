@@ -176,7 +176,11 @@ export class GetDiagnosisStatusSummary {
 export class GetDiagnosisCardObjectKey {
   constructor(private readonly repository: ConciergeDiagnosisRepository) {}
 
-  execute(scope: { tenantId: string; eventId: string }, cardAssetVersionId: string) {
-    return this.repository.getCardObjectKey(scope, cardAssetVersionId);
+  async execute(scope: DiagnosisScope, cardAssetVersionId: string, now = new Date()) {
+    const loaded = await loadActiveDiagnosis(this.repository, scope, now);
+    if (!loaded.ok) return null;
+    const session = await this.repository.findSession(scope);
+    if (session?.selectedCardAssetVersionId !== cardAssetVersionId) return null;
+    return loaded.diagnosis.cards.find((card) => card.id === cardAssetVersionId)?.storageObjectKey ?? null;
   }
 }

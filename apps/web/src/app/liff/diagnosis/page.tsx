@@ -22,7 +22,7 @@ function seededCards<T extends { id: string }>(cards: T[], seed: string) {
 
 export default function DiagnosisPage() {
   const eventId = useLiffEventId();
-  const { view, loadState, message, busy, start, save, submit } = useDiagnosis(eventId);
+  const { view, loadState, message, busy, start, selectCard, save, submit } = useDiagnosis(eventId);
   const [screen, setScreen] = useState<Screen>("card");
   const [selectedCardId, setSelectedCardId] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -44,7 +44,7 @@ export default function DiagnosisPage() {
     () => seededCards(view?.diagnosis.cards ?? [], view?.session?.id ?? eventId),
     [eventId, view?.diagnosis.cards, view?.session?.id],
   );
-  const selectedCard = view?.diagnosis.cards.find((card) => card.id === selectedCardId);
+  const selectedCard = view?.diagnosis.selectedCard?.id === selectedCardId ? view.diagnosis.selectedCard : null;
   const answerList: DiagnosisAnswer[] = Object.entries(answers).map(([axisCode, optionCode]) => ({
     axisCode,
     optionCode,
@@ -101,9 +101,12 @@ export default function DiagnosisPage() {
                   type="button"
                   className="diagnosis-card-back"
                   key={card.id}
-                  onClick={() => {
-                    setSelectedCardId(card.id);
-                    setScreen("questions");
+                  disabled={busy}
+                  onClick={async () => {
+                    if (await selectCard(card.id, answerList)) {
+                      setSelectedCardId(card.id);
+                      setScreen("questions");
+                    }
                   }}
                 >
                   <span>SHIME®</span>

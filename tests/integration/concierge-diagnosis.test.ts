@@ -250,6 +250,52 @@ describe("concierge diagnosis migration and data isolation", () => {
 });
 
 describe("concierge diagnosis cross-tenant / cross-event scope integrity", () => {
+  it("accepts a snapshot whose tenant and event belong to the same scope", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const scope = seedTenantScope(1);
+
+    await client.exec(scope.sql);
+    const snapshot = await client.query<{ tenant_id: string; event_id: string }>(
+      `select tenant_id, event_id from event_concierge_snapshots where id = '${scope.snapshotId}'`,
+    );
+
+    expect(snapshot.rows).toEqual([{ tenant_id: scope.tenantId, event_id: scope.eventId }]);
+  }, 20_000);
+
+  it("rejects a snapshot whose event belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into event_concierge_snapshots(tenant_id, event_id, template_version_id, template_version, snapshot_json, snapshot_hash, enabled, applied_by) values ('${tenantA.tenantId}','${tenantB.eventId}','${id(1, 5)}',2,'{}'::jsonb,'${"i".repeat(64)}',true,'${tenantA.userId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a participant whose event belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into participants(tenant_id, event_id, application_id, status, dream_state) values ('${tenantA.tenantId}','${tenantB.eventId}','${id(1, 10)}','confirmed','skipped')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
   it("rejects a session whose participant belongs to a different tenant", async () => {
     client = new PGlite();
     const db = drizzle(client);

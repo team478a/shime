@@ -9,6 +9,7 @@ import {
   type DiagnosisScope,
   type DiagnosisSession,
   GetDiagnosis,
+  GetDiagnosisCardObjectKey,
   parseActiveDiagnosis,
   SaveDiagnosisDraft,
   StartDiagnosis,
@@ -135,7 +136,6 @@ function repository(overrides: Partial<ConciergeDiagnosisRepository> = {}): Conc
     saveDraft: async () => null,
     submit: async () => null,
     logAccess: async () => undefined,
-    getCardObjectKey: async () => null,
     updateEventSettings: async () => null,
     getStatusSummary: async () => null,
     ...overrides,
@@ -313,7 +313,65 @@ describe("GetDiagnosis / access guards", () => {
   });
 });
 
+describe("GetDiagnosisCardObjectKey", () => {
+  it("returns only the currently selected card for the authenticated participant session", async () => {
+    const useCase = new GetDiagnosisCardObjectKey(
+      repository({
+        findSession: async () => session({ selectedCardAssetVersionId: cardId(1) }),
+      }),
+    );
+
+    await expect(useCase.execute(scope, cardId(1), now)).resolves.toBe("concierge/cards/1.webp");
+    await expect(useCase.execute(scope, cardId(2), now)).resolves.toBeNull();
+  });
+
+  it("does not expose a card before the participant has started and selected one", async () => {
+    const useCase = new GetDiagnosisCardObjectKey(repository({ findSession: async () => null }));
+
+    await expect(useCase.execute(scope, cardId(1), now)).resolves.toBeNull();
+  });
+
+  it("does not expose another participant's selected card", async () => {
+    const findSession = vi.fn(async (requestedScope: DiagnosisScope) =>
+      requestedScope.participantId === scope.participantId ? session({ selectedCardAssetVersionId: cardId(1) }) : null,
+    );
+    const useCase = new GetDiagnosisCardObjectKey(repository({ findSession }));
+    const otherParticipantScope = { ...scope, participantId: "participant-2", userId: "user-2" };
+
+    await expect(useCase.execute(otherParticipantScope, cardId(1), now)).resolves.toBeNull();
+    expect(findSession).toHaveBeenCalledWith(otherParticipantScope);
+  });
+
+  it("does not expose a selected card while diagnosis access is disabled or outside its window", async () => {
+    const selectedSession = async () => session({ selectedCardAssetVersionId: cardId(1) });
+    const disabled = new GetDiagnosisCardObjectKey(
+      repository({
+        findConfiguration: async () => configuration({ enabled: false }),
+        findSession: selectedSession,
+      }),
+    );
+    const closed = new GetDiagnosisCardObjectKey(
+      repository({
+        findConfiguration: async () => configuration({ accessClosesAt: new Date(now.getTime() - 1) }),
+        findSession: selectedSession,
+      }),
+    );
+
+    await expect(disabled.execute(scope, cardId(1), now)).resolves.toBeNull();
+    await expect(closed.execute(scope, cardId(1), now)).resolves.toBeNull();
+  });
+});
+
 describe("SaveDiagnosisDraft", () => {
+  it("persists a card selection immediately without requiring questionnaire answers", async () => {
+    const saveDraft = vi.fn(async () => session({ revision: 1, selectedCardAssetVersionId: cardId(1) }));
+    const useCase = new SaveDiagnosisDraft(repository({ findSession: async () => session(), saveDraft }));
+    const input = { expectedRevision: 0, selectedCardAssetVersionId: cardId(1), answers: [] };
+
+    await expect(useCase.execute(scope, input, now)).resolves.toEqual({ ok: true, data: { revision: 1 } });
+    expect(saveDraft).toHaveBeenCalledWith(scope, "session-1", input, now);
+  });
+
   it("rejects a card selection that is not part of the active snapshot", async () => {
     const useCase = new SaveDiagnosisDraft(repository({ findSession: async () => session() }));
     await expect(

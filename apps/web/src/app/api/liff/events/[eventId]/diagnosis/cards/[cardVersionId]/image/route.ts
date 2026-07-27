@@ -8,9 +8,17 @@ type Context = { params: Promise<{ eventId: string; cardVersionId: string }> };
 
 export const GET = participantHandler(
   async (_request: Request, context: Context) => (await context.params).eventId,
-  async ({ eventId, requestId, session }, _request, context) => {
+  async ({ eventId, participant, requestId, session }, _request, context) => {
     const { cardVersionId } = await context.params;
-    const objectKey = await getDiagnosisCardObjectKey.execute({ tenantId: session.tenantId, eventId }, cardVersionId);
+    const objectKey = await getDiagnosisCardObjectKey.execute(
+      {
+        tenantId: session.tenantId,
+        eventId,
+        participantId: participant.id,
+        userId: session.userId,
+      },
+      cardVersionId,
+    );
     if (!objectKey) return NextResponse.json({ code: "NOT_FOUND", request_id: requestId }, { status: 404 });
     const url = await createConciergeStorageProvider().createSignedReadUrl(objectKey, 300);
     return NextResponse.redirect(url, {

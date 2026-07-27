@@ -38,6 +38,10 @@ export const GET = participantHandler(resolveEventId, async ({ eventId, particip
   });
   if (!result.ok) return errorResponse(result, requestId);
   const { diagnosis, ...state } = result.data;
+  const selectedCard = diagnosis.cards.find((card) => card.id === state.session?.selectedCardAssetVersionId);
+  const imageUrl = selectedCard
+    ? `/api/liff/events/${encodeURIComponent(eventId)}/diagnosis/cards/${encodeURIComponent(selectedCard.id)}/image`
+    : null;
   return NextResponse.json(
     {
       data: {
@@ -46,11 +50,17 @@ export const GET = participantHandler(resolveEventId, async ({ eventId, particip
           copy: diagnosis.copy,
           reportCopy: diagnosis.reportCopy,
           questions: diagnosis.questions,
-          emotions: diagnosis.emotions,
-          cards: diagnosis.cards.map(({ storageObjectKey: _storageObjectKey, ...card }) => ({
-            ...card,
-            imageUrl: `/api/liff/events/${encodeURIComponent(eventId)}/diagnosis/cards/${encodeURIComponent(card.id)}/image`,
-          })),
+          cards: diagnosis.cards.map((card) => ({ id: card.id, displayOrder: card.displayOrder })),
+          selectedCard: selectedCard
+            ? {
+                id: selectedCard.id,
+                title: selectedCard.title,
+                message: selectedCard.message,
+                altText: selectedCard.altText,
+                displayOrder: selectedCard.displayOrder,
+                imageUrl,
+              }
+            : null,
         },
       },
     },

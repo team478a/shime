@@ -251,13 +251,6 @@ export function createDrizzleConciergeDiagnosisRepository(): ConciergeDiagnosisR
       });
     },
 
-    async getCardObjectKey(scope, cardAssetVersionId) {
-      const configuration = await repository.findConfiguration(scope);
-      if (!configuration?.enabled) return null;
-      const diagnosis = parseActiveDiagnosis(configuration.snapshot);
-      return diagnosis?.cards.find((card) => card.id === cardAssetVersionId)?.storageObjectKey ?? null;
-    },
-
     async updateEventSettings(input) {
       return getDatabase().transaction(async (transaction) => {
         const [existing] = await transaction

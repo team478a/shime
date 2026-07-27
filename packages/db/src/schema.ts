@@ -215,6 +215,8 @@ export const events = pgTable(
   (table) => [
     uniqueIndex("events_tenant_code_uidx").on(table.tenantId, table.code),
     index("events_tenant_status_idx").on(table.tenantId, table.status),
+    // Composite-FK target for rows whose event must belong to the same tenant.
+    unique("events_tenant_id_uidx").on(table.tenantId, table.id),
   ],
 );
 
@@ -600,6 +602,11 @@ export const participants = pgTable(
     // child row's tenant_id + event_id + participant_id be verified together
     // against this row, not just that the participant id exists.
     unique("participants_tenant_event_id_uidx").on(table.tenantId, table.eventId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "participants_event_scope_fk",
+    }),
   ],
 );
 
@@ -1542,6 +1549,11 @@ export const eventConciergeSnapshots = pgTable(
     // child row's tenant_id + event_id + snapshot_id be verified together
     // (concierge_sessions), not just that the snapshot id exists.
     unique("event_concierge_snapshots_tenant_event_id_uidx").on(table.tenantId, table.eventId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "event_concierge_snapshots_event_scope_fk",
+    }),
   ],
 );
 

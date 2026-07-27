@@ -87,7 +87,7 @@ describe("participant diagnosis API contract", () => {
     expect(useCases.getDiagnosis.execute).not.toHaveBeenCalled();
   });
 
-  it("maps a successful GetDiagnosis result to card image URLs instead of raw storage keys", async () => {
+  it("returns only opaque card backs before a participant selects a card", async () => {
     vi.mocked(useCases.getDiagnosis.execute).mockResolvedValue({
       ok: true,
       data: {
@@ -96,7 +96,17 @@ describe("participant diagnosis API contract", () => {
           reportCopy: {},
           questions: [],
           emotions: [],
-          cards: [{ id: "card-1", storageObjectKey: "concierge/cards/card-1.webp", title: "Card" }],
+          cards: [
+            {
+              id: "card-1",
+              displayOrder: 1,
+              storageObjectKey: "concierge/cards/card-1.webp",
+              title: "Private title",
+              message: "Private message",
+              emotionCode: "private-emotion",
+              altText: "Private alt text",
+            },
+          ],
         },
         session: null,
         answers: [],
@@ -108,8 +118,64 @@ describe("participant diagnosis API contract", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.data.diagnosis.cards[0]).not.toHaveProperty("storageObjectKey");
-    expect(body.data.diagnosis.cards[0].imageUrl).toBe("/api/liff/events/event-1/diagnosis/cards/card-1/image");
+    expect(body.data.diagnosis.cards).toEqual([{ id: "card-1", displayOrder: 1 }]);
+    expect(body.data.diagnosis).not.toHaveProperty("emotions");
+    expect(body.data.diagnosis.selectedCard).toBeNull();
+    expect(JSON.stringify(body.data.diagnosis.cards)).not.toMatch(/title|message|emotion|image|storage|alt/i);
+  });
+
+  it("returns face data only for the card already selected in the participant session", async () => {
+    vi.mocked(useCases.getDiagnosis.execute).mockResolvedValue({
+      ok: true,
+      data: {
+        diagnosis: {
+          copy: {},
+          reportCopy: {},
+          questions: [],
+          emotions: [],
+          cards: [
+            {
+              id: "card-1",
+              displayOrder: 1,
+              storageObjectKey: "concierge/cards/card-1.webp",
+              title: "Selected title",
+              message: "Selected message",
+              emotionCode: "private-emotion",
+              altText: "Selected alt text",
+            },
+            {
+              id: "card-2",
+              displayOrder: 2,
+              storageObjectKey: "concierge/cards/card-2.webp",
+              title: "Unselected title",
+              message: "Unselected message",
+              emotionCode: "another-emotion",
+              altText: "Unselected alt text",
+            },
+          ],
+        },
+        session: { selectedCardAssetVersionId: "card-1" },
+        answers: [],
+        result: null,
+      },
+    } as never);
+
+    const response = await getDiagnosisRoute(getRequest(), eventContext());
+    const body = await response.json();
+
+    expect(body.data.diagnosis.cards).toEqual([
+      { id: "card-1", displayOrder: 1 },
+      { id: "card-2", displayOrder: 2 },
+    ]);
+    expect(body.data.diagnosis.selectedCard).toEqual({
+      id: "card-1",
+      title: "Selected title",
+      message: "Selected message",
+      altText: "Selected alt text",
+      displayOrder: 1,
+      imageUrl: "/api/liff/events/event-1/diagnosis/cards/card-1/image",
+    });
+    expect(JSON.stringify(body)).not.toMatch(/Unselected title|Unselected message|another-emotion|storageObjectKey/);
   });
 
   it("maps a known GetDiagnosis error code to its documented HTTP status", async () => {
@@ -233,6 +299,10 @@ describe("diagnosis card image authorization contract", () => {
 
     expect(response.status).toBe(404);
     expect(JSON.stringify(body)).not.toMatch(/storage|object/i);
+    expect(useCases.getDiagnosisCardObjectKey.execute).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", eventId: "event-1", participantId: "participant-1", userId: "user-1" },
+      "card-1",
+    );
   });
 
   it("redirects to a short-lived signed URL without exposing the raw storage object key", async () => {

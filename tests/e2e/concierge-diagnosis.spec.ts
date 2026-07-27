@@ -16,7 +16,20 @@ const QUESTIONS = [
   { axisCode: "axis_4", prompt: "今いちばん大切にしたいものは", optionA: "安心できる関係", optionB: "新しい出会い" },
 ];
 
-function diagnosisFixture() {
+function cardFaces() {
+  return CARD_IDS.map((id, index) => ({
+    id,
+    title: `カードタイトル${index + 1}`,
+    message: `カードメッセージ${index + 1}`,
+    altText: `カード${index + 1}`,
+    emotionCode: `emotion_${index + 1}`,
+    displayOrder: index + 1,
+    imageUrl: `/api/liff/events/${EVENT_ID}/diagnosis/cards/${id}/image`,
+  }));
+}
+
+function diagnosisFixture(selectedCardAssetVersionId: string | null) {
+  const selectedCard = cardFaces().find((card) => card.id === selectedCardAssetVersionId) ?? null;
   return {
     copy: {
       pageTitle: "",
@@ -41,20 +54,8 @@ function diagnosisFixture() {
         { code: "opt_b", label: question.optionB, displayOrder: 2 },
       ],
     })),
-    emotions: Array.from({ length: 8 }, (_, index) => ({
-      code: `emotion_${index + 1}`,
-      label: `感情${index + 1}`,
-      displayOrder: index + 1,
-    })),
-    cards: CARD_IDS.map((id, index) => ({
-      id,
-      title: `カードタイトル${index + 1}`,
-      message: `カードメッセージ${index + 1}`,
-      altText: `カード${index + 1}`,
-      emotionCode: `emotion_${index + 1}`,
-      displayOrder: index + 1,
-      imageUrl: `/api/liff/events/${EVENT_ID}/diagnosis/cards/${id}/image`,
-    })),
+    cards: CARD_IDS.map((id, index) => ({ id, displayOrder: index + 1 })),
+    selectedCard,
   };
 }
 
@@ -94,7 +95,7 @@ async function mockDiagnosisApi(page: import("@playwright/test").Page) {
         contentType: "application/json",
         body: JSON.stringify({
           data: {
-            diagnosis: diagnosisFixture(),
+            diagnosis: diagnosisFixture(session?.selectedCardAssetVersionId ?? null),
             snapshotHash: "hash",
             access: { opensAt: null, closesAt: null, allowResubmission: false },
             session,
@@ -157,7 +158,7 @@ async function mockDiagnosisApi(page: import("@playwright/test").Page) {
         body: JSON.stringify({ code: "DIAGNOSIS_INCOMPLETE" }),
       });
     }
-    const selectedCard = diagnosisFixture().cards.find((card) => card.id === session!.selectedCardAssetVersionId)!;
+    const selectedCard = cardFaces().find((card) => card.id === session!.selectedCardAssetVersionId)!;
     result = {
       primaryEmotion: {
         code: selectedCard.emotionCode,
