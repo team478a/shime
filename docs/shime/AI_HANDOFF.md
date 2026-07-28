@@ -2,12 +2,28 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-28 19:05（Asia/Tokyo、Codex。PR #3のrelease反映、staging migration・deploy・公開スモークを完了）
-作業ブランチ: `codex/record-pr3-staging-rollout`（実施記録だけを`release/2026-08-08-readiness`へ反映する文書ブランチ）
+最終更新: 2026-07-28 19:30（Asia/Tokyo、Codex。Concierge合成実機確認データをstagingへ準備）
+作業ブランチ: `codex/concierge-staging-rehearsal-setup`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
+PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### Concierge Phase 1B staging実機確認準備（2026-07-28 19:30）
+
+- staging DBの読み取り専用確認で、Concierge card、template、event snapshot、sessionがすべて0件であることを確認した。
+- `scripts/setup-concierge-rehearsal.ts`を追加した。`APP_ENV=staging`、RH形式イベント、
+  draft/accepting、診断OFF、private Storageを強制し、既定は読み取り専用dry-run。
+- RH-Aへ合成カード8枚、公開済み検証テンプレートv1、イベント専用スナップショットを適用した。
+- 適用後に4問・8感情・8カードのsnapshotが有効な構造であること、公開カード8件、
+  participant diagnosis session 0件、private bucketを確認した。
+- 診断は`enabled=false`のまま。LINE通知、外部AI、実参加者データは使用していない。
+- 単体304件・結合37件、E2E 29件（3件は意図的skip）、architecture、lint、typecheck、
+  build、dependency auditに成功した。
+- 詳細: `docs/shime/CONCIERGE_REHEARSAL_SETUP_20260728.md`
+- 次は管理者が短い利用期間を設定して診断を一時的にONにし、本人連携済みRH-A合成参加者で
+  スマートフォン実機確認を行う。終了後はOFFへ戻す。
 
 ### PR #3 release反映・migration 0015 staging適用（2026-07-28 19:05）
 
@@ -125,7 +141,7 @@ releaseへのPR #3 merge、staging migration、staging deploy、公開スモー�
 
 テスト件数（最新）:
 
-- 単体テスト: 301件成功
+- 単体テスト: 304件成功
 - 結合テスト: 37件成功
 - E2E: 29件成功・3件は意図的スキップ（モバイル専用テストのデスクトップ project skip）
 
@@ -133,9 +149,9 @@ releaseへのPR #3 merge、staging migration、staging deploy、公開スモー�
 
 ## 現在の未完了項目
 
-1. **認証済みConcierge実機確認** — stagingへの技術反映と公開スモークは完了。診断を有効化する前に、
-   合成参加者だけを使って選択前非公開、選択即時保存、選択カード表示、途中保存、revision conflict、
-   二重提出防止、他参加者情報非公開をスマートフォンで確認する。
+1. **認証済みConcierge実機確認** — 合成カード・テンプレート・RH-A snapshotの準備まで完了し、
+   診断はOFF。管理者が確認時間だけONにして、選択前非公開、選択即時保存、選択カード表示、
+   途中保存、revision conflict、二重提出防止、他参加者情報非公開をスマートフォンで確認する。
 2. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定。Concierge修正とは別P0で、運営側の決定が必要。
 3. **全導線リハーサルと復旧訓練** — 匿名化データ、複数端末、通信障害・代替運用を含む実施記録が必要。
 4. **production反映判断** — migration 0015とアプリはproduction未反映。既存P0をすべて解消し、
@@ -146,11 +162,11 @@ releaseへのPR #3 merge、staging migration、staging deploy、公開スモー�
 ## 直近の検証結果（2026-07-28、Codex）
 
 ```text
-pnpm format:check        → Windows CRLF環境差により失敗（今回未変更の27ファイル。Git indexはLF）
+pnpm format:check        → Windows CRLF環境差により失敗（今回未変更の45ファイル。Git indexはLF）
 pnpm architecture:check  → 成功
 pnpm lint                → 成功（0 errors / 68+9 warnings）
 pnpm typecheck           → 成功
-pnpm test                → 成功（単体301件・結合37件）
+pnpm test                → 成功（単体304件・結合37件）
 pnpm build               → 成功
 pnpm test:e2e             → 成功（29件・3件は意図的スキップ）
 pnpm audit:dependencies   → 成功（既知の脆弱性なし）
@@ -158,7 +174,7 @@ pnpm readiness            → 完走（productionReady: false、REQUIRED_INPUT 1
 pnpm readiness:strict     → 失敗（exit code 1）。コード不具合ではない。
 ```
 
-`pnpm format:check`で検出された27ファイルは今回の変更対象外であり、`git ls-files --eol`ではindexがLF、Windows作業ツリーがCRLFだった。今回変更した実装・テストは個別にPrettierを適用し、個別チェックと`git diff --check`に成功している。無関係ファイルの一括整形は差分拡大を避けるため実施していない。
+`pnpm format:check`で検出された45ファイルは今回の変更対象外であり、`git ls-files --eol`ではindexがLF、Windows作業ツリーがCRLFだった。今回変更した実装・テストは個別にPrettierを適用し、個別チェックと`git diff --check`に成功している。無関係ファイルの一括整形は差分拡大を避けるため実施していない。
 
 `pnpm readiness:strict`の失敗理由: `docs/shime/EVENT_CONFIG_20260808.yaml`の`REQUIRED_INPUT`未確定項目が15件残っているため。対象キー:
 
