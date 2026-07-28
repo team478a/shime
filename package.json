@@ -21,6 +21,7 @@
     "audit:dependencies": "pnpm audit --audit-level moderate",
     "readiness": "tsx scripts/readiness.ts",
     "readiness:strict": "tsx scripts/readiness.ts --strict",
+    "rehearsal:prepare-concierge": "tsx scripts/setup-concierge-rehearsal.ts",
     "rehearsal:verify-seating": "tsx scripts/verify-rehearsal-seating-draft.ts",
     "smoke:openai-dream": "tsx scripts/smoke-openai-dream.ts",
     "supabase:verify": "tsx scripts/verify-supabase.ts",
