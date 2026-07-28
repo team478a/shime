@@ -3,6 +3,9 @@
 Last updated: 2026-07-28
 Target migration: `0015_strange_mandroid.sql`
 
+2026-07-28のstaging実施結果は
+`docs/shime/MIGRATION_0015_STAGING_RECORD_20260728.md`を参照。
+
 ## Purpose
 
 This runbook applies the Concierge Phase 1B schema to staging without using
