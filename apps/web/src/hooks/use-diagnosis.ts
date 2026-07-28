@@ -11,12 +11,16 @@ type DiagnosisQuestion = {
   options: Array<{ code: string; label: string; displayOrder: number }>;
 };
 
-type DiagnosisCard = {
+type DiagnosisCardBack = {
+  id: string;
+  displayOrder: number;
+};
+
+type DiagnosisCardFace = {
   id: string;
   title: string;
   message: string;
   altText: string;
-  emotionCode: string;
   displayOrder: number;
   imageUrl: string;
 };
@@ -44,7 +48,8 @@ export type DiagnosisView = {
       guidance: string;
     };
     questions: DiagnosisQuestion[];
-    cards: DiagnosisCard[];
+    cards: DiagnosisCardBack[];
+    selectedCard: DiagnosisCardFace | null;
   };
   access: { opensAt: string | null; closesAt: string | null; allowResubmission: boolean };
   session: {
@@ -77,19 +82,37 @@ async function readResponse(response: Response) {
   return body.data;
 }
 
+async function fetchDiagnosisView(eventId: string): Promise<DiagnosisView> {
+  return (await readResponse(
+    await fetch(`/api/liff/events/${encodeURIComponent(eventId)}/diagnosis`, { cache: "no-store" }),
+  )) as DiagnosisView;
+}
+
+async function persistDiagnosisDraft(
+  eventId: string,
+  expectedRevision: number,
+  selectedCardAssetVersionId: string,
+  answers: DiagnosisAnswer[],
+) {
+  return (await readResponse(
+    await fetch(`/api/liff/events/${encodeURIComponent(eventId)}/diagnosis`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ expectedRevision, selectedCardAssetVersionId, answers }),
+    }),
+  )) as { revision: number };
+}
+
 export function useDiagnosis(eventId: string) {
   const [view, setView] = useState<DiagnosisView | null>(null);
-  const [loadState, setLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [loadState, setLoadState] = useState<"idle" | "loaded" | "error">("idle");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!eventId) return;
-    setLoadState("loading");
     try {
-      const data = (await readResponse(
-        await fetch(`/api/liff/events/${encodeURIComponent(eventId)}/diagnosis`, { cache: "no-store" }),
-      )) as DiagnosisView;
+      const data = await fetchDiagnosisView(eventId);
       setView(data);
       setMessage("");
       setLoadState("loaded");
@@ -100,8 +123,24 @@ export function useDiagnosis(eventId: string) {
   }, [eventId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!eventId) return;
+    let active = true;
+    fetchDiagnosisView(eventId)
+      .then((data) => {
+        if (!active) return;
+        setView(data);
+        setMessage("");
+        setLoadState("loaded");
+      })
+      .catch((error) => {
+        if (!active) return;
+        setMessage(error instanceof Error ? error.message : "診断を読み込めませんでした。");
+        setLoadState("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [eventId]);
 
   async function start(restart = false) {
     setBusy(true);
@@ -127,20 +166,14 @@ export function useDiagnosis(eventId: string) {
     if (!view?.session) return null;
     setBusy(true);
     try {
-      const data = (await readResponse(
-        await fetch(`/api/liff/events/${encodeURIComponent(eventId)}/diagnosis`, {
-          method: "PUT",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            expectedRevision: view.session.revision,
-            selectedCardAssetVersionId,
-            answers,
-          }),
-        }),
-      )) as { revision: number };
+      const data = await persistDiagnosisDraft(eventId, view.session.revision, selectedCardAssetVersionId, answers);
       setView((current) =>
         current?.session
-          ? { ...current, session: { ...current.session, revision: data.revision }, answers }
+          ? {
+              ...current,
+              session: { ...current.session, revision: data.revision, selectedCardAssetVersionId },
+              answers,
+            }
           : current,
       );
       setMessage("回答を保存しました。");
@@ -149,6 +182,24 @@ export function useDiagnosis(eventId: string) {
       setMessage(error instanceof Error ? error.message : "回答を保存できませんでした。");
       await load();
       return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function selectCard(selectedCardAssetVersionId: string, answers: DiagnosisAnswer[]) {
+    if (!view?.session) return false;
+    setBusy(true);
+    try {
+      await persistDiagnosisDraft(eventId, view.session.revision, selectedCardAssetVersionId, answers);
+      const data = await fetchDiagnosisView(eventId);
+      setView(data);
+      setMessage("");
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "カードを選択できませんでした。");
+      await load();
+      return false;
     } finally {
       setBusy(false);
     }
@@ -175,5 +226,5 @@ export function useDiagnosis(eventId: string) {
     }
   }
 
-  return { view, loadState, message, busy, start, save, submit };
+  return { view, loadState, message, busy, start, selectCard, save, submit };
 }

@@ -251,13 +251,6 @@ export function createDrizzleConciergeDiagnosisRepository(): ConciergeDiagnosisR
       });
     },
 
-    async getCardObjectKey(scope, cardAssetVersionId) {
-      const configuration = await repository.findConfiguration(scope);
-      if (!configuration?.enabled) return null;
-      const diagnosis = parseActiveDiagnosis(configuration.snapshot);
-      return diagnosis?.cards.find((card) => card.id === cardAssetVersionId)?.storageObjectKey ?? null;
-    },
-
     async updateEventSettings(input) {
       return getDatabase().transaction(async (transaction) => {
         const [existing] = await transaction
@@ -331,9 +324,7 @@ export function createDrizzleConciergeDiagnosisRepository(): ConciergeDiagnosisR
         getDatabase()
           .select({ status: conciergeSessions.status })
           .from(conciergeSessions)
-          .where(
-            and(eq(conciergeSessions.tenantId, scope.tenantId), eq(conciergeSessions.eventId, scope.eventId)),
-          ),
+          .where(and(eq(conciergeSessions.tenantId, scope.tenantId), eq(conciergeSessions.eventId, scope.eventId))),
       ]);
       const eligibleCount = eligible[0]?.value ?? 0;
       const inProgressCount = sessions.filter((session) => session.status === "in_progress").length;

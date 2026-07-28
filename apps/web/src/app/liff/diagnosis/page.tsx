@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ParticipantNextLink } from "../../../components/participant-journey-nav";
 import { ParticipantNotice, ParticipantPageHeader } from "../../../components/participant-ui";
@@ -22,23 +22,29 @@ function seededCards<T extends { id: string }>(cards: T[], seed: string) {
 
 export default function DiagnosisPage() {
   const eventId = useLiffEventId();
-  const { view, loadState, message, busy, start, save, submit } = useDiagnosis(eventId);
+  const { view, loadState, message, busy, start, selectCard, save, submit } = useDiagnosis(eventId);
   const [screen, setScreen] = useState<Screen>("card");
   const [selectedCardId, setSelectedCardId] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [syncedSessionKey, setSyncedSessionKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!view?.session) return;
-    setSelectedCardId(view.session.selectedCardAssetVersionId ?? "");
-    setAnswers(Object.fromEntries(view.answers.map((answer) => [answer.axisCode, answer.optionCode])));
-    setScreen(view.session.selectedCardAssetVersionId ? "questions" : "card");
-  }, [view?.session?.id, view?.session?.revision, view?.session?.selectedCardAssetVersionId, view?.answers]);
+  const session = view?.session ?? null;
+  // Keyed on id + submittedAt (not revision) so a routine mid-editing save doesn't
+  // re-run this and clobber the participant's in-progress card/answer selection;
+  // it should only re-hydrate on a genuinely new or reopened answering attempt.
+  const sessionKey = session ? `${session.id}:${session.submittedAt ?? "null"}` : null;
+  if (session && sessionKey !== syncedSessionKey) {
+    setSyncedSessionKey(sessionKey);
+    setSelectedCardId(session.selectedCardAssetVersionId ?? "");
+    setAnswers(Object.fromEntries((view?.answers ?? []).map((answer) => [answer.axisCode, answer.optionCode])));
+    setScreen(session.selectedCardAssetVersionId ? "questions" : "card");
+  }
 
   const cards = useMemo(
     () => seededCards(view?.diagnosis.cards ?? [], view?.session?.id ?? eventId),
     [eventId, view?.diagnosis.cards, view?.session?.id],
   );
-  const selectedCard = view?.diagnosis.cards.find((card) => card.id === selectedCardId);
+  const selectedCard = view?.diagnosis.selectedCard?.id === selectedCardId ? view.diagnosis.selectedCard : null;
   const answerList: DiagnosisAnswer[] = Object.entries(answers).map(([axisCode, optionCode]) => ({
     axisCode,
     optionCode,
@@ -73,9 +79,7 @@ export default function DiagnosisPage() {
           回答と結果は他の参加者には公開されません。これは医学的・心理学的な診断ではありません。
         </p>
 
-        {(loadState === "idle" || loadState === "loading") && (
-          <ParticipantNotice>診断を読み込んでいます…</ParticipantNotice>
-        )}
+        {loadState === "idle" && <ParticipantNotice>診断を読み込んでいます…</ParticipantNotice>}
         {loadState === "error" && <ParticipantNotice tone="error">{message}</ParticipantNotice>}
 
         {loadState === "loaded" && view && !view.session && (
@@ -97,9 +101,12 @@ export default function DiagnosisPage() {
                   type="button"
                   className="diagnosis-card-back"
                   key={card.id}
-                  onClick={() => {
-                    setSelectedCardId(card.id);
-                    setScreen("questions");
+                  disabled={busy}
+                  onClick={async () => {
+                    if (await selectCard(card.id, answerList)) {
+                      setSelectedCardId(card.id);
+                      setScreen("questions");
+                    }
                   }}
                 >
                   <span>SHIME®</span>
@@ -136,9 +143,7 @@ export default function DiagnosisPage() {
                           type="radio"
                           name={question.axisCode}
                           checked={answers[question.axisCode] === option.code}
-                          onChange={() =>
-                            setAnswers((current) => ({ ...current, [question.axisCode]: option.code }))
-                          }
+                          onChange={() => setAnswers((current) => ({ ...current, [question.axisCode]: option.code }))}
                         />
                         {option.label}
                       </label>

@@ -43,9 +43,7 @@ export default async function EventConciergePage({ params }: { params: Promise<{
       .where(and(eq(eventConciergeSnapshots.tenantId, session.tenantId), eq(eventConciergeSnapshots.eventId, eventId)))
       .limit(1)
   )[0];
-  const summary = current
-    ? await getDiagnosisStatusSummary.execute({ tenantId: session.tenantId, eventId })
-    : null;
+  const summary = current ? await getDiagnosisStatusSummary.execute({ tenantId: session.tenantId, eventId }) : null;
   return (
     <main>
       <EventConciergeSettings

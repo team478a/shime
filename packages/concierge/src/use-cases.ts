@@ -2,14 +2,10 @@ import type { ConciergeDiagnosisRepository } from "./repository";
 import type { DiagnosisEventSettings } from "./repository";
 import { createDeterministicDiagnosisResult } from "./rules";
 import { parseActiveDiagnosis } from "./snapshot";
-import type {
-  DiagnosisAnswer,
-  DiagnosisResult,
-  DiagnosisSaveInput,
-  DiagnosisScope,
-  DiagnosisView,
-  diagnosisResultSnapshotSchema,
-} from "./types";
+import { diagnosisResultSnapshotSchema } from "./types";
+import type { DiagnosisAnswer, DiagnosisResult, DiagnosisSaveInput, DiagnosisScope, DiagnosisView } from "./types";
+
+type DiagnosisFailure = Extract<DiagnosisResult<never>, { ok: false }>;
 
 function unavailable(
   code:
@@ -18,7 +14,7 @@ function unavailable(
     | "DIAGNOSIS_NOT_OPEN"
     | "DIAGNOSIS_CLOSED"
     | "DIAGNOSIS_SNAPSHOT_INVALID",
-): DiagnosisResult<never> {
+): DiagnosisFailure {
   return { ok: false, code, status: code === "DIAGNOSIS_NOT_CONFIGURED" ? 404 : 409 };
 }
 
@@ -76,7 +72,7 @@ export class StartDiagnosis {
 
   async execute(
     scope: DiagnosisScope,
-    input: { restart?: boolean },
+    input: { restart?: boolean | undefined },
     now = new Date(),
   ): Promise<DiagnosisResult<{ session: Awaited<ReturnType<ConciergeDiagnosisRepository["findSession"]>> }>> {
     const loaded = await loadActiveDiagnosis(this.repository, scope, now);
@@ -180,7 +176,11 @@ export class GetDiagnosisStatusSummary {
 export class GetDiagnosisCardObjectKey {
   constructor(private readonly repository: ConciergeDiagnosisRepository) {}
 
-  execute(scope: { tenantId: string; eventId: string }, cardAssetVersionId: string) {
-    return this.repository.getCardObjectKey(scope, cardAssetVersionId);
+  async execute(scope: DiagnosisScope, cardAssetVersionId: string, now = new Date()) {
+    const loaded = await loadActiveDiagnosis(this.repository, scope, now);
+    if (!loaded.ok) return null;
+    const session = await this.repository.findSession(scope);
+    if (session?.selectedCardAssetVersionId !== cardAssetVersionId) return null;
+    return loaded.diagnosis.cards.find((card) => card.id === cardAssetVersionId)?.storageObjectKey ?? null;
   }
 }

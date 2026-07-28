@@ -53,10 +53,6 @@ export interface ConciergeDiagnosisRepository {
     action: "view" | "start" | "save" | "submit" | "result_view" | "restart",
     now: Date,
   ): Promise<void>;
-  getCardObjectKey(
-    scope: Pick<DiagnosisScope, "tenantId" | "eventId">,
-    cardAssetVersionId: string,
-  ): Promise<string | null>;
   updateEventSettings(input: DiagnosisEventSettings): Promise<DiagnosisConfiguration | null>;
   getStatusSummary(scope: Pick<DiagnosisScope, "tenantId" | "eventId">): Promise<DiagnosisStatusSummary | null>;
 }

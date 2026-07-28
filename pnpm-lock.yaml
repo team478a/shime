@@ -194,6 +194,8 @@ importers:
 
   packages/checkin: {}
 
+  packages/concierge: {}
+
   packages/core: {}
 
   packages/db: {}

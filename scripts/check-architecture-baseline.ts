@@ -6,7 +6,7 @@ const MAX_SOURCE_LINES = 300;
 
 const baseline = {
   routeDbImports: 62,
-  clientFilesWithFetch: 25,
+  clientFilesWithFetch: 24,
   filesOverMaxLines: 9,
 } as const;
 
@@ -32,6 +32,12 @@ function isClientComponent(source: string): boolean {
   return /^\s*["']use client["'];/.test(source);
 }
 
+// Module hooks are the sanctioned fetch boundary (AGENTS.md): components call hooks,
+// hooks call fetch. Counting hook files here would penalize the correct pattern.
+function isModuleHook(normalizedPath: string): boolean {
+  return normalizedPath.includes("/src/hooks/");
+}
+
 async function collectMetrics(): Promise<Metrics> {
   const files = await sourceFiles(SOURCE_ROOT);
   const metrics: Metrics = {
@@ -45,7 +51,8 @@ async function collectMetrics(): Promise<Metrics> {
     const normalizedPath = file.replaceAll("\\", "/");
     const lineCount = source.split(/\r?\n/).length;
     if (normalizedPath.endsWith("/route.ts") && source.includes("@shime/db")) metrics.routeDbImports += 1;
-    if (isClientComponent(source) && /\bfetch\s*\(/.test(source)) metrics.clientFilesWithFetch += 1;
+    if (isClientComponent(source) && !isModuleHook(normalizedPath) && /\bfetch\s*\(/.test(source))
+      metrics.clientFilesWithFetch += 1;
     if (lineCount > MAX_SOURCE_LINES) metrics.filesOverMaxLines += 1;
   }
   return metrics;

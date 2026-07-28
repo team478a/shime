@@ -28,7 +28,9 @@
     "supabase:ensure-concierge-storage": "tsx scripts/ensure-concierge-storage.ts",
     "supabase:backup-readiness": "tsx scripts/check-backup-readiness.ts",
     "db:generate": "drizzle-kit generate --config packages/db/drizzle.config.ts",
+    "db:preflight:0015": "tsx scripts/check-migration-0015-preflight.ts",
     "db:migrate": "tsx packages/db/src/migrate.ts",
+    "db:verify:0015": "tsx scripts/verify-migration-0015.ts",
     "db:bootstrap-admin": "tsx packages/db/src/bootstrap-admin.ts",
     "db:verify-admin": "tsx scripts/verify-admin-bootstrap.ts",
     "db:seed": "tsx packages/db/src/seed.ts"
