@@ -2,12 +2,30 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-28 18:55（Asia/Tokyo、Codex。PR #3最終再レビューと検査誤判定防止を完了）
-作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）
-作業開始時PR HEAD: `ff4bd40a4180170abd50fc86091e52bf6c9316e9`
-最新コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照できないため、PR #3の`headRefOid`を最新PR HEADの正とする）
-文書同期コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照できないため、PR #3の`headRefOid`を最新PR HEADの正とする）
+最終更新: 2026-07-28 19:05（Asia/Tokyo、Codex。PR #3のrelease反映、staging migration・deploy・公開スモークを完了）
+作業ブランチ: `codex/record-pr3-staging-rollout`（実施記録だけを`release/2026-08-08-readiness`へ反映する文書ブランチ）
+PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
+release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
+最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### PR #3 release反映・migration 0015 staging適用（2026-07-28 19:05）
+
+- PR #3を`release/2026-08-08-readiness`へmergeした。merge commitは`cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`。
+- secretを出力しない接続確認で対象をstagingと識別し、runtime/migrationが同一DBを参照することを確認した。
+- リポジトリ外へロジカルバックアップ`staging-pre-0015-20260728-185625`を作成し、
+  3ファイルのsizeとSHA-256を記録した。復旧手順も適用前に確認した。
+- 読み取り専用preflightはmigration head 0014、11件のscope不整合すべて0、`safe: true`。
+- migration 0015をstagingへ適用し、読み取り専用postflightでmigration head 0015、
+  11件のscope不整合すべて0、欠落制約・テーブル・検査なし、`safe: true`を確認した。
+- 適用後はpublic tables 65、applied migrations 16、Storage private、backup readiness true。
+- 単体301件・結合37件とproduction buildに成功した。
+- Vercel stagingへdeployment `dpl_FgcLfXXWA5wDmzXzDhcseyCDnqLJ`を反映した。
+  `https://shime-staging.vercel.app`でhealth 200、staging警告、robots拒否、
+  未認証管理画面307、未認証診断API 401を確認した。
+- 詳細証跡: `docs/shime/MIGRATION_0015_STAGING_RECORD_20260728.md`
+- **production migration、production deploy、診断有効化、実データ利用、通知送信は未実施。**
+- この完了はstaging技術反映の記録であり、本番Go判定ではない。
 
 ### CodexによるPR #3最終再レビュー（2026-07-28 18:55）
 
@@ -100,10 +118,10 @@ PR #3のレビューで判明したP0/P1を修正した。**修正コードと�
 - **PR状態**: PR #3は未マージ。`release/2026-08-08-readiness`、`main`への直接pushは行っていない。
 - **次のアクション**: PR #3のP0/P1修正を再レビューし、DB scope、選択前レスポンス、画像認可、revision conflict、既存機能への影響を再確認する。再レビューで問題がなければ初めてreleaseブランチへのマージ可否を判定する。
 
-Concierge Phase 1B（SHIME診断機能）は、レビュー指摘の修正、最終再レビュー、ローカル検証まで完了し、
-**PR #3はreleaseブランチへマージ可能と判定した。**
-ただし、**migrationはstaging・productionを含むどの環境にも適用していない。**
-本番反映（マージ・デプロイ・DB適用・通知送信）は一切行っていない。
+Concierge Phase 1B（SHIME診断機能）は、レビュー指摘の修正、最終再レビュー、
+releaseへのPR #3 merge、staging migration、staging deploy、公開スモークまで完了した。
+**migration 0015はstagingだけに適用済みで、productionには未適用。**
+本番デプロイ、実参加者データ利用、診断有効化、通知送信は行っていない。
 
 テスト件数（最新）:
 
@@ -115,11 +133,15 @@ Concierge Phase 1B（SHIME診断機能）は、レビュー指摘の修正、最
 
 ## 現在の未完了項目
 
-1. **PR #3のマージ実行判断** — コード再レビューは合格しreleaseへマージ可能。PR #3・PR #2とも未マージで、マージ操作はユーザー承認後に行う。
-2. **staging migration実行承認** — migration 0015は未適用。PR #3のrelease反映、対象staging・backup確認、preflight成功より先には適用しない。
-3. **stagingデプロイ・端末確認** — 未実施。migration適用後、診断設定をOFFのまま行う。
-4. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定。Concierge修正とは別P0で、運営側の決定が必要。
-5. **本番準備とGo／No-Go** — 上記すべてと既存の本番準備残項目が解消されるまで判定しない。
+1. **認証済みConcierge実機確認** — stagingへの技術反映と公開スモークは完了。診断を有効化する前に、
+   合成参加者だけを使って選択前非公開、選択即時保存、選択カード表示、途中保存、revision conflict、
+   二重提出防止、他参加者情報非公開をスマートフォンで確認する。
+2. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定。Concierge修正とは別P0で、運営側の決定が必要。
+3. **全導線リハーサルと復旧訓練** — 匿名化データ、複数端末、通信障害・代替運用を含む実施記録が必要。
+4. **production反映判断** — migration 0015とアプリはproduction未反映。既存P0をすべて解消し、
+   Go承認と復旧担当を確定するまで適用・デプロイしない。
+5. **本番Go／No-Go** — REQUIRED_INPUT、LINE/LIFF、定期ジョブ、監視、全導線E2Eを含む
+   既存P0が1件でも残る間は本番可能と判定しない。
 
 ## 直近の検証結果（2026-07-28、Codex）
 

@@ -6,6 +6,15 @@
 
 ## 今回確認できた項目
 
+- 2026-07-28、Concierge Phase 1BのPR #3を`release/2026-08-08-readiness`へmerge
+  （`cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`）。stagingを識別後、リポジトリ外の
+  ロジカルバックアップ、読み取り専用preflightを実施し、migration 0015をstagingへ適用した。
+  postflightでtenant/event scope不整合11種類すべて0、欠落制約・テーブルなし、
+  public tables 65、migrations 16/16、backup readiness trueを確認
+- 2026-07-28、上記releaseをVercel stagingへ反映
+  （`dpl_FgcLfXXWA5wDmzXzDhcseyCDnqLJ`）。公開health 200、staging警告、robots拒否、
+  未認証管理画面307、未認証診断API 401を確認。production migration・deploy、
+  診断有効化、実データ利用、通知送信は未実施であり、本記録は本番可能判定ではない
 - 2026-07-15、UI品質改善、リハーサル資料、合成12名CSVをVercel stagingへ反映（`dpl_FPkBUkbSED8dRzxeTkKFbuaqCS8D`）。aliasは `https://shime-staging.vercel.app`。公開health 200、認証付きreadiness 200、未認証の管理・ジョブAPI 401、system_adminログインとログアウト、LINE Bot Info 200、Webhook正署名 200・不正署名 401、公開資料のSHA-256一致を確認
 - 2026-07-15、Supabaseの52 public tables、migration 10/10、runtime/migration接続先一致、private Storage bucket、daily backupモード、バックアップリハーサル準備状態に問題なしを確認
 - 2026-07-17、運営OSの共通基盤として版付き `resource_templates` を追加し、stagingの53 public tables、migration 11、runtime/migration接続先一致を確認。会場レイアウトはテナント共通テンプレートからイベント固有席マスターへコピーし、テンプレート更新が進行中イベントへ波及しない構成とした
