@@ -2,11 +2,28 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-28 16:25（Asia/Tokyo、Codex。PR #3再レビュー追加指摘修正後、再レビュー待ち）
+最終更新: 2026-07-28 17:50（Asia/Tokyo、Codex。Concierge template/snapshot scope修正後、再レビュー待ち）
 作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）
-最新実装コミット: `c1627b7`（`fix: complete participant scope constraints`）
+最新実装コミット: `ef23fb7`（`fix: enforce Concierge template scope`）
 文書同期コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照できないため、PR #3の`headRefOid`を最新PR HEADの正とする）
 開始時の `main`: `b07d1ce`
+
+### CodexによるConcierge template/snapshot scope修正（2026-07-28 17:50）
+
+再レビューで、イベントsnapshotの`template_version_id`と`applied_by`が単一ID参照であり、
+別tenantのテンプレート版・適用者をDBが拒否できないことを確認し、親テンプレートまで含めて修正した。
+
+- `concierge_templates(tenant_id, id)`へ実体のあるUNIQUE制約を追加。
+- `concierge_templates(tenant_id, created_by)`から`users(tenant_id, id)`への複合外部キーを追加。
+- `concierge_template_versions(tenant_id, id, version)`へ実体のあるUNIQUE制約を追加。
+- template versionからtemplateと作成者へのtenant複合外部キーを追加。
+- event snapshotからtemplate version（version番号を含む）と適用者へのtenant複合外部キーを追加。
+- 同一scopeの既存正常系を維持し、cross-tenant template、template creator、template version creator、
+  snapshot template version、snapshot applierの不整合を拒否する結合テスト5件を追加。
+- 0015 SQL・Drizzle schema・`0015_snapshot.json`を同期し、
+  `pnpm db:generate`が`No schema changes, nothing to migrate`となることを確認。0016は残していない。
+- 実装コミット: `ef23fb7`。
+- migration未適用、staging未デプロイ、PR未マージ。次の作業は追加scope修正の独立再レビュー。
 
 ### CodexによるPR #3再レビュー追加指摘修正（2026-07-28 16:25）
 
@@ -52,14 +69,14 @@ Concierge Phase 1B（SHIME診断機能）は、レビュー指摘の修正とロ
 テスト件数（最新）:
 
 - 単体テスト: 293件成功
-- 結合テスト: 30件成功
+- 結合テスト: 35件成功
 - E2E: 29件成功・3件は意図的スキップ（モバイル専用テストのデスクトップ project skip）
 
 検証コマンドの結果は本ファイルの「直近の検証結果」を参照。
 
 ## 現在の未完了項目
 
-1. **P0追加修正の再レビュー** — migration metadataとparticipant/application/user scope修正は完了したが、PR #3は独立再レビュー完了までマージ保留。
+1. **P0追加修正の再レビュー** — Concierge template/snapshot scope修正は完了したが、PR #3は独立再レビュー完了までマージ保留。
 2. **PRレビュー・マージ判断** — PR #3・PR #2 とも未マージ。PR #3は今回の修正を再レビューしてから判断する。
 3. **staging migration適用** — migration 0015は未適用。再レビューとマージ判断より先には進めない。
 4. **stagingデプロイ・端末確認** — 未実施。migration適用後、診断設定をOFFのまま行う。
@@ -73,7 +90,7 @@ pnpm format:check        → Windows CRLF環境差により失敗（今回未変
 pnpm architecture:check  → 成功
 pnpm lint                → 成功（0 errors / 68+9 warnings）
 pnpm typecheck           → 成功
-pnpm test                → 成功（単体293件・結合30件）
+pnpm test                → 成功（単体293件・結合35件）
 pnpm build               → 成功
 pnpm test:e2e             → 成功（29件・3件は意図的スキップ）
 pnpm audit:dependencies   → 成功（既知の脆弱性なし）
