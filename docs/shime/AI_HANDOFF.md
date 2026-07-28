@@ -2,11 +2,29 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-28 17:50（Asia/Tokyo、Codex。Concierge template/snapshot scope修正後、再レビュー待ち）
+最終更新: 2026-07-28 18:35（Asia/Tokyo、Codex。migration 0015 staging適用前準備を追加）
 作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）
-最新実装コミット: `ef23fb7`（`fix: enforce Concierge template scope`）
+作業開始時PR HEAD: `ff4bd40a4180170abd50fc86091e52bf6c9316e9`
+最新コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照できないため、PR #3の`headRefOid`を最新PR HEADの正とする）
 文書同期コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照できないため、PR #3の`headRefOid`を最新PR HEADの正とする）
 開始時の `main`: `b07d1ce`
+
+### Codexによるmigration 0015 staging適用前準備（2026-07-28 18:35）
+
+staging・productionへ接続せず、migration 0015を安全に適用するための検査と手順を追加した。
+
+- `pnpm db:preflight:0015`: migration headが0014であることと、0015が追加する複合外部キーに抵触する
+  既存tenant/event不整合11種類が0件であることを読み取り専用接続で確認する。
+- `pnpm db:verify:0015`: migration headが0015であること、対象テーブル5件・制約29件の存在、
+  scope不整合が0件であることを読み取り専用で確認する。
+- 両コマンドは`DATABASE_MIGRATION_URL`のみを使用し、セッションを
+  `default_transaction_read_only=on`に設定する。出力はmigration timestamp、制約名・テーブル名、
+  集計件数のみで、URL・password・PII・実データ行は出力しない。
+- 正常scopeと全11種の不整合検出をPGlite合成DBで検証し、migration SQLとの検査契約同期テストを追加した。
+- `docs/shime/MIGRATION_0015_STAGING_RUNBOOK.md`に、事前停止条件、backup、preflight、適用、
+  postflight、失敗時の停止・復旧・証跡様式を記録した。
+- **未実施**: DB接続、backup作成、migration適用、staging deploy、production操作、PR merge。
+- PR #3は本追加差分の再レビューが必要なため、引き続きマージ保留。
 
 ### CodexによるConcierge template/snapshot scope修正（2026-07-28 17:50）
 
@@ -68,15 +86,15 @@ Concierge Phase 1B（SHIME診断機能）は、レビュー指摘の修正とロ
 
 テスト件数（最新）:
 
-- 単体テスト: 293件成功
-- 結合テスト: 35件成功
+- 単体テスト: 299件成功
+- 結合テスト: 36件成功
 - E2E: 29件成功・3件は意図的スキップ（モバイル専用テストのデスクトップ project skip）
 
 検証コマンドの結果は本ファイルの「直近の検証結果」を参照。
 
 ## 現在の未完了項目
 
-1. **P0追加修正の再レビュー** — Concierge template/snapshot scope修正は完了したが、PR #3は独立再レビュー完了までマージ保留。
+1. **P0追加修正とmigration手順の再レビュー** — Concierge scope修正と0015 pre/postflightは完了したが、PR #3は独立再レビュー完了までマージ保留。
 2. **PRレビュー・マージ判断** — PR #3・PR #2 とも未マージ。PR #3は今回の修正を再レビューしてから判断する。
 3. **staging migration適用** — migration 0015は未適用。再レビューとマージ判断より先には進めない。
 4. **stagingデプロイ・端末確認** — 未実施。migration適用後、診断設定をOFFのまま行う。
@@ -90,7 +108,7 @@ pnpm format:check        → Windows CRLF環境差により失敗（今回未変
 pnpm architecture:check  → 成功
 pnpm lint                → 成功（0 errors / 68+9 warnings）
 pnpm typecheck           → 成功
-pnpm test                → 成功（単体293件・結合35件）
+pnpm test                → 成功（単体299件・結合36件）
 pnpm build               → 成功
 pnpm test:e2e             → 成功（29件・3件は意図的スキップ）
 pnpm audit:dependencies   → 成功（既知の脆弱性なし）

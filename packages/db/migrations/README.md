@@ -6,3 +6,12 @@
 - Roll back application code first when compatible. For schema rollback, create a new compensating migration.
 - Destructive changes use expand/migrate/contract: add the replacement, backfill and verify, then remove the old shape in a later release.
 - Back up production and verify recovery before event-week schema changes.
+
+## Migration 0015
+
+Before applying migration 0015, follow
+`docs/shime/MIGRATION_0015_STAGING_RUNBOOK.md`.
+
+- Preflight (read-only): `pnpm db:preflight:0015`
+- Apply only after an approved backup: `pnpm db:migrate`
+- Postflight (read-only): `pnpm db:verify:0015`
