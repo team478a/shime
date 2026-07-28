@@ -783,10 +783,35 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "applications_event_scope_fk": {
+          "name": "applications_event_scope_fk",
+          "tableFrom": "applications",
+          "tableTo": "events",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "applications_tenant_event_id_uidx": {
+          "name": "applications_tenant_event_id_uidx",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tenant_id",
+            "event_id",
+            "id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -4288,6 +4313,21 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "event_concierge_snapshots_event_scope_fk": {
+          "name": "event_concierge_snapshots_event_scope_fk",
+          "tableFrom": "event_concierge_snapshots",
+          "tableTo": "events",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5279,7 +5319,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "events_tenant_id_uidx": {
+          "name": "events_tenant_id_uidx",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tenant_id",
+            "id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -6988,6 +7037,21 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "participant_sessions_user_scope_fk": {
+          "name": "participant_sessions_user_scope_fk",
+          "tableFrom": "participant_sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "tenant_id",
+            "user_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -7232,6 +7296,53 @@
             "user_id"
           ],
           "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "participants_event_scope_fk": {
+          "name": "participants_event_scope_fk",
+          "tableFrom": "participants",
+          "tableTo": "events",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "participants_application_scope_fk": {
+          "name": "participants_application_scope_fk",
+          "tableFrom": "participants",
+          "tableTo": "applications",
+          "columnsFrom": [
+            "tenant_id",
+            "event_id",
+            "application_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "event_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "participants_user_scope_fk": {
+          "name": "participants_user_scope_fk",
+          "tableFrom": "participants",
+          "tableTo": "users",
+          "columnsFrom": [
+            "tenant_id",
+            "user_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
             "id"
           ],
           "onDelete": "no action",

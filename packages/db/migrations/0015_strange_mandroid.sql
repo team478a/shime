@@ -63,12 +63,17 @@ ALTER TABLE "event_concierge_snapshots" ADD COLUMN "access_opens_at" timestamp w
 ALTER TABLE "event_concierge_snapshots" ADD COLUMN "access_closes_at" timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "event_concierge_snapshots" ADD COLUMN "allow_resubmission" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "events" ADD CONSTRAINT "events_tenant_id_uidx" UNIQUE("tenant_id","id");--> statement-breakpoint
+ALTER TABLE "applications" ADD CONSTRAINT "applications_tenant_event_id_uidx" UNIQUE("tenant_id","event_id","id");--> statement-breakpoint
 ALTER TABLE "concierge_card_asset_versions" ADD CONSTRAINT "concierge_card_asset_versions_tenant_id_uidx" UNIQUE("tenant_id","id");--> statement-breakpoint
 ALTER TABLE "event_concierge_snapshots" ADD CONSTRAINT "event_concierge_snapshots_tenant_event_id_uidx" UNIQUE("tenant_id","event_id","id");--> statement-breakpoint
 ALTER TABLE "participants" ADD CONSTRAINT "participants_tenant_event_id_uidx" UNIQUE("tenant_id","event_id","id");--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_tenant_scope_uidx" UNIQUE("tenant_id","id");--> statement-breakpoint
+ALTER TABLE "applications" ADD CONSTRAINT "applications_event_scope_fk" FOREIGN KEY ("tenant_id","event_id") REFERENCES "public"."events"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "event_concierge_snapshots" ADD CONSTRAINT "event_concierge_snapshots_event_scope_fk" FOREIGN KEY ("tenant_id","event_id") REFERENCES "public"."events"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "participant_sessions" ADD CONSTRAINT "participant_sessions_user_scope_fk" FOREIGN KEY ("tenant_id","user_id") REFERENCES "public"."users"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "participants" ADD CONSTRAINT "participants_event_scope_fk" FOREIGN KEY ("tenant_id","event_id") REFERENCES "public"."events"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "participants" ADD CONSTRAINT "participants_application_scope_fk" FOREIGN KEY ("tenant_id","event_id","application_id") REFERENCES "public"."applications"("tenant_id","event_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "participants" ADD CONSTRAINT "participants_user_scope_fk" FOREIGN KEY ("tenant_id","user_id") REFERENCES "public"."users"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "concierge_access_logs" ADD CONSTRAINT "concierge_access_logs_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "concierge_access_logs" ADD CONSTRAINT "concierge_access_logs_event_id_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "concierge_access_logs" ADD CONSTRAINT "concierge_access_logs_participant_id_participants_id_fk" FOREIGN KEY ("participant_id") REFERENCES "public"."participants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

@@ -250,6 +250,24 @@ describe("concierge diagnosis migration and data isolation", () => {
 });
 
 describe("concierge diagnosis cross-tenant / cross-event scope integrity", () => {
+  it("accepts application, participant, and participant session references in the same scope", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const scope = seedTenantScope(1);
+    await client.exec(scope.sql);
+
+    await client.exec(`update participants set user_id = '${scope.userId}' where id = '${scope.participantIds[0]}'`);
+    await client.exec(
+      `insert into participant_sessions(tenant_id, user_id, token_hash, expires_at) values ('${scope.tenantId}','${scope.userId}','${"s".repeat(64)}',now() + interval '1 hour')`,
+    );
+
+    const participant = await client.query<{ tenant_id: string; event_id: string; user_id: string }>(
+      `select tenant_id, event_id, user_id from participants where id = '${scope.participantIds[0]}'`,
+    );
+    expect(participant.rows).toEqual([{ tenant_id: scope.tenantId, event_id: scope.eventId, user_id: scope.userId }]);
+  }, 20_000);
+
   it("accepts a snapshot whose tenant and event belong to the same scope", async () => {
     client = new PGlite();
     const db = drizzle(client);
@@ -292,6 +310,68 @@ describe("concierge diagnosis cross-tenant / cross-event scope integrity", () =>
     await expect(
       client.exec(
         `insert into participants(tenant_id, event_id, application_id, status, dream_state) values ('${tenantA.tenantId}','${tenantB.eventId}','${id(1, 10)}','confirmed','skipped')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects an application whose event belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into applications(tenant_id, event_id, source, status, full_name, birth_date, participant_category) values ('${tenantA.tenantId}','${tenantB.eventId}','shime_form','confirmed','Cross tenant','1990-01-01','a')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a participant whose application belongs to a different tenant and event", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into participants(tenant_id, event_id, application_id, status, dream_state) values ('${tenantA.tenantId}','${tenantA.eventId}','${id(2, 10)}','confirmed','skipped')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a participant whose linked user belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(`update participants set user_id = '${tenantB.userId}' where id = '${tenantA.participantIds[0]}'`),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a participant session whose user belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into participant_sessions(tenant_id, user_id, token_hash, expires_at) values ('${tenantA.tenantId}','${tenantB.userId}','${"x".repeat(64)}',now() + interval '1 hour')`,
       ),
     ).rejects.toThrow();
   }, 20_000);

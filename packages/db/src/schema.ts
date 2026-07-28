@@ -424,6 +424,12 @@ export const applications = pgTable(
     uniqueIndex("applications_idempotency_uidx").on(table.tenantId, table.eventId, table.idempotencyKeyHash),
     index("applications_phone_idx").on(table.tenantId, table.eventId, table.phoneNormalized),
     index("applications_email_idx").on(table.tenantId, table.eventId, table.emailNormalized),
+    unique("applications_tenant_event_id_uidx").on(table.tenantId, table.eventId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "applications_event_scope_fk",
+    }),
   ],
 );
 
@@ -607,6 +613,16 @@ export const participants = pgTable(
       foreignColumns: [events.tenantId, events.id],
       name: "participants_event_scope_fk",
     }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.applicationId],
+      foreignColumns: [applications.tenantId, applications.eventId, applications.id],
+      name: "participants_application_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.userId],
+      foreignColumns: [users.tenantId, users.id],
+      name: "participants_user_scope_fk",
+    }),
   ],
 );
 
@@ -629,6 +645,11 @@ export const participantSessions = pgTable(
   (table) => [
     uniqueIndex("participant_sessions_token_uidx").on(table.tokenHash),
     index("participant_sessions_user_idx").on(table.tenantId, table.userId),
+    foreignKey({
+      columns: [table.tenantId, table.userId],
+      foreignColumns: [users.tenantId, users.id],
+      name: "participant_sessions_user_scope_fk",
+    }),
   ],
 );
 
