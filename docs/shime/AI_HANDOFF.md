@@ -2,11 +2,33 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-27 23:15（Asia/Tokyo、Codex。PR #3レビュー指摘修正後、再レビュー待ち）
+最終更新: 2026-07-28 16:25（Asia/Tokyo、Codex。PR #3再レビュー追加指摘修正後、再レビュー待ち）
 作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）
-最新実装コミット: `f04d045fcae7bd59a2365f7404d5b1068ffd1a23`
+最新実装コミット: `c1627b7`（`fix: complete participant scope constraints`）
 文書同期コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照できないため、PR #3の`headRefOid`を最新PR HEADの正とする）
 開始時の `main`: `b07d1ce`
+
+### CodexによるPR #3再レビュー追加指摘修正（2026-07-28 16:25）
+
+独立再レビューで、0015のSQL・Drizzle schemaに追加済みのscope制約が
+`packages/db/migrations/meta/0015_snapshot.json`へ反映されていないことと、参加者を起点とする
+application/user scopeがDBで完全には固定されていないことを確認し、追加修正した。
+
+- **migration metadata同期**: 0015 snapshotを現在のschemaから再生成し、`events_tenant_id_uidx`、
+  `participants_event_scope_fk`、`event_concierge_snapshots_event_scope_fk`を含む全scope制約を同期した。
+- **次migration差分確認**: 同期後に`pnpm db:generate`を再実行し、
+  `No schema changes, nothing to migrate`となることを確認した。新しい0016は残していない。
+- **application scope**: `applications(tenant_id, event_id, id)`へ実体のあるUNIQUE制約を追加し、
+  `applications(tenant_id, event_id)`から`events(tenant_id, id)`への複合外部キーを追加した。
+- **participant scope**: `participants(tenant_id, event_id, application_id)`からapplicationsへの複合外部キーと、
+  `participants(tenant_id, user_id)`からusersへの複合外部キーを追加した。
+- **participant session scope**: `participant_sessions(tenant_id, user_id)`から
+  `users(tenant_id, id)`への複合外部キーを追加した。
+- **DBテスト**: 同一scopeのapplication・participant・participant session成功に加え、cross-tenant eventのapplication、
+  cross-tenant applicationのparticipant、cross-tenant userのparticipant、cross-tenant userのparticipant sessionを
+  DBが拒否するテストを追加した。
+- **実装コミット**: `c1627b7`。
+- **安全状態**: migration未適用、staging未デプロイ、PR未マージ。次の作業は今回の追加修正の独立再レビュー。
 
 ### CodexによるPR #3レビュー指摘修正（2026-07-27 23:15）
 
@@ -30,28 +52,28 @@ Concierge Phase 1B（SHIME診断機能）は、レビュー指摘の修正とロ
 テスト件数（最新）:
 
 - 単体テスト: 293件成功
-- 結合テスト: 25件成功
+- 結合テスト: 30件成功
 - E2E: 29件成功・3件は意図的スキップ（モバイル専用テストのデスクトップ project skip）
 
 検証コマンドの結果は本ファイルの「直近の検証結果」を参照。
 
 ## 現在の未完了項目
 
-1. **P0/P1再レビュー** — コード・migration・テスト修正は完了したが、PR #3は再レビュー未完了のためマージ保留。
+1. **P0追加修正の再レビュー** — migration metadataとparticipant/application/user scope修正は完了したが、PR #3は独立再レビュー完了までマージ保留。
 2. **PRレビュー・マージ判断** — PR #3・PR #2 とも未マージ。PR #3は今回の修正を再レビューしてから判断する。
 3. **staging migration適用** — migration 0015は未適用。再レビューとマージ判断より先には進めない。
 4. **stagingデプロイ・端末確認** — 未実施。migration適用後、診断設定をOFFのまま行う。
 5. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定。Concierge修正とは別P0で、運営側の決定が必要。
 6. **本番準備とGo／No-Go** — 上記すべてと既存の本番準備残項目が解消されるまで判定しない。
 
-## 直近の検証結果（2026-07-27、Codex）
+## 直近の検証結果（2026-07-28、Codex）
 
 ```text
 pnpm format:check        → Windows CRLF環境差により失敗（今回未変更の27ファイル。Git indexはLF）
 pnpm architecture:check  → 成功
 pnpm lint                → 成功（0 errors / 68+9 warnings）
 pnpm typecheck           → 成功
-pnpm test                → 成功（単体293件・結合25件）
+pnpm test                → 成功（単体293件・結合30件）
 pnpm build               → 成功
 pnpm test:e2e             → 成功（29件・3件は意図的スキップ）
 pnpm audit:dependencies   → 成功（既知の脆弱性なし）
