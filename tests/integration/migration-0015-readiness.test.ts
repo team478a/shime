@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { drizzle } from "drizzle-orm/pglite";
+import { migrate } from "drizzle-orm/pglite/migrator";
 
-import { MIGRATION_0015_SCOPE_CHECKS } from "../../scripts/migration-0015-readiness";
+import {
+  MIGRATION_0015_CONSTRAINT_QUERY,
+  MIGRATION_0015_EXPECTED_CONSTRAINTS,
+  MIGRATION_0015_SCOPE_CHECKS,
+} from "../../scripts/migration-0015-readiness";
 
 let client: PGlite | undefined;
 
@@ -71,4 +77,17 @@ describe("migration 0015 scope preflight", () => {
     const invalidResults = await runScopeChecks();
     expect(invalidResults.every((result) => result.count > 0)).toBe(true);
   }, 15_000);
+
+  it("finds every expected constraint on its owning table with the expected type", async () => {
+    client = new PGlite();
+    await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
+    const result = await client.query<{ conname: string; table_name: string; constraint_type: string }>(
+      MIGRATION_0015_CONSTRAINT_QUERY,
+    );
+    const actual = new Set(result.rows.map((row) => `${row.table_name}:${row.conname}:${row.constraint_type}`));
+
+    for (const constraint of MIGRATION_0015_EXPECTED_CONSTRAINTS) {
+      expect(actual).toContain(`${constraint.table}:${constraint.name}:${constraint.type}`);
+    }
+  }, 25_000);
 });

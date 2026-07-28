@@ -2,12 +2,30 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-28 18:35（Asia/Tokyo、Codex。migration 0015 staging適用前準備を追加）
+最終更新: 2026-07-28 18:55（Asia/Tokyo、Codex。PR #3最終再レビューと検査誤判定防止を完了）
 作業ブランチ: `claude/shime-codex-handoff-k76e1n`（PR #3 として `release/2026-08-08-readiness` へオープン中、未マージ）
 作業開始時PR HEAD: `ff4bd40a4180170abd50fc86091e52bf6c9316e9`
 最新コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照できないため、PR #3の`headRefOid`を最新PR HEADの正とする）
 文書同期コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照できないため、PR #3の`headRefOid`を最新PR HEADの正とする）
 開始時の `main`: `b07d1ce`
+
+### CodexによるPR #3最終再レビュー（2026-07-28 18:55）
+
+PR #3のDB scope、migration、参加者API、スタッフAPI、カード画像認可、revision conflict、
+二重提出防止、診断回答非公開、モバイルE2E、既存機能への影響を再確認した。
+
+- migration pre/postflightの初版には、全11件のscope checkが欠けても`Array.every()`が真となる場合と、
+  同名制約がpublic schema内の別テーブルに存在しても合格し得る誤判定余地があった。
+- `safe`判定に、DBセッションが実際にread-onlyであること、11件すべての存在、重複なしを追加した。
+- postflightの制約確認を、制約名だけでなく所有テーブルと種別（UNIQUE / FOREIGN KEY）の組み合わせへ強化した。
+- 実migrationをPGliteへ全適用し、期待する29制約が正しい所有テーブル・種別で存在する結合テストを追加した。
+- 未選択カードの表面情報、他参加者の選択カード・回答・結果は公開されず、
+  画像取得は診断有効・期間・tenant/event/participant session・現在選択カードを検証することを再確認した。
+- revision conflict、提出済みsessionの再提出拒否、同一revision結果のDB重複拒否を再確認した。
+- **コード上の未解決P0/P1はなし。PR #3はreleaseブランチへマージ可能と判定する。**
+- ただし、この判定は本番可能判定ではない。migration適用、staging deploy、実機リハーサル、
+  REQUIRED_INPUT 15件、本番Go/No-Goは未完了のまま。
+- 本セッションではPR merge、DB接続、migration適用、deploy、実データ利用、通知送信を行っていない。
 
 ### Codexによるmigration 0015 staging適用前準備（2026-07-28 18:35）
 
@@ -82,24 +100,26 @@ PR #3のレビューで判明したP0/P1を修正した。**修正コードと�
 - **PR状態**: PR #3は未マージ。`release/2026-08-08-readiness`、`main`への直接pushは行っていない。
 - **次のアクション**: PR #3のP0/P1修正を再レビューし、DB scope、選択前レスポンス、画像認可、revision conflict、既存機能への影響を再確認する。再レビューで問題がなければ初めてreleaseブランチへのマージ可否を判定する。
 
-Concierge Phase 1B（SHIME診断機能）は、レビュー指摘の修正とローカル検証まで完了した。ただし、**再レビュー未完了のためマージ保留**であり、**migrationはstaging・productionを含むどの環境にも適用していない。** 本番反映（マージ・デプロイ・DB適用・通知送信）は一切行っていない。
+Concierge Phase 1B（SHIME診断機能）は、レビュー指摘の修正、最終再レビュー、ローカル検証まで完了し、
+**PR #3はreleaseブランチへマージ可能と判定した。**
+ただし、**migrationはstaging・productionを含むどの環境にも適用していない。**
+本番反映（マージ・デプロイ・DB適用・通知送信）は一切行っていない。
 
 テスト件数（最新）:
 
-- 単体テスト: 299件成功
-- 結合テスト: 36件成功
+- 単体テスト: 301件成功
+- 結合テスト: 37件成功
 - E2E: 29件成功・3件は意図的スキップ（モバイル専用テストのデスクトップ project skip）
 
 検証コマンドの結果は本ファイルの「直近の検証結果」を参照。
 
 ## 現在の未完了項目
 
-1. **P0追加修正とmigration手順の再レビュー** — Concierge scope修正と0015 pre/postflightは完了したが、PR #3は独立再レビュー完了までマージ保留。
-2. **PRレビュー・マージ判断** — PR #3・PR #2 とも未マージ。PR #3は今回の修正を再レビューしてから判断する。
-3. **staging migration適用** — migration 0015は未適用。再レビューとマージ判断より先には進めない。
-4. **stagingデプロイ・端末確認** — 未実施。migration適用後、診断設定をOFFのまま行う。
-5. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定。Concierge修正とは別P0で、運営側の決定が必要。
-6. **本番準備とGo／No-Go** — 上記すべてと既存の本番準備残項目が解消されるまで判定しない。
+1. **PR #3のマージ実行判断** — コード再レビューは合格しreleaseへマージ可能。PR #3・PR #2とも未マージで、マージ操作はユーザー承認後に行う。
+2. **staging migration実行承認** — migration 0015は未適用。PR #3のrelease反映、対象staging・backup確認、preflight成功より先には適用しない。
+3. **stagingデプロイ・端末確認** — 未実施。migration適用後、診断設定をOFFのまま行う。
+4. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定。Concierge修正とは別P0で、運営側の決定が必要。
+5. **本番準備とGo／No-Go** — 上記すべてと既存の本番準備残項目が解消されるまで判定しない。
 
 ## 直近の検証結果（2026-07-28、Codex）
 
@@ -108,7 +128,7 @@ pnpm format:check        → Windows CRLF環境差により失敗（今回未変
 pnpm architecture:check  → 成功
 pnpm lint                → 成功（0 errors / 68+9 warnings）
 pnpm typecheck           → 成功
-pnpm test                → 成功（単体299件・結合36件）
+pnpm test                → 成功（単体301件・結合37件）
 pnpm build               → 成功
 pnpm test:e2e             → 成功（29件・3件は意図的スキップ）
 pnpm audit:dependencies   → 成功（既知の脆弱性なし）

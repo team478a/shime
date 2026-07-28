@@ -123,35 +123,75 @@ export const MIGRATION_0015_SCOPE_CHECKS = [
 ] as const;
 
 export const MIGRATION_0015_EXPECTED_CONSTRAINTS = [
-  "applications_tenant_event_id_uidx",
-  "applications_event_scope_fk",
-  "events_tenant_id_uidx",
-  "participants_tenant_event_id_uidx",
-  "participants_event_scope_fk",
-  "participants_application_scope_fk",
-  "participants_user_scope_fk",
-  "participant_sessions_user_scope_fk",
-  "users_tenant_scope_uidx",
-  "concierge_templates_tenant_id_uidx",
-  "concierge_templates_creator_scope_fk",
-  "concierge_template_versions_tenant_id_version_uidx",
-  "concierge_template_versions_template_scope_fk",
-  "concierge_template_versions_creator_scope_fk",
-  "event_concierge_snapshots_tenant_event_id_uidx",
-  "event_concierge_snapshots_event_scope_fk",
-  "event_concierge_snapshots_template_version_scope_fk",
-  "event_concierge_snapshots_applier_scope_fk",
-  "concierge_card_asset_versions_tenant_id_uidx",
-  "concierge_sessions_tenant_event_id_uidx",
-  "concierge_sessions_participant_scope_fk",
-  "concierge_sessions_snapshot_scope_fk",
-  "concierge_sessions_selected_card_tenant_fk",
-  "concierge_answers_session_scope_fk",
-  "concierge_answer_revisions_session_scope_fk",
-  "concierge_rule_results_session_scope_fk",
-  "concierge_access_logs_participant_scope_fk",
-  "concierge_access_logs_session_scope_fk",
-  "concierge_access_logs_viewer_tenant_fk",
+  { table: "applications", name: "applications_tenant_event_id_uidx", type: "u" },
+  { table: "applications", name: "applications_event_scope_fk", type: "f" },
+  { table: "events", name: "events_tenant_id_uidx", type: "u" },
+  { table: "participants", name: "participants_tenant_event_id_uidx", type: "u" },
+  { table: "participants", name: "participants_event_scope_fk", type: "f" },
+  { table: "participants", name: "participants_application_scope_fk", type: "f" },
+  { table: "participants", name: "participants_user_scope_fk", type: "f" },
+  { table: "participant_sessions", name: "participant_sessions_user_scope_fk", type: "f" },
+  { table: "users", name: "users_tenant_scope_uidx", type: "u" },
+  { table: "concierge_templates", name: "concierge_templates_tenant_id_uidx", type: "u" },
+  { table: "concierge_templates", name: "concierge_templates_creator_scope_fk", type: "f" },
+  {
+    table: "concierge_template_versions",
+    name: "concierge_template_versions_tenant_id_version_uidx",
+    type: "u",
+  },
+  {
+    table: "concierge_template_versions",
+    name: "concierge_template_versions_template_scope_fk",
+    type: "f",
+  },
+  {
+    table: "concierge_template_versions",
+    name: "concierge_template_versions_creator_scope_fk",
+    type: "f",
+  },
+  {
+    table: "event_concierge_snapshots",
+    name: "event_concierge_snapshots_tenant_event_id_uidx",
+    type: "u",
+  },
+  {
+    table: "event_concierge_snapshots",
+    name: "event_concierge_snapshots_event_scope_fk",
+    type: "f",
+  },
+  {
+    table: "event_concierge_snapshots",
+    name: "event_concierge_snapshots_template_version_scope_fk",
+    type: "f",
+  },
+  {
+    table: "event_concierge_snapshots",
+    name: "event_concierge_snapshots_applier_scope_fk",
+    type: "f",
+  },
+  {
+    table: "concierge_card_asset_versions",
+    name: "concierge_card_asset_versions_tenant_id_uidx",
+    type: "u",
+  },
+  { table: "concierge_sessions", name: "concierge_sessions_tenant_event_id_uidx", type: "u" },
+  { table: "concierge_sessions", name: "concierge_sessions_participant_scope_fk", type: "f" },
+  { table: "concierge_sessions", name: "concierge_sessions_snapshot_scope_fk", type: "f" },
+  { table: "concierge_sessions", name: "concierge_sessions_selected_card_tenant_fk", type: "f" },
+  { table: "concierge_answers", name: "concierge_answers_session_scope_fk", type: "f" },
+  {
+    table: "concierge_answer_revisions",
+    name: "concierge_answer_revisions_session_scope_fk",
+    type: "f",
+  },
+  { table: "concierge_rule_results", name: "concierge_rule_results_session_scope_fk", type: "f" },
+  {
+    table: "concierge_access_logs",
+    name: "concierge_access_logs_participant_scope_fk",
+    type: "f",
+  },
+  { table: "concierge_access_logs", name: "concierge_access_logs_session_scope_fk", type: "f" },
+  { table: "concierge_access_logs", name: "concierge_access_logs_viewer_tenant_fk", type: "f" },
 ] as const;
 
 export const MIGRATION_0015_EXPECTED_TABLES = [
@@ -162,6 +202,16 @@ export const MIGRATION_0015_EXPECTED_TABLES = [
   "concierge_sessions",
 ] as const;
 
+export const MIGRATION_0015_CONSTRAINT_QUERY = `
+  select constraint_record.conname,
+         relation.relname as table_name,
+         constraint_record.contype::text as constraint_type
+  from pg_constraint constraint_record
+  join pg_class relation on relation.oid = constraint_record.conrelid
+  join pg_namespace namespace_record on namespace_record.oid = relation.relnamespace
+  where namespace_record.nspname = 'public'
+`;
+
 type ScopeCheckResult = {
   key: (typeof MIGRATION_0015_SCOPE_CHECKS)[number]["key"];
   count: number;
@@ -170,18 +220,32 @@ type ScopeCheckResult = {
 export type Migration0015Readiness = {
   phase: Migration0015Phase;
   safe: boolean;
+  readOnly: boolean;
   migrationTimestamp: string | null;
   expectedMigrationTimestamp: string;
   scopeChecks: ScopeCheckResult[];
+  missingScopeChecks: ScopeCheckResult["key"][];
   missingConstraints: string[];
   missingTables: string[];
 };
 
-export function evaluateMigration0015Readiness(input: Omit<Migration0015Readiness, "safe">): Migration0015Readiness {
+const expectedScopeCheckKeys = new Set(MIGRATION_0015_SCOPE_CHECKS.map((check) => check.key));
+
+export function evaluateMigration0015Readiness(
+  input: Omit<Migration0015Readiness, "safe" | "missingScopeChecks">,
+): Migration0015Readiness {
+  const actualScopeCheckKeys = new Set(input.scopeChecks.map((check) => check.key));
+  const missingScopeChecks = [...expectedScopeCheckKeys].filter((key) => !actualScopeCheckKeys.has(key));
+  const hasDuplicateScopeChecks = actualScopeCheckKeys.size !== input.scopeChecks.length;
   return {
     ...input,
+    missingScopeChecks,
     safe:
+      input.readOnly &&
       input.migrationTimestamp === input.expectedMigrationTimestamp &&
+      !hasDuplicateScopeChecks &&
+      input.scopeChecks.length === expectedScopeCheckKeys.size &&
+      missingScopeChecks.length === 0 &&
       input.scopeChecks.every((check) => check.count === 0) &&
       input.missingConstraints.length === 0 &&
       input.missingTables.length === 0,
@@ -196,6 +260,9 @@ export async function collectMigration0015Readiness(
   try {
     await sql.unsafe("set default_transaction_read_only = on");
     await sql.unsafe("set statement_timeout = '30s'");
+    const readOnlyRows = await sql.unsafe<{ read_only: boolean }[]>(
+      "select current_setting('transaction_read_only') = 'on' as read_only",
+    );
 
     const migrationRows = await sql.unsafe<{ migration_timestamp: string | null }[]>(
       "select max(created_at)::text as migration_timestamp from drizzle.__drizzle_migrations",
@@ -211,13 +278,15 @@ export async function collectMigration0015Readiness(
     let missingConstraints: string[] = [];
     let missingTables: string[] = [];
     if (phase === "postflight") {
-      const constraintRows = await sql.unsafe<{ conname: string }[]>(
-        "select conname from pg_constraint where connamespace = 'public'::regnamespace",
+      const constraintRows = await sql.unsafe<{ conname: string; table_name: string; constraint_type: string }[]>(
+        MIGRATION_0015_CONSTRAINT_QUERY,
       );
-      const existingConstraints = new Set(constraintRows.map((row) => row.conname));
+      const existingConstraints = new Set(
+        constraintRows.map((row) => `${row.table_name}:${row.conname}:${row.constraint_type}`),
+      );
       missingConstraints = MIGRATION_0015_EXPECTED_CONSTRAINTS.filter(
-        (constraint) => !existingConstraints.has(constraint),
-      );
+        (constraint) => !existingConstraints.has(`${constraint.table}:${constraint.name}:${constraint.type}`),
+      ).map((constraint) => `${constraint.table}.${constraint.name}`);
 
       const tableRows = await sql.unsafe<{ table_name: string }[]>(
         "select table_name from information_schema.tables where table_schema = 'public'",
@@ -228,6 +297,7 @@ export async function collectMigration0015Readiness(
 
     return evaluateMigration0015Readiness({
       phase,
+      readOnly: readOnlyRows[0]?.read_only ?? false,
       migrationTimestamp: migrationRows[0]?.migration_timestamp ?? null,
       expectedMigrationTimestamp,
       scopeChecks,

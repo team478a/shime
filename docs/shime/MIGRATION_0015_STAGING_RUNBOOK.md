@@ -63,8 +63,10 @@ pnpm db:preflight:0015
 Proceed only when:
 
 - `safe` is `true`
+- `readOnly` is `true`
 - `migrationTimestamp` and `expectedMigrationTimestamp` are both
   `1784935028909`
+- `missingScopeChecks` is empty
 - every scope check count is `0`
 
 Any non-zero count represents a pre-existing tenant/event relationship that
@@ -92,9 +94,11 @@ pnpm db:verify:0015
 Success requires:
 
 - `safe` is `true`
+- `readOnly` is `true`
 - migration timestamp is `1784965553645`
+- `missingScopeChecks` is empty
 - all scope check counts remain `0`
-- `missingConstraints` is empty
+- `missingConstraints` is empty (including owning table and constraint type)
 - `missingTables` is empty
 
 Then run:
