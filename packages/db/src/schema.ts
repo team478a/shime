@@ -1507,6 +1507,12 @@ export const conciergeTemplates = pgTable(
   (table) => [
     uniqueIndex("concierge_templates_key_uidx").on(table.tenantId, table.moduleKey, table.templateKey),
     index("concierge_templates_tenant_idx").on(table.tenantId, table.moduleKey, table.archivedAt),
+    unique("concierge_templates_tenant_id_uidx").on(table.tenantId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.createdBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "concierge_templates_creator_scope_fk",
+    }),
   ],
 );
 
@@ -1534,6 +1540,17 @@ export const conciergeTemplateVersions = pgTable(
   (table) => [
     uniqueIndex("concierge_template_versions_number_uidx").on(table.tenantId, table.templateId, table.version),
     index("concierge_template_versions_status_idx").on(table.tenantId, table.templateId, table.status),
+    unique("concierge_template_versions_tenant_id_version_uidx").on(table.tenantId, table.id, table.version),
+    foreignKey({
+      columns: [table.tenantId, table.templateId],
+      foreignColumns: [conciergeTemplates.tenantId, conciergeTemplates.id],
+      name: "concierge_template_versions_template_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.createdBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "concierge_template_versions_creator_scope_fk",
+    }),
   ],
 );
 
@@ -1574,6 +1591,20 @@ export const eventConciergeSnapshots = pgTable(
       columns: [table.tenantId, table.eventId],
       foreignColumns: [events.tenantId, events.id],
       name: "event_concierge_snapshots_event_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.templateVersionId, table.templateVersion],
+      foreignColumns: [
+        conciergeTemplateVersions.tenantId,
+        conciergeTemplateVersions.id,
+        conciergeTemplateVersions.version,
+      ],
+      name: "event_concierge_snapshots_template_version_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.appliedBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "event_concierge_snapshots_applier_scope_fk",
     }),
   ],
 );

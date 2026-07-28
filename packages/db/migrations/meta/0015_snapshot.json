@@ -2956,10 +2956,50 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "concierge_template_versions_template_scope_fk": {
+          "name": "concierge_template_versions_template_scope_fk",
+          "tableFrom": "concierge_template_versions",
+          "tableTo": "concierge_templates",
+          "columnsFrom": [
+            "tenant_id",
+            "template_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "concierge_template_versions_creator_scope_fk": {
+          "name": "concierge_template_versions_creator_scope_fk",
+          "tableFrom": "concierge_template_versions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "tenant_id",
+            "created_by"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "concierge_template_versions_tenant_id_version_uidx": {
+          "name": "concierge_template_versions_tenant_id_version_uidx",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tenant_id",
+            "id",
+            "version"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -3109,10 +3149,34 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "concierge_templates_creator_scope_fk": {
+          "name": "concierge_templates_creator_scope_fk",
+          "tableFrom": "concierge_templates",
+          "tableTo": "users",
+          "columnsFrom": [
+            "tenant_id",
+            "created_by"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "concierge_templates_tenant_id_uidx": {
+          "name": "concierge_templates_tenant_id_uidx",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tenant_id",
+            "id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -4321,6 +4385,38 @@
           "columnsFrom": [
             "tenant_id",
             "event_id"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "event_concierge_snapshots_template_version_scope_fk": {
+          "name": "event_concierge_snapshots_template_version_scope_fk",
+          "tableFrom": "event_concierge_snapshots",
+          "tableTo": "concierge_template_versions",
+          "columnsFrom": [
+            "tenant_id",
+            "template_version_id",
+            "template_version"
+          ],
+          "columnsTo": [
+            "tenant_id",
+            "id",
+            "version"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "event_concierge_snapshots_applier_scope_fk": {
+          "name": "event_concierge_snapshots_applier_scope_fk",
+          "tableFrom": "event_concierge_snapshots",
+          "tableTo": "users",
+          "columnsFrom": [
+            "tenant_id",
+            "applied_by"
           ],
           "columnsTo": [
             "tenant_id",

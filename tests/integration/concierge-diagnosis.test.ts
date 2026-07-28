@@ -43,6 +43,8 @@ function seedTenantScope(scope: number, participantCount = 1) {
     tenantId,
     eventId,
     userId,
+    templateId,
+    templateVersionId,
     snapshotId,
     participantIds,
     sessionIds,
@@ -294,6 +296,90 @@ describe("concierge diagnosis cross-tenant / cross-event scope integrity", () =>
     await expect(
       client.exec(
         `insert into event_concierge_snapshots(tenant_id, event_id, template_version_id, template_version, snapshot_json, snapshot_hash, enabled, applied_by) values ('${tenantA.tenantId}','${tenantB.eventId}','${id(1, 5)}',2,'{}'::jsonb,'${"i".repeat(64)}',true,'${tenantA.userId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a snapshot whose template version belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+    const eventB = seedSecondEvent(1, tenantA.tenantId);
+    await client.exec(eventB.sql);
+
+    await expect(
+      client.exec(
+        `insert into event_concierge_snapshots(tenant_id, event_id, template_version_id, template_version, snapshot_json, snapshot_hash, enabled, applied_by) values ('${tenantA.tenantId}','${eventB.eventId}','${tenantB.templateVersionId}',1,'{}'::jsonb,'${"j".repeat(64)}',true,'${tenantA.userId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a snapshot whose applying user belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+    const eventB = seedSecondEvent(1, tenantA.tenantId);
+    await client.exec(eventB.sql);
+
+    await expect(
+      client.exec(
+        `insert into event_concierge_snapshots(tenant_id, event_id, template_version_id, template_version, snapshot_json, snapshot_hash, enabled, applied_by) values ('${tenantA.tenantId}','${eventB.eventId}','${tenantA.templateVersionId}',1,'{}'::jsonb,'${"k".repeat(64)}',true,'${tenantB.userId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a Concierge template whose creator belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_templates(tenant_id, template_key, name, created_by) values ('${tenantA.tenantId}','cross-creator','Cross creator','${tenantB.userId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a Concierge template version whose template belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_template_versions(tenant_id, template_id, version, payload_json, created_by) values ('${tenantA.tenantId}','${tenantB.templateId}',2,'{}'::jsonb,'${tenantA.userId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 20_000);
+
+  it("rejects a Concierge template version whose creator belongs to a different tenant", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    const tenantA = seedTenantScope(1);
+    const tenantB = seedTenantScope(2);
+    await client.exec(tenantA.sql);
+    await client.exec(tenantB.sql);
+
+    await expect(
+      client.exec(
+        `insert into concierge_template_versions(tenant_id, template_id, version, payload_json, created_by) values ('${tenantA.tenantId}','${tenantA.templateId}',2,'{}'::jsonb,'${tenantB.userId}')`,
       ),
     ).rejects.toThrow();
   }, 20_000);

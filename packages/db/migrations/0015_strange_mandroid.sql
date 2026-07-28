@@ -65,11 +65,18 @@ ALTER TABLE "event_concierge_snapshots" ADD COLUMN "allow_resubmission" boolean 
 ALTER TABLE "events" ADD CONSTRAINT "events_tenant_id_uidx" UNIQUE("tenant_id","id");--> statement-breakpoint
 ALTER TABLE "applications" ADD CONSTRAINT "applications_tenant_event_id_uidx" UNIQUE("tenant_id","event_id","id");--> statement-breakpoint
 ALTER TABLE "concierge_card_asset_versions" ADD CONSTRAINT "concierge_card_asset_versions_tenant_id_uidx" UNIQUE("tenant_id","id");--> statement-breakpoint
+ALTER TABLE "concierge_template_versions" ADD CONSTRAINT "concierge_template_versions_tenant_id_version_uidx" UNIQUE("tenant_id","id","version");--> statement-breakpoint
+ALTER TABLE "concierge_templates" ADD CONSTRAINT "concierge_templates_tenant_id_uidx" UNIQUE("tenant_id","id");--> statement-breakpoint
 ALTER TABLE "event_concierge_snapshots" ADD CONSTRAINT "event_concierge_snapshots_tenant_event_id_uidx" UNIQUE("tenant_id","event_id","id");--> statement-breakpoint
 ALTER TABLE "participants" ADD CONSTRAINT "participants_tenant_event_id_uidx" UNIQUE("tenant_id","event_id","id");--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_tenant_scope_uidx" UNIQUE("tenant_id","id");--> statement-breakpoint
 ALTER TABLE "applications" ADD CONSTRAINT "applications_event_scope_fk" FOREIGN KEY ("tenant_id","event_id") REFERENCES "public"."events"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "concierge_template_versions" ADD CONSTRAINT "concierge_template_versions_template_scope_fk" FOREIGN KEY ("tenant_id","template_id") REFERENCES "public"."concierge_templates"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "concierge_template_versions" ADD CONSTRAINT "concierge_template_versions_creator_scope_fk" FOREIGN KEY ("tenant_id","created_by") REFERENCES "public"."users"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "concierge_templates" ADD CONSTRAINT "concierge_templates_creator_scope_fk" FOREIGN KEY ("tenant_id","created_by") REFERENCES "public"."users"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "event_concierge_snapshots" ADD CONSTRAINT "event_concierge_snapshots_event_scope_fk" FOREIGN KEY ("tenant_id","event_id") REFERENCES "public"."events"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "event_concierge_snapshots" ADD CONSTRAINT "event_concierge_snapshots_template_version_scope_fk" FOREIGN KEY ("tenant_id","template_version_id","template_version") REFERENCES "public"."concierge_template_versions"("tenant_id","id","version") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "event_concierge_snapshots" ADD CONSTRAINT "event_concierge_snapshots_applier_scope_fk" FOREIGN KEY ("tenant_id","applied_by") REFERENCES "public"."users"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "participant_sessions" ADD CONSTRAINT "participant_sessions_user_scope_fk" FOREIGN KEY ("tenant_id","user_id") REFERENCES "public"."users"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "participants" ADD CONSTRAINT "participants_event_scope_fk" FOREIGN KEY ("tenant_id","event_id") REFERENCES "public"."events"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "participants" ADD CONSTRAINT "participants_application_scope_fk" FOREIGN KEY ("tenant_id","event_id","application_id") REFERENCES "public"."applications"("tenant_id","event_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
