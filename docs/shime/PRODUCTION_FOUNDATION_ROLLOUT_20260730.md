@@ -2,7 +2,8 @@
 
 - 実施日: 2026-07-30（Asia/Tokyo）
 - 対象ブランチ: `release/2026-08-08-readiness`
-- 対象コミット: `859da688a1383dd0e1a91471fb7a0c7742ca8f7a`
+- application code commit: `859da688a1383dd0e1a91471fb7a0c7742ca8f7a`
+- current deployment source: `a7e37bf22c1d27e47b0dfcdee59291973ed40222`
 - 実施者: Codex
 - 判定: 基盤反映成功。ただし本番Go判定ではない
 
@@ -11,8 +12,8 @@
 利用者から、productionバックアップ確認、migration 0015を含むDB初期構築、
 release版の本番Vercelデプロイ、隔離UATイベント作成について明示的な承認を得た。
 
-今回完了した範囲は、バックアップ確認、DB初期構築、Storage作成、Vercelデプロイまで。
-隔離UATテナント・管理者・イベントは、ローカル秘密値の入力待ちで未作成。
+バックアップ確認、DB初期構築、Storage作成、Vercelデプロイ、
+隔離UATテナント・管理者・イベント作成まで完了した。
 
 ## Supabase
 
@@ -56,7 +57,8 @@ daily backup modeを確認した。残る指摘はローカルDocker Desktop未�
 
 - project: `shime-production`
 - stable URL: `https://shime-production.vercel.app`
-- deployment ID: `dpl_GxYHwLiSf2fW36PrGHHKnbeXmzUX`
+- initial deployment ID: `dpl_GxYHwLiSf2fW36PrGHHKnbeXmzUX`
+- current deployment ID: `dpl_GgVDH4MntkqCuRjcFjDZDHWL2na7`
 - deployment state: READY
 - target: production
 
@@ -76,6 +78,13 @@ daily backup modeを確認した。残る指摘はローカルDocker Desktop未�
 LINE/LIFF、OpenAIは未確定のため本番Vercelへ登録していない。
 本番LINE導線のUATはこれらの設定後に行う。
 
+初回runtime接続にはdirect DB hostnameが設定されており、Vercelで
+`ENOTFOUND`となることをログインAPIの500で検出した。東京リージョンの
+Transaction Pooler 6543接続へ変更し、direct migration接続と同じ
+65テーブル・16 migrationを参照することを確認した。
+
+修正後、UAT管理者ログインと管理API操作に成功した。
+
 ### 公開スモーク
 
 - `/` → `/admin`へ307
@@ -84,6 +93,31 @@ LINE/LIFF、OpenAIは未確定のため本番Vercelへ登録していない。
 - `/api/health` → 200
 - production画面にstaging警告なし
 - `/robots.txt` → publicを許可し、`/admin/`と`/api/`を拒否
+
+## 隔離UAT
+
+- tenant code: `shime-uat`
+- administrator login ID: `uat-admin`
+- event code: `uat-client-20260730`
+- event ID: `d4e9b3eb-67e0-4ce5-879d-98934b0f055f`
+- status: `accepting`
+- configuration issues: 0
+- tables / seats: 4 / 20
+- Dream: AI無効、UAT専用感情カード8件
+- questionnaire: UAT専用5問、5軸
+- legal: UAT専用仮規約・仮プライバシー案内を公開
+- synthetic applications / participants: 1 / 1
+- events outside UAT tenant: 0
+
+管理者パスワード、password pepper、本人連携tokenはログ・文書・Gitへ記録していない。
+規約と参加者は明示的なUAT専用合成データであり、正式内容や実参加者データではない。
+
+確認済み管理ページ:
+
+- `/admin`
+- `/admin/events/d4e9b3eb-67e0-4ce5-879d-98934b0f055f/settings`
+- `/admin/events/d4e9b3eb-67e0-4ce5-879d-98934b0f055f/participants`
+- `/admin/events/d4e9b3eb-67e0-4ce5-879d-98934b0f055f/setup`
 
 ## 検証結果
 
@@ -106,10 +140,9 @@ format検出対象は既知のWindows作業ツリー改行差で、Git indexはL
 ## 未完了・停止条件
 
 1. `EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT 15件を正式決定する。
-2. 隔離UATテナント、UAT管理者、合成イベントを作成する。
-3. 本番LINE/LIFFを設定し、開発中チャネル制限を解除して端末UATを行う。
-4. 独自ドメイン、監視、定期ジョブの本番設定を確認する。
-5. DBとStorageを含む復旧リハーサルを非本番復元先で行う。
-6. 全導線リハーサルとGo／No-Go記録を完了する。
+2. 本番LINE/LIFFを設定し、開発中チャネル制限を解除して端末UATを行う。
+3. 独自ドメイン、監視、定期ジョブの本番設定を確認する。
+4. DBとStorageを含む復旧リハーサルを非本番復元先で行う。
+5. 全導線リハーサルとGo／No-Go記録を完了する。
 
 P0が残るため、現時点で本番イベント利用可能とは判定しない。

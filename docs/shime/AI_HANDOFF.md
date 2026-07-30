@@ -2,9 +2,9 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-30 17:50（Asia/Tokyo、Codex。本番基盤の初期反映）
+最終更新: 2026-07-30 18:05（Asia/Tokyo、Codex。本番基盤と隔離UATの初期反映）
 作業ブランチ: `release/2026-08-08-readiness`
-release HEAD: `859da688a1383dd0e1a91471fb7a0c7742ca8f7a`
+deployment source HEAD: `a7e37bf22c1d27e47b0dfcdee59291973ed40222`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
@@ -21,12 +21,16 @@ PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 - private Storage bucket `shime-private-imports`と`shime-private-concierge`を作成した。
 - 独立Vercel project `shime-production`を作成し、release HEAD
   `859da688`を`https://shime-production.vercel.app`へproduction deployした。
-- deployment IDは`dpl_GxYHwLiSf2fW36PrGHHKnbeXmzUX`、stateはREADY。
+- Vercel runtimeのdirect DB hostnameによる`ENOTFOUND`を検出し、検証済み東京Transaction
+  Pooler 6543へ変更した。current deployment IDは`dpl_GgVDH4MntkqCuRjcFjDZDHWL2na7`、stateはREADY。
 - health 200、未認証管理画面のlogin redirect、production画面にstaging警告がないことを確認した。
 - 単体304件、結合37件、E2E 29件（3件skip）、architecture、lint、typecheck、
   build、dependency auditに成功した。
-- LINE/LIFF、OpenAIは本番未設定。隔離UATテナント・管理者・イベントは、
-  ローカルbootstrap秘密値の入力待ちで未作成。
+- 隔離tenant `shime-uat`、管理者`uat-admin`、UAT event `uat-client-20260730`を作成した。
+  eventは設定完全、status `accepting`、20席、Dream 8カード（AI無効）、5問、
+  UAT専用仮規約2件、合成申込・参加者各1件。他tenant eventは0件。
+- 管理者パスワード、pepper、本人連携tokenはログ・文書・Gitへ記録していない。
+- LINE/LIFF、OpenAIは本番未設定。本番LINE導線の端末UATは未実施。
 - REQUIRED_INPUT 15件、復旧リハーサル、全導線UAT、監視・定期ジョブ確認が残るため、
   **本番Go判定ではない**。
 - 詳細: `docs/shime/PRODUCTION_FOUNDATION_ROLLOUT_20260730.md`
