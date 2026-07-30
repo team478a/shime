@@ -2,13 +2,34 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-28 19:30（Asia/Tokyo、Codex。Concierge合成実機確認データをstagingへ準備）
-作業ブランチ: `codex/concierge-staging-rehearsal-setup`
+最終更新: 2026-07-30 17:50（Asia/Tokyo、Codex。本番基盤の初期反映）
+作業ブランチ: `release/2026-08-08-readiness`
+release HEAD: `859da688a1383dd0e1a91471fb7a0c7742ca8f7a`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### production基盤 初期反映（2026-07-30 17:50）
+
+- 利用者の明示承認に基づき、新規production Supabase
+  `dipcpqmbmumazyuorslv`のDashboard physical backupを確認した。
+- 本番DBは新規空DBだったため、migration 0000〜0015の全16件を初期適用した。
+- postflightはmigration head 0015、scope不整合11件すべて0、欠落制約・テーブル0、
+  `safe: true`。runtime/migration接続が同一DBであることも確認した。
+- private Storage bucket `shime-private-imports`と`shime-private-concierge`を作成した。
+- 独立Vercel project `shime-production`を作成し、release HEAD
+  `859da688`を`https://shime-production.vercel.app`へproduction deployした。
+- deployment IDは`dpl_GxYHwLiSf2fW36PrGHHKnbeXmzUX`、stateはREADY。
+- health 200、未認証管理画面のlogin redirect、production画面にstaging警告がないことを確認した。
+- 単体304件、結合37件、E2E 29件（3件skip）、architecture、lint、typecheck、
+  build、dependency auditに成功した。
+- LINE/LIFF、OpenAIは本番未設定。隔離UATテナント・管理者・イベントは、
+  ローカルbootstrap秘密値の入力待ちで未作成。
+- REQUIRED_INPUT 15件、復旧リハーサル、全導線UAT、監視・定期ジョブ確認が残るため、
+  **本番Go判定ではない**。
+- 詳細: `docs/shime/PRODUCTION_FOUNDATION_ROLLOUT_20260730.md`
 
 ### Concierge Phase 1B staging実機確認準備（2026-07-28 19:30）
 
