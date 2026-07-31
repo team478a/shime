@@ -3,6 +3,23 @@ import { describe, expect, it } from "vitest";
 import { getAdminPublicDownloads, PUBLIC_DOWNLOADS } from "../../apps/web/src/lib/public-downloads";
 
 describe("public downloads", () => {
+  it("publishes administrator and participant manuals for smartphone download", () => {
+    expect(getAdminPublicDownloads()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceName: "ADMINISTRATOR_MANUAL.md",
+          outputName: "SHIME_ADMINISTRATOR_MANUAL.md",
+          label: "管理者・スタッフ操作マニュアル",
+        }),
+        expect.objectContaining({
+          sourceName: "PARTICIPANT_MANUAL.md",
+          outputName: "SHIME_PARTICIPANT_MANUAL.md",
+          label: "参加者操作マニュアル",
+        }),
+      ]),
+    );
+  });
+
   it("publishes the concierge specification review for smartphone download", () => {
     expect(PUBLIC_DOWNLOADS).toContainEqual(
       expect.objectContaining({

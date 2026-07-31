@@ -24,6 +24,7 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
 
 const primaryItems: readonly AdminNavigationItem[] = [
   { key: "dashboard", label: "管理トップ", href: "/admin" },
+  { key: "manual", label: "操作マニュアル", href: "/admin/manual" },
   { key: "new-event", label: "イベント作成", href: "/admin/events/new", permission: "event:write" },
   {
     key: "venue-templates",

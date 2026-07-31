@@ -14,12 +14,14 @@ describe("admin navigation", () => {
   it("shows system settings only to system administrators", () => {
     expect(getAdminPrimaryNavigation("manager").map((item) => item.key)).toEqual([
       "dashboard",
+      "manual",
       "new-event",
       "venue-templates",
       "concierge",
     ]);
     expect(getAdminPrimaryNavigation("system_admin").map((item) => item.key)).toEqual([
       "dashboard",
+      "manual",
       "new-event",
       "venue-templates",
       "concierge",
@@ -29,7 +31,11 @@ describe("admin navigation", () => {
   });
 
   it("hides tenant-wide template management from event-scoped staff", () => {
-    expect(getAdminPrimaryNavigation("manager", true).map((item) => item.key)).toEqual(["dashboard", "new-event"]);
+    expect(getAdminPrimaryNavigation("manager", true).map((item) => item.key)).toEqual([
+      "dashboard",
+      "manual",
+      "new-event",
+    ]);
   });
 
   it("limits reception staff to event-day check-in", () => {

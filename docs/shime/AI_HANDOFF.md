@@ -2,7 +2,7 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-30 18:05（Asia/Tokyo、Codex。本番基盤と隔離UATの初期反映）
+最終更新: 2026-07-31 10:35（Asia/Tokyo、Codex。管理者・参加者Webマニュアル整備）
 作業ブランチ: `release/2026-08-08-readiness`
 deployment source HEAD: `a7e37bf22c1d27e47b0dfcdee59291973ed40222`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
@@ -10,6 +10,27 @@ release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### 管理者・参加者マニュアル整備（2026-07-31）
+
+- `docs/shime/ADMINISTRATOR_MANUAL.md`へ、権限、初期設定、申込・CSV、LINE連携、
+  当日受付、席配置、希望・結果、通知、CSV、障害対応、本番前チェックを統合した。
+- `docs/shime/PARTICIPANT_MANUAL.md`へ、申込、LINE本人連携、Dream、席案内5問、
+  SHIME診断、PASS・受付QR、席、希望、結果、トラブル対応、プライバシーを統合した。
+- `docs/shime/MANUAL_INDEX.md`に対象範囲と配布時の注意を記録した。
+- 管理トップの「運用資料をダウンロード」へ管理者用・参加者用の2冊を追加し、
+  `pnpm docs:sync`でスマートフォンから取得できる公開ファイルを生成する設定とした。
+- Web版として、公開一覧`/manual`、参加者用`/manual/participant`、認証必須の
+  管理者用`/admin/manual`を追加した。Markdown正本から静的・安全なReact要素へ変換し、
+  目次、章内リンク、表、チェックリスト、Markdown保存、印刷、モバイル表示に対応した。
+- 管理画面の全スタッフ共通メニューへ「操作マニュアル」を追加した。
+- Love Passport公開プロフィールは未実装のため操作対象に含めず、決済は2026-08-08の
+  必須導線に含めないことを明記した。
+- 検証: 変更ファイルPrettier、architecture、lint、typecheck、単体307件、
+  結合37件、production buildに成功した。WebマニュアルE2Eはモバイル・デスクトップで
+  5件成功、デスクトップ対象外1件skip。管理者用の未認証アクセスがloginへ戻ること、
+  参加者用に横スクロールがないことを確認した。
+- 本番Go判定と既存P0の状態は変更しない。
 
 ### production基盤 初期反映（2026-07-30 17:50）
 

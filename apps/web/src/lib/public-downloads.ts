@@ -6,6 +6,16 @@ export type PublicDownload = {
 
 export const PUBLIC_DOWNLOADS = [
   {
+    sourceName: "ADMINISTRATOR_MANUAL.md",
+    outputName: "SHIME_ADMINISTRATOR_MANUAL.md",
+    label: "管理者・スタッフ操作マニュアル",
+  },
+  {
+    sourceName: "PARTICIPANT_MANUAL.md",
+    outputName: "SHIME_PARTICIPANT_MANUAL.md",
+    label: "参加者操作マニュアル",
+  },
+  {
     sourceName: "COMPLETION_RECORD_20260715.md",
     outputName: "SHIME_COMPLETION_RECORD_20260715.md",
     label: "2026-07-15完了記録",

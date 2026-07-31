@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SHIME_BRAND } from "../lib/brand";
+import "./manual/manual.css";
 import "./styles.css";
 
 const isProduction = process.env.APP_ENV === "production";
