@@ -16,6 +16,11 @@ export const PUBLIC_DOWNLOADS = [
     label: "参加者操作マニュアル",
   },
   {
+    sourceName: "CLIENT_UAT_GUIDE_20260731.md",
+    outputName: "SHIME_CLIENT_UAT_GUIDE_20260731.md",
+    label: "クライアント確認ガイド",
+  },
+  {
     sourceName: "COMPLETION_RECORD_20260715.md",
     outputName: "SHIME_COMPLETION_RECORD_20260715.md",
     label: "2026-07-15完了記録",

@@ -54,7 +54,8 @@ safe
   it("exposes only the registered manuals", () => {
     expect(isManualKey("admin")).toBe(true);
     expect(isManualKey("participant")).toBe(true);
+    expect(isManualKey("clientUat")).toBe(true);
     expect(isManualKey("../secret")).toBe(false);
-    expect(Object.keys(MANUALS)).toEqual(["admin", "participant"]);
+    expect(Object.keys(MANUALS)).toEqual(["admin", "participant", "clientUat"]);
   });
 });

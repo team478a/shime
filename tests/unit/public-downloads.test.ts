@@ -16,6 +16,11 @@ describe("public downloads", () => {
           outputName: "SHIME_PARTICIPANT_MANUAL.md",
           label: "参加者操作マニュアル",
         }),
+        expect.objectContaining({
+          sourceName: "CLIENT_UAT_GUIDE_20260731.md",
+          outputName: "SHIME_CLIENT_UAT_GUIDE_20260731.md",
+          label: "クライアント確認ガイド",
+        }),
       ]),
     );
   });

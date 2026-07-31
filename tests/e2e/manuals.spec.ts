@@ -4,6 +4,10 @@ test.describe("web manuals", () => {
   test("opens the manual index and both versioned documents", async ({ page }) => {
     await page.goto("/manual");
     await expect(page.getByRole("heading", { name: "操作マニュアル", level: 1 })).toBeVisible();
+    await expect(page.getByRole("link", { name: /クライアント確認ガイド/ })).toHaveAttribute(
+      "href",
+      "/admin/manual/uat",
+    );
 
     await page.getByRole("link", { name: /参加者操作マニュアル/ }).click();
     await expect(page.getByRole("heading", { name: "SHIME 参加者操作マニュアル", level: 1 })).toBeVisible();
@@ -14,6 +18,7 @@ test.describe("web manuals", () => {
     );
 
     await expect(page.getByRole("link", { name: "管理者用" })).toHaveAttribute("href", "/admin/manual");
+    await expect(page.getByRole("link", { name: "クライアント確認" })).toHaveAttribute("href", "/admin/manual/uat");
   });
 
   test("keeps the participant manual within the mobile viewport", async ({ page }, testInfo) => {
@@ -27,6 +32,12 @@ test.describe("web manuals", () => {
 
   test("requires a staff session for the administrator manual", async ({ page }) => {
     await page.goto("/admin/manual");
+    await expect(page).toHaveURL(/\/admin\/login$/);
+    await expect(page.getByRole("heading", { name: "SHIME 運営ログイン" })).toBeVisible();
+  });
+
+  test("requires a staff session for the client UAT guide", async ({ page }) => {
+    await page.goto("/admin/manual/uat");
     await expect(page).toHaveURL(/\/admin\/login$/);
     await expect(page.getByRole("heading", { name: "SHIME 運営ログイン" })).toBeVisible();
   });

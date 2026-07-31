@@ -26,6 +26,11 @@ export default function ManualIndexPage() {
             <strong>{MANUALS.admin.title}</strong>
             <small>{MANUALS.admin.description}</small>
           </Link>
+          <Link className="manual-card" href="/admin/manual/uat">
+            <span>クライアント確認担当の方</span>
+            <strong>{MANUALS.clientUat.title}</strong>
+            <small>{MANUALS.clientUat.description}</small>
+          </Link>
         </div>
         <p className="manual-note">
           イベントによって利用する機能と順序が異なります。実際の画面と主催者からの案内を優先してください。

@@ -11,6 +11,7 @@ export default function ManualLayout({ children }: Readonly<{ children: ReactNod
           <Link href="/manual">マニュアル一覧</Link>
           <Link href="/manual/participant">参加者用</Link>
           <Link href="/admin/manual">管理者用</Link>
+          <Link href="/admin/manual/uat">クライアント確認</Link>
         </div>
       </nav>
       {children}
