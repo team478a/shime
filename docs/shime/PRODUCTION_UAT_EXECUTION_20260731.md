@@ -1,8 +1,11 @@
 # SHIME production隔離UAT 実施記録
 
-実施日: 2026-07-31  
-環境: production（独自ドメイン `https://app.shimelife.jp`）  
-対象: 隔離tenant `shime-uat` / UAT専用イベント  
+実施日: 2026-07-31
+
+環境: production（独自ドメイン `https://app.shimelife.jp`）
+
+対象: 隔離tenant `shime-uat` / UAT専用イベント
+
 判定: **部分合格。本番Go判定ではない**
 
 ## 安全条件
