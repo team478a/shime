@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 
 import {
   applications,
@@ -95,6 +95,60 @@ export function createDrizzleSeatingRepository(): SeatingRepository {
           ),
         )
         .where(and(eq(eventSeats.tenantId, scope.tenantId), eq(eventSeats.eventId, scope.eventId)));
+    },
+
+    async getPublishedParticipantSeat(scope, participantId) {
+      const row = (
+        await getDatabase()
+          .select({
+            tableCode: eventTables.tableCode,
+            seatCode: eventSeats.seatCode,
+            explanation: seatAssignments.explanation,
+            publishedAt: seatAssignments.publishedAt,
+          })
+          .from(seatAssignments)
+          .innerJoin(
+            seatingRuns,
+            and(
+              eq(seatingRuns.id, seatAssignments.seatingRunId),
+              eq(seatingRuns.tenantId, seatAssignments.tenantId),
+              eq(seatingRuns.eventId, seatAssignments.eventId),
+              eq(seatingRuns.status, "published"),
+            ),
+          )
+          .innerJoin(
+            eventSeats,
+            and(
+              eq(eventSeats.id, seatAssignments.seatId),
+              eq(eventSeats.tenantId, seatAssignments.tenantId),
+              eq(eventSeats.eventId, seatAssignments.eventId),
+            ),
+          )
+          .innerJoin(
+            eventTables,
+            and(
+              eq(eventTables.id, eventSeats.tableId),
+              eq(eventTables.tenantId, seatAssignments.tenantId),
+              eq(eventTables.eventId, seatAssignments.eventId),
+            ),
+          )
+          .where(
+            and(
+              eq(seatAssignments.tenantId, scope.tenantId),
+              eq(seatAssignments.eventId, scope.eventId),
+              eq(seatAssignments.participantId, participantId),
+              isNotNull(seatAssignments.publishedAt),
+            ),
+          )
+          .orderBy(desc(seatAssignments.publishedAt))
+          .limit(1)
+      )[0];
+      if (!row?.publishedAt) return null;
+      return {
+        ...row,
+        explanation: seatAssignmentExplanationSchema.parse(row.explanation),
+        publishedAt: row.publishedAt,
+      };
     },
   };
 }

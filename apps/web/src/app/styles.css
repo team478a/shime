@@ -807,6 +807,19 @@ textarea:focus-visible {
   margin: 0;
   font-weight: 750;
 }
+.participant-seat-status {
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
+  border-top: 1px solid var(--shime-border);
+}
+.participant-seat-status h2,
+.participant-seat-status p {
+  margin: 0;
+}
+.participant-seat-details {
+  border: 1px solid var(--service-primary);
+}
 .qr-section {
   display: grid;
   gap: 16px;
