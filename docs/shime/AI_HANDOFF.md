@@ -2,14 +2,31 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-31 15:05（Asia/Tokyo、Codex。production隔離UAT・PASS席表示反映）
+最終更新: 2026-07-31 15:40（Asia/Tokyo、Codex。クライアントUATガイド公開）
 作業ブランチ: `release/2026-08-08-readiness`
-deployment source HEAD: `67fc36e8383ad449c116dfcd32ae336d9d39399a`
+deployment source HEAD: `cb53da7fd4a1f43930b69fe892de1c95d3c05739`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### クライアントUATガイド公開（2026-07-31）
+
+- `docs/shime/CLIENT_UAT_GUIDE_20260731.md`へ、参加者・スタッフ双方の画面確認、
+  現在の基準フロー、フロー確定回答、正式イベント情報15項目、問題報告様式、
+  P0/P1/P2判定、8月7日までの確認日程、承認記録を整理した。
+- 実データを使わずUAT専用イベントと合成参加者だけを使用する安全条件を明記した。
+- 管理者認証必須のWeb版`/admin/manual/uat`と、スマートフォン保存用Markdownを追加した。
+- 公開マニュアル一覧`/manual`と管理者用ナビゲーションからアクセスできる。
+- architecture、lint、typecheck、単体312件、結合37件、production buildに成功した。
+  マニュアルE2Eは7件成功・デスクトップ対象外1件skip。
+- commit `cb53da7fd4a1f43930b69fe892de1c95d3c05739`をreleaseへpushし、
+  production deployment `dpl_8z5wUqKYGsQMmpRuHt2qSWMT8ysr`へ反映した。
+- 公開後、`/manual` 200、UATガイド表示、Markdown download 200、
+  未認証`/admin/manual/uat`のlogin redirect 307、health 200を確認した。
+- 次はクライアントがUATガイドに沿って初回確認を行い、導線と15項目を回答する。
+- **本番Go判定ではない。**
 
 ### production隔離UAT・参加者PASS席表示（2026-07-31）
 
@@ -220,13 +237,15 @@ releaseへのPR #3 merge、staging migration、staging deploy、公開スモー�
 
 ## 現在の未完了項目
 
-1. **修正後PASS席表示の実機確認** — A01本人のPASSで公開済み`T01 / T01-1`を確認する。
-2. **認証済みConcierge実機確認** — production UATでは診断導線をまだ実施していない。
-3. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定。運営側の決定が必要。
-4. **残る導線・全規模リハーサル・復旧訓練** — 希望・結果・通知、匿名化50名、
+1. **クライアント初回UAT** — Web版ガイドに沿って参加者・スタッフ導線、画面文言、
+   SHIME診断の使用・配置を確認し、P0/P1/P2で回答する。
+2. **正式イベント情報** — `EVENT_CONFIG_20260808.yaml`の15項目をクライアントが確定する。
+3. **修正後PASS席表示の実機確認** — A01本人のPASSで公開済み`T01 / T01-1`を確認する。
+4. **認証済みConcierge実機確認** — production UATでは診断導線をまだ実施していない。
+5. **残る導線・全規模リハーサル・復旧訓練** — 希望・結果・通知、匿名化50名、
    受付端末5台、通信障害、紙運用、バックアップ復旧の実施記録が必要。
-5. **定期ジョブ・監視** — 高頻度ジョブ、障害検知、運営への通知経路を確認する。
-6. **本番Go／No-Go** — 上記P0が1件でも残る間は本番可能と判定しない。
+6. **定期ジョブ・監視** — 高頻度ジョブ、障害検知、運営への通知経路を確認する。
+7. **本番Go／No-Go** — 上記P0が1件でも残る間は本番可能と判定しない。
 
 ## 直近の検証結果（2026-07-28、Codex）
 
