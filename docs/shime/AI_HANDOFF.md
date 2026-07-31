@@ -2,14 +2,31 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-31 21:18（Asia/Tokyo、Codex。UAT管理者パスワード復旧）
+最終更新: 2026-07-31 22:10（Asia/Tokyo、Codex。初心者向けクライアントUAT手順公開）
 作業ブランチ: `release/2026-08-08-readiness`
-deployment source HEAD: `cb53da7fd4a1f43930b69fe892de1c95d3c05739`
+deployment source HEAD: `6c2906b9ecc2f2af3d11665dbca1fd3871b06acb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### 初心者向けクライアントUAT手順公開（2026-07-31）
+
+- クライアントUATガイドへ「はじめての方へ」と12段階の操作手順を追加した。
+- 申込、管理検索、LINEリンク発行、本人連携、Dream、5問、PASS、QR、受付、
+  席配置・公開、PASS席確認、希望・結果、報告まで、押す場所・期待表示・確認項目・
+  操作を止める条件を初心者向けに記載した。
+- PCとスマートフォンの2台構成、1台だけの場合、異なる参加区分2名が必要な席確認、
+  `CATEGORY_PAIR_CONFLICT`時の対応、実通知禁止、合成データ限定を明記した。
+- UAT専用の管理ログイン、ガイド、申込フォームURLを記載した。パスワードは記載していない。
+- manual unit 5件、manual E2E 7件成功・1件skip、production buildに成功した。
+- commit `6c2906b9ecc2f2af3d11665dbca1fd3871b06acb`をreleaseへpushし、production deployment
+  `dpl_5eACuBevQ68Vp75sc2WDu7ZCJRrb`へ反映した。
+- 公開後、download 200、初心者手順とステップ12の反映、health 200、
+  未認証Web版のlogin redirect 307を確認した。
+- 次はクライアントがステップ0から順に操作し、最初に迷った箇所または要修正を報告する。
+- **本番Go判定ではない。**
 
 ### UAT管理者パスワード復旧（2026-07-31）
 
