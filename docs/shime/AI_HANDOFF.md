@@ -2,9 +2,9 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-31 10:35（Asia/Tokyo、Codex。管理者・参加者Webマニュアル整備）
+最終更新: 2026-07-31 11:30（Asia/Tokyo、Codex。独自ドメイン切替・Webマニュアル公開）
 作業ブランチ: `release/2026-08-08-readiness`
-deployment source HEAD: `a7e37bf22c1d27e47b0dfcdee59291973ed40222`
+deployment source HEAD: `c991fbf170da4a636bb617a50805e8c62ecff9ea`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
@@ -30,6 +30,12 @@ PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
   結合37件、production buildに成功した。WebマニュアルE2Eはモバイル・デスクトップで
   5件成功、デスクトップ対象外1件skip。管理者用の未認証アクセスがloginへ戻ること、
   参加者用に横スクロールがないことを確認した。
+- commit `c991fbf170da4a636bb617a50805e8c62ecff9ea`を
+  `release/2026-08-08-readiness`へpushし、productionへデプロイした。
+- productionの`APP_URL`を`https://app.shimelife.jp`へ更新し、Vercelの独自ドメイン、
+  SSL、`/api/health` 200を確認した。
+- 公開後確認: `/manual` 200、`/manual/participant` 200、未認証の`/admin/manual`は
+  `/admin/login`へ307、管理者用・参加者用Markdownダウンロードはいずれも200。
 - 本番Go判定と既存P0の状態は変更しない。
 
 ### production基盤 初期反映（2026-07-30 17:50）
