@@ -2,14 +2,33 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-31 11:30（Asia/Tokyo、Codex。独自ドメイン切替・Webマニュアル公開）
+最終更新: 2026-07-31 15:05（Asia/Tokyo、Codex。production隔離UAT・PASS席表示反映）
 作業ブランチ: `release/2026-08-08-readiness`
-deployment source HEAD: `c991fbf170da4a636bb617a50805e8c62ecff9ea`
+deployment source HEAD: `67fc36e8383ad449c116dfcd32ae336d9d39399a`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### production隔離UAT・参加者PASS席表示（2026-07-31）
+
+- 独自ドメイン`https://app.shimelife.jp`で、UAT専用tenant・イベント・合成参加者だけを使用した。
+- LINE/LIFF、本人連携、Dream、席案内5問、PASS、QR、手動受付、席配置・公開までを実機確認した。
+- カテゴリが片側1名だけのときは`CATEGORY_PAIR_CONFLICT`で不正な席保存を防止し、
+  異なるカテゴリ2名では配置・ロック・保存・公開まで完了した。
+- UAT中、公開済み席がSHIME PASSへ表示されない不足を発見した。
+- 参加者本人の公開済み席だけを返すRepository / UseCaseへAPIを分離し、PASSに
+  テーブル・席番号、準備中表示、更新操作を追加した。
+- 単体312件・結合37件、architecture、lint、typecheck、buildに成功した。
+  新規E2Eはモバイル・デスクトップ4件成功。全E2Eは37件成功・4件skipで、
+  既存マニュアル1件が並列実行時だけ失敗したが単独再実行3件は成功した。
+- commit `67fc36e8383ad449c116dfcd32ae336d9d39399a`をreleaseへpushし、
+  production deployment `dpl_3oxmU4iWmJ4VpsBjdDDwRYYip2s9`へ反映した。
+- deployment `READY`、独自ドメインalias、health 200、未認証席API 401を確認した。
+- 修正後のスマートフォンでA01に`T01 / T01-1`が表示される最終確認が次の操作。
+- 詳細: `docs/shime/PRODUCTION_UAT_EXECUTION_20260731.md`
+- **本番Go判定ではない。**
 
 ### 管理者・参加者マニュアル整備（2026-07-31）
 
@@ -188,8 +207,8 @@ PR #3のレビューで判明したP0/P1を修正した。**修正コードと�
 
 Concierge Phase 1B（SHIME診断機能）は、レビュー指摘の修正、最終再レビュー、
 releaseへのPR #3 merge、staging migration、staging deploy、公開スモークまで完了した。
-**migration 0015はstagingだけに適用済みで、productionには未適用。**
-本番デプロイ、実参加者データ利用、診断有効化、通知送信は行っていない。
+**migration 0015とreleaseアプリは2026-07-30にproductionへ反映済み。**
+実参加者データ利用、診断有効化、通知送信は行っていない。
 
 テスト件数（最新）:
 
@@ -201,15 +220,13 @@ releaseへのPR #3 merge、staging migration、staging deploy、公開スモー�
 
 ## 現在の未完了項目
 
-1. **認証済みConcierge実機確認** — 合成カード・テンプレート・RH-A snapshotの準備まで完了し、
-   診断はOFF。管理者が確認時間だけONにして、選択前非公開、選択即時保存、選択カード表示、
-   途中保存、revision conflict、二重提出防止、他参加者情報非公開をスマートフォンで確認する。
-2. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定。Concierge修正とは別P0で、運営側の決定が必要。
-3. **全導線リハーサルと復旧訓練** — 匿名化データ、複数端末、通信障害・代替運用を含む実施記録が必要。
-4. **production反映判断** — migration 0015とアプリはproduction未反映。既存P0をすべて解消し、
-   Go承認と復旧担当を確定するまで適用・デプロイしない。
-5. **本番Go／No-Go** — REQUIRED_INPUT、LINE/LIFF、定期ジョブ、監視、全導線E2Eを含む
-   既存P0が1件でも残る間は本番可能と判定しない。
+1. **修正後PASS席表示の実機確認** — A01本人のPASSで公開済み`T01 / T01-1`を確認する。
+2. **認証済みConcierge実機確認** — production UATでは診断導線をまだ実施していない。
+3. **`EVENT_CONFIG_20260808.yaml`のREQUIRED_INPUT** — 15項目が未確定。運営側の決定が必要。
+4. **残る導線・全規模リハーサル・復旧訓練** — 希望・結果・通知、匿名化50名、
+   受付端末5台、通信障害、紙運用、バックアップ復旧の実施記録が必要。
+5. **定期ジョブ・監視** — 高頻度ジョブ、障害検知、運営への通知経路を確認する。
+6. **本番Go／No-Go** — 上記P0が1件でも残る間は本番可能と判定しない。
 
 ## 直近の検証結果（2026-07-28、Codex）
 
