@@ -2,7 +2,7 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-31 15:40（Asia/Tokyo、Codex。クライアントUATガイド公開）
+最終更新: 2026-07-31 21:18（Asia/Tokyo、Codex。UAT管理者パスワード復旧）
 作業ブランチ: `release/2026-08-08-readiness`
 deployment source HEAD: `cb53da7fd4a1f43930b69fe892de1c95d3c05739`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
@@ -10,6 +10,17 @@ release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### UAT管理者パスワード復旧（2026-07-31）
+
+- 利用者の明示承認に基づき、production隔離tenant `shime-uat`の既存管理者
+  `uat-admin`だけを対象にパスワードをローテーションした。
+- bootstrap結果は`created: false`、`passwordChanged: true`、`roleCreated: false`であり、
+  tenant、イベント、参加者、既存ロールの新規作成・変更はない。
+- ローテーション後、`https://app.shimelife.jp/api/admin/session`へ同じ認証情報で
+  HTTP 200となり、session cookieが発行されることを確認した。
+- パスワード、pepper、DB URLその他の秘密値はログ、文書、Gitへ記録していない。
+- クライアントへ`uat-admin`を共有せず、必要時は権限を限定した専用アカウントを作成する。
 
 ### クライアントUATガイド公開（2026-07-31）
 
