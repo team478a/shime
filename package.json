@@ -37,7 +37,7 @@
     "db:seed": "tsx packages/db/src/seed.ts"
   },
   "dependencies": {
-    "@line/liff": "^2.29.1",
+    "@line/liff": "2.29.2",
     "@supabase/supabase-js": "^2.110.2",
     "argon2": "^0.44.0",
     "csv-parse": "^7.0.1",

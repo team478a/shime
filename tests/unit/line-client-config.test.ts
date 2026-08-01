@@ -28,6 +28,10 @@ describe("LIFF link query parsing", () => {
     });
   });
 
+  it("keeps a tokenless event ID when an already-linked participant returns", () => {
+    expect(parseLiffLinkQuery({ eventId: "event-1" })).toEqual({ eventId: "event-1", linkToken: "" });
+  });
+
   it("reads additional LIFF URL information from the primary redirect state", () => {
     expect(
       parseLiffLinkQuery({
@@ -42,6 +46,15 @@ describe("LIFF link query parsing", () => {
         "liff.state": "/link?eventId=event-3&linkToken=token-3",
       }),
     ).toEqual({ eventId: "event-3", linkToken: "token-3" });
+  });
+
+  it("prefers explicit callback values while recovering the missing value from liff.state", () => {
+    expect(
+      parseLiffLinkQuery({
+        eventId: "event-direct",
+        "liff.state": "?eventId=event-state&linkToken=token-state",
+      }),
+    ).toEqual({ eventId: "event-direct", linkToken: "token-state" });
   });
 });
 

@@ -2,14 +2,28 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-31 22:10（Asia/Tokyo、Codex。初心者向けクライアントUAT手順公開）
-作業ブランチ: `release/2026-08-08-readiness`
+最終更新: 2026-08-01 14:35（Asia/Tokyo、Codex。LIFF 2.29.2更新とIAP監査PR準備）
+作業ブランチ: `agent/liff-2.29.2-audit`
 deployment source HEAD: `6c2906b9ecc2f2af3d11665dbca1fd3871b06acb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### LIFF 2.29.2更新・LINE認証回帰・IAP監査（2026-08-01）
+
+- `@line/liff`はnpm packageをClient Componentから直接importする方式で、CDNは使用していない。
+- npm registryの現在版`2.29.2`へ更新し、lockfileの全LIFFモジュールも`2.29.2`に更新した。
+- LINE IDトークンをLINE検証APIへ`client_id`付きで送るテスト、期限切れ拒否テストを追加した。
+- LIFF戻りの直接query、`liff.state`、tokenなし再入場、直接値とstateの優先順を自動テストした。
+- LINE IAPは未実装。SDKの依存に`@liff/iap`が含まれることと、SHIMEで課金機能が実装済みであることを混同しない。
+- Messaging API Webhookは署名検証とtenant+webhook event IDの重複排除を実装済み。IAP Webhookの署名・`orderId`冪等性・付与処理は未実装で、IAP有効化前P0とした。
+- IAP手数料率と規約同意日は対象channelの申請画面の実表示/操作記録がないため未確認。推測値は記録しない。
+- 検証: 変更ファイルformat成功、architecture成功、lintエラー0、typecheck成功、単体316件、結合37件、build成功、E2E 40件成功・4件skip、dependency auditは脆弱性0件。
+- 全体`format:check`はWindows working treeの既存47ファイルのCRLF差で失敗したが、今回の変更ファイルは全て成功。
+- 詳細: `docs/shime/LINE_LIFF_IAP_AUDIT_20260801.md`
+- 次の操作: GitHub CLIを再認証後、本branchをpushし、`release/2026-08-08-readiness`向けdraft PRを作成する。マージ・deployはしない。
 
 ### 初心者向けクライアントUAT手順公開（2026-07-31）
 
