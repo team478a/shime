@@ -23,7 +23,8 @@ PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 - 検証: 変更ファイルformat成功、architecture成功、lintエラー0、typecheck成功、単体316件、結合37件、build成功、E2E 40件成功・4件skip、dependency auditは脆弱性0件。
 - 全体`format:check`はWindows working treeの既存47ファイルのCRLF差で失敗したが、今回の変更ファイルは全て成功。
 - 詳細: `docs/shime/LINE_LIFF_IAP_AUDIT_20260801.md`
-- 次の操作: GitHub CLIを再認証後、本branchをpushし、`release/2026-08-08-readiness`向けdraft PRを作成する。マージ・deployはしない。
+- commit `0e1c4f9`をpushし、`release/2026-08-08-readiness`向けdraft PR #6を作成した。
+- 次の操作: PR #6のCI確認後、隔離UATでLINEログイン→本人連携→Dream画面復帰を1回確認する。マージ・deployは別承認まで行わない。
 
 ### 初心者向けクライアントUAT手順公開（2026-07-31）
 
