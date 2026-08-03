@@ -64,7 +64,14 @@ export type EventOperationalResources = {
   enabledSeatCount: number;
   hasDreamSettings: boolean;
   hasQuestionnaire: boolean;
+  seatingMode: EventSeatingMode;
 };
+
+export type EventSeatingMode = "assigned" | "standing";
+
+export function getEventSeatingMode(settings: Record<string, unknown>): EventSeatingMode {
+  return settings.seatingMode === "standing" ? "standing" : "assigned";
+}
 
 export function includeEventOperationalReadiness(
   configuration: { complete: boolean; issues: EventConfigurationIssue[] },
@@ -80,12 +87,14 @@ export function includeEventOperationalReadiness(
   ) {
     issues.push({ key: "formFields", label: "申込フォーム必須項目", kind: "missing" });
   }
-  if (resources.tableCount < 1) issues.push({ key: "eventTables", label: "テーブル設定", kind: "missing" });
-  if (resources.enabledSeatCount < resources.capacity)
+  if (resources.seatingMode === "assigned" && resources.tableCount < 1)
+    issues.push({ key: "eventTables", label: "テーブル設定", kind: "missing" });
+  if (resources.seatingMode === "assigned" && resources.enabledSeatCount < resources.capacity)
     issues.push({ key: "eventSeats", label: `有効な席（定員${resources.capacity}席以上）`, kind: "missing" });
   if (!resources.hasDreamSettings)
     issues.push({ key: "dreamSettings", label: "Dream・感情カード設定", kind: "missing" });
-  if (!resources.hasQuestionnaire) issues.push({ key: "questionnaire", label: "席案内5問設定", kind: "missing" });
+  if (resources.seatingMode === "assigned" && !resources.hasQuestionnaire)
+    issues.push({ key: "questionnaire", label: "席案内5問設定", kind: "missing" });
   return { complete: issues.length === 0, issues };
 }
 
@@ -149,8 +158,10 @@ export function evaluateEventConfiguration(event: EventConfigurationSnapshot): {
     issues.push({ key: "participantCategories", label: "参加区分（2区分以上）", kind: "missing" });
   }
 
+  const seatingMode = getEventSeatingMode(event.settings);
   for (const [key, label] of requiredSettings) {
     const value = event.settings[key];
+    if (key === "conversationRounds" && seatingMode === "standing") continue;
     if (["conversationRounds", "retentionDays"].includes(key)) {
       if (typeof value !== "number" || !Number.isInteger(value) || value <= 0)
         issues.push({ key, label, kind: "missing" });

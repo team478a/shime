@@ -16,4 +16,11 @@ describe("event setup sections", () => {
     expect(sections.find((section) => section.key === "legal")?.href).toBe("/admin/events/event-1/legal");
     expect(sections.find((section) => section.key === "legal")?.complete).toBe(false);
   });
+
+  it("omits seating-only sections for standing events", () => {
+    const keys = buildEventSetupSections("event-1", [], { seatingMode: "standing" }).map((section) => section.key);
+    expect(keys).not.toContain("tables");
+    expect(keys).not.toContain("questionnaire");
+    expect(keys).toContain("basic");
+  });
 });

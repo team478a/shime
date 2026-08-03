@@ -93,6 +93,7 @@ describe("event configuration completeness", () => {
       enabledSeatCount: 0,
       hasDreamSettings: false,
       hasQuestionnaire: false,
+      seatingMode: "assigned",
     });
     expect(result.complete).toBe(false);
     expect(result.issues.map((issue) => issue.key)).toEqual(
@@ -108,6 +109,25 @@ describe("event configuration completeness", () => {
       enabledSeatCount: 50,
       hasDreamSettings: true,
       hasQuestionnaire: true,
+      seatingMode: "assigned",
+    });
+    expect(result).toEqual({ complete: true, issues: [] });
+  });
+
+  it("accepts a standing event without tables, seats, questionnaire, or conversation rounds", () => {
+    const standing = {
+      ...complete,
+      settings: { ...complete.settings, seatingMode: "standing" },
+    };
+    delete (standing.settings as { conversationRounds?: number }).conversationRounds;
+    const result = includeEventOperationalReadiness(evaluateEventConfiguration(standing), {
+      capacity: 20,
+      formFields: defaultEventFormFields,
+      tableCount: 0,
+      enabledSeatCount: 0,
+      hasDreamSettings: true,
+      hasQuestionnaire: false,
+      seatingMode: "standing",
     });
     expect(result).toEqual({ complete: true, issues: [] });
   });

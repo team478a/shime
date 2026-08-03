@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { events, getDatabase } from "@shime/db";
+import { getEventSeatingMode } from "@shime/core";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -21,7 +22,7 @@ export default async function EventAdminLayout({
   if (session.eventId && session.eventId !== eventId) notFound();
   const event = (
     await getDatabase()
-      .select({ id: events.id, name: events.name, status: events.status })
+      .select({ id: events.id, name: events.name, status: events.status, settings: events.settings })
       .from(events)
       .where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId)))
       .limit(1)
@@ -39,7 +40,11 @@ export default async function EventAdminLayout({
           <dt>権限</dt>
           <dd>{STAFF_ROLE_LABELS[session.role]}</dd>
         </dl>
-        <AdminEventNavigation groups={getEventAdminNavigation(session.role, eventId)} />
+        <AdminEventNavigation
+          groups={getEventAdminNavigation(session.role, eventId, {
+            seatingMode: getEventSeatingMode(event.settings),
+          })}
+        />
       </aside>
       <div className="admin-event-content">{children}</div>
     </div>

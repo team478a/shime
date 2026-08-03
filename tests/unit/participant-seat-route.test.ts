@@ -8,8 +8,13 @@ vi.mock("../../apps/web/src/server/seating-use-cases", () => ({
   getPublishedParticipantSeat: { execute: vi.fn() },
 }));
 
+vi.mock("../../apps/web/src/server/event-settings", () => ({
+  getEventSeatingModeForScope: vi.fn(),
+}));
+
 const { requireParticipantForEvent } = await import("../../apps/web/src/server/participant-auth");
 const { getPublishedParticipantSeat } = await import("../../apps/web/src/server/seating-use-cases");
+const { getEventSeatingModeForScope } = await import("../../apps/web/src/server/event-settings");
 const { GET } = await import("../../apps/web/src/app/api/liff/events/[eventId]/seat/route");
 
 function context(eventId = "event-1") {
@@ -24,6 +29,7 @@ beforeEach(() => {
       participant: { id: "participant-1", eventId: "event-1" },
     } as never);
   vi.mocked(getPublishedParticipantSeat.execute).mockReset();
+  vi.mocked(getEventSeatingModeForScope).mockReset().mockResolvedValue("assigned");
 });
 
 describe("participant seat API contract", () => {
@@ -61,6 +67,16 @@ describe("participant seat API contract", () => {
       { tenantId: "tenant-1", eventId: "event-1" },
       "participant-2",
     );
+    await expect(response.json()).resolves.toEqual({ data: null });
+  });
+
+  it("does not expose a retained seat when the event uses standing mode", async () => {
+    vi.mocked(getEventSeatingModeForScope).mockResolvedValue("standing");
+
+    const response = await GET(new Request("https://example.test/api/liff/events/event-1/seat"), context());
+
+    expect(response.status).toBe(200);
+    expect(getPublishedParticipantSeat.execute).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toEqual({ data: null });
   });
 

@@ -13,7 +13,7 @@ type ParticipantSeatState = {
   status: "loading" | "loaded" | "error";
 };
 
-export function useParticipantSeat(eventId: string) {
+export function useParticipantSeat(eventId: string, enabled = true) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [state, setState] = useState<ParticipantSeatState>({
     seat: null,
@@ -21,7 +21,7 @@ export function useParticipantSeat(eventId: string) {
   });
 
   useEffect(() => {
-    if (!eventId) return;
+    if (!eventId || !enabled) return;
     let active = true;
     void fetch(`/api/liff/events/${encodeURIComponent(eventId)}/seat`)
       .then(async (response) => {
@@ -37,11 +37,12 @@ export function useParticipantSeat(eventId: string) {
     return () => {
       active = false;
     };
-  }, [eventId, refreshKey]);
+  }, [enabled, eventId, refreshKey]);
 
   return {
-    ...state,
+    ...(enabled ? state : { seat: null, status: "loaded" as const }),
     refresh: () => {
+      if (!enabled) return;
       setState((current) => ({ ...current, status: "loading" }));
       setRefreshKey((current) => current + 1);
     },

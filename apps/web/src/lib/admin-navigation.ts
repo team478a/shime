@@ -96,19 +96,29 @@ export function getAdminPrimaryNavigation(role: StaffRole, eventScoped = false) 
   return primaryItems.filter((item) => canAccess(role, item) && !(eventScoped && item.tenantScopeOnly));
 }
 
-export function getEventAdminNavigation(role: StaffRole, eventId: string) {
+export function getEventAdminNavigation(
+  role: StaffRole,
+  eventId: string,
+  options: { seatingMode?: "assigned" | "standing" } = {},
+) {
   const base = `/admin/events/${encodeURIComponent(eventId)}`;
+  const seatingDisabledKeys =
+    options.seatingMode === "standing" ? new Set(["tables", "questionnaire", "seating"]) : null;
   return eventItemTemplates.flatMap((group) => {
     const items = group.items
-      .filter((item) => canAccess(role, item))
+      .filter((item) => canAccess(role, item) && !seatingDisabledKeys?.has(item.key))
       .map((item) => ({ ...item, href: `${base}/${item.href}` }));
     return items.length ? [{ ...group, items }] : [];
   });
 }
 
-export function getEventAdminQuickActions(role: StaffRole, eventId: string) {
+export function getEventAdminQuickActions(
+  role: StaffRole,
+  eventId: string,
+  options: { seatingMode?: "assigned" | "standing" } = {},
+) {
   const quickActionKeys = new Set(["checkin", "participants", "seating"]);
-  return getEventAdminNavigation(role, eventId)
+  return getEventAdminNavigation(role, eventId, options)
     .flatMap((group) => group.items)
     .filter((item) => quickActionKeys.has(item.key));
 }

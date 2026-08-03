@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-03（Asia/Tokyo、Codex。LINEリッチメニュー管理機能をproductionへ反映）
-作業ブランチ: `agent/record-rich-menu-production-deploy`
+最終更新: 2026-08-03（Asia/Tokyo、Codex。イベント単位の立食モードを実装、未デプロイ）
+作業ブランチ: `codex/standing-event-mode`
 deployment source HEAD: `7a616a9`（PR #7 merge commit）
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -12,6 +12,17 @@ PR #6 merge commit: `7f5440979efe4e23077fd9c7dbe10d3349db0172`
 PR #7 merge commit: `7a616a9`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### イベント単位の立食モード（2026-08-03、実装済み・未デプロイ）
+
+- イベント設定に`seatingMode: assigned | standing`を追加した。既存イベントと値のないイベントは互換性維持のため`assigned`として扱う。
+- 管理画面で「着席（席指定・席案内を使う）」と「立食（席指定・席案内を使わない）」を選択できる。立食時はテーブル・席マスター、席案内5問、席配置をイベントナビゲーション、設定チェック、クイック操作から除外する。
+- 立食時は参加者導線から席案内5問を除外し、Dream完了後にSHIME PASSを発行できる。PASSには席案内を表示せず、参加者席APIも既存の過去データを返さない。
+- 着席・立食の切替で既存のテーブル、席、5問、配置履歴は削除しない。着席へ戻した場合の再利用と過去イベントの再現性を保持する。
+- `EVENT_CONFIG_20260808.yaml`は今回の本番イベントを`standing`、席配置無効、席替え回数なしとして更新した。厳格readinessの未確定入力は15件から14件へ減少した。
+- 検証: architecture、lint（エラー0）、typecheck、単体328件、結合37件、production build成功。全E2Eは着席fixtureへ`assigned`を明示後、42件成功・4件対象外skip。立食PASSで席案内を表示しないE2Eも含む。
+- 全体`format:check`は既存64ファイルのWindows改行差で失敗。今回の変更ファイルは個別Prettierと`git diff --check`で確認する。
+- productionイベント設定変更、DB migration、deploy、通知送信は実施していない。次はPRレビュー、releaseへのマージ承認、production deploy後に本番イベントで「立食」を保存し、設定チェックと実機導線を再確認する。
 
 ### 実運用リハーサルへ切替（2026-08-03）
 

@@ -67,4 +67,16 @@ describe("admin navigation", () => {
       "seating",
     ]);
   });
+
+  it("hides seating-only setup and operations for standing events", () => {
+    const keys = getEventAdminNavigation("manager", "event-1", { seatingMode: "standing" }).flatMap((group) =>
+      group.items.map((item) => item.key),
+    );
+    expect(keys).not.toContain("tables");
+    expect(keys).not.toContain("questionnaire");
+    expect(keys).not.toContain("seating");
+    expect(
+      getEventAdminQuickActions("manager", "event-1", { seatingMode: "standing" }).map((item) => item.key),
+    ).toEqual(["participants", "checkin"]);
+  });
 });

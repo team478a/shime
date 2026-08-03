@@ -120,6 +120,7 @@ export async function PATCH(request: Request, context: Context) {
     eventTermsVersion,
     privacyVersion,
     contactExchangeMode,
+    seatingMode,
     reason,
     ...eventChanges
   } = parsed.data;
@@ -132,6 +133,7 @@ export async function PATCH(request: Request, context: Context) {
     eventTermsVersion,
     privacyVersion,
     contactExchangeMode,
+    seatingMode,
   });
   const candidate = {
     name: eventChanges.name ?? current.name,
