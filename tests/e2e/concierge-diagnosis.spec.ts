@@ -16,6 +16,22 @@ const QUESTIONS = [
   { axisCode: "axis_4", prompt: "今いちばん大切にしたいものは", optionA: "安心できる関係", optionB: "新しい出会い" },
 ];
 
+const MARRIAGE_V2_QUESTIONS = [
+  { axisCode: "today_feeling", prompt: "今日の気持ち", optionA: "穏やか", optionB: "わくわく" },
+  {
+    axisCode: "today_priority",
+    prompt: "今日大切にしたいこと",
+    optionA: "安心して話すこと",
+    optionB: "新しい一面を知ること",
+  },
+  {
+    axisCode: "today_expectation",
+    prompt: "今日期待していること",
+    optionA: "自然な会話",
+    optionB: "次につながる出会い",
+  },
+];
+
 function cardFaces() {
   return CARD_IDS.map((id, index) => ({
     id,
@@ -28,7 +44,7 @@ function cardFaces() {
   }));
 }
 
-function diagnosisFixture(selectedCardAssetVersionId: string | null) {
+function diagnosisFixture(selectedCardAssetVersionId: string | null, questions = QUESTIONS, schemaVersion: 1 | 2 = 1) {
   const selectedCard = cardFaces().find((card) => card.id === selectedCardAssetVersionId) ?? null;
   return {
     copy: {
@@ -43,7 +59,8 @@ function diagnosisFixture(selectedCardAssetVersionId: string | null) {
       completeButton: "",
     },
     reportCopy: { title: "", heading: "", fixedText: "", disclaimer: "", guidance: "" },
-    questions: QUESTIONS.map((question, index) => ({
+    schemaVersion,
+    questions: questions.map((question, index) => ({
       axisCode: question.axisCode,
       prompt: question.prompt,
       supplementalText: "",
@@ -59,7 +76,12 @@ function diagnosisFixture(selectedCardAssetVersionId: string | null) {
   };
 }
 
-async function mockDiagnosisApi(page: import("@playwright/test").Page) {
+async function mockDiagnosisApi(
+  page: import("@playwright/test").Page,
+  options: { questions?: typeof QUESTIONS; schemaVersion?: 1 | 2 } = {},
+) {
+  const questions = options.questions ?? QUESTIONS;
+  const schemaVersion = options.schemaVersion ?? 1;
   await page.route(`**/api/liff/events/${EVENT_ID}`, async (route) =>
     route.fulfill({
       status: 200,
@@ -95,7 +117,7 @@ async function mockDiagnosisApi(page: import("@playwright/test").Page) {
         contentType: "application/json",
         body: JSON.stringify({
           data: {
-            diagnosis: diagnosisFixture(session?.selectedCardAssetVersionId ?? null),
+            diagnosis: diagnosisFixture(session?.selectedCardAssetVersionId ?? null, questions, schemaVersion),
             snapshotHash: "hash",
             access: { opensAt: null, closesAt: null, allowResubmission: false },
             session,
@@ -160,13 +182,15 @@ async function mockDiagnosisApi(page: import("@playwright/test").Page) {
     }
     const selectedCard = cardFaces().find((card) => card.id === session!.selectedCardAssetVersionId)!;
     result = {
+      schemaVersion,
+      algorithmVersion: schemaVersion === 2 ? "concierge-rule-v2" : "concierge-rule-v1",
       primaryEmotion: {
         code: selectedCard.emotionCode,
         label: "穏やかな安心感",
         description: "今日はゆったりとした時間を大切にできそうです。",
       },
       card: { assetVersionId: selectedCard.id, title: selectedCard.title, message: selectedCard.message },
-      axes: QUESTIONS.map((question) => {
+      axes: questions.map((question) => {
         const answer = answers.find((item) => item.axisCode === question.axisCode)!;
         return {
           axisCode: question.axisCode,
@@ -175,6 +199,13 @@ async function mockDiagnosisApi(page: import("@playwright/test").Page) {
           optionLabel: answer.optionCode === "opt_a" ? question.optionA : question.optionB,
         };
       }),
+      ...(schemaVersion === 2
+        ? {
+            theme: { code: "opt_a", label: questions[1]!.optionA },
+            actionReadiness: { code: "opt_a", label: questions[2]!.optionA },
+            supportMessage: selectedCard.message,
+          }
+        : {}),
     };
     session = { ...session, status: "submitted", submittedAt: new Date().toISOString() };
     return route.fulfill({
@@ -247,5 +278,31 @@ test.describe("SHIME診断（スマートフォン幅）", () => {
 
     await page.getByLabel(QUESTIONS[0]!.optionA).check();
     await expect(page.getByRole("button", { name: "確認へ進む" })).toBeDisabled();
+  });
+
+  test("marriage_v2は3問回答で確認、提出、結果表示まで完了できる", async ({ page }) => {
+    await mockDiagnosisApi(page, { questions: MARRIAGE_V2_QUESTIONS, schemaVersion: 2 });
+    await page.goto(`/liff/diagnosis?eventId=${EVENT_ID}`);
+    await page.getByRole("button", { name: "SHIME診断を始める" }).click();
+    await page.getByText("カード 1", { exact: true }).click();
+
+    for (const question of MARRIAGE_V2_QUESTIONS) {
+      const questionGroup = page.getByRole("group", { name: new RegExp(question.prompt) });
+      await expect(questionGroup).toBeVisible();
+      await questionGroup.getByLabel(question.optionA).check();
+    }
+
+    await expect(page.getByRole("button", { name: "確認へ進む" })).toBeEnabled();
+    await page.getByRole("button", { name: "確認へ進む" }).click();
+    await page.getByRole("button", { name: "この内容で提出" }).click();
+
+    await expect(page.getByRole("heading", { name: "穏やかな安心感" })).toBeVisible();
+    await expect(page.getByText("今日のテーマ", { exact: true })).toBeVisible();
+    await expect(page.getByText("行動準備度", { exact: true })).toBeVisible();
+    await expect(page.getByText(/カードメッセージ\d/)).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(overflow).toBe(false);
   });
 });

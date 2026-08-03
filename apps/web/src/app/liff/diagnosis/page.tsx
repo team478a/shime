@@ -49,9 +49,10 @@ export default function DiagnosisPage() {
     axisCode,
     optionCode,
   }));
-  const complete =
-    view?.diagnosis.questions.length === 4 &&
-    view.diagnosis.questions.every((question) => Boolean(answers[question.axisCode]));
+  const complete = Boolean(
+    view?.diagnosis.questions.length &&
+    view.diagnosis.questions.every((question) => Boolean(answers[question.axisCode])),
+  );
 
   async function saveAndContinue() {
     if (!selectedCardId || !complete) return;
@@ -203,8 +204,20 @@ export default function DiagnosisPage() {
             <p className="eyebrow">RULE-BASED RESULT</p>
             <h2>{view.diagnosis.reportCopy.title || view.diagnosis.copy.completionTitle || "今のあなたへのヒント"}</h2>
             <h3>{view.diagnosis.reportCopy.heading || view.result.primaryEmotion.label}</h3>
-            <p>{view.result.card.message}</p>
+            <p>{view.result.supportMessage || view.result.card.message}</p>
             {view.result.primaryEmotion.description && <p>{view.result.primaryEmotion.description}</p>}
+            {view.result.schemaVersion === 2 && view.result.theme && view.result.actionReadiness && (
+              <dl className="diagnosis-answer-review">
+                <div>
+                  <dt>今日のテーマ</dt>
+                  <dd>{view.result.theme.label}</dd>
+                </div>
+                <div>
+                  <dt>行動準備度</dt>
+                  <dd>{view.result.actionReadiness.label}</dd>
+                </div>
+              </dl>
+            )}
             {view.diagnosis.reportCopy.fixedText && <p>{view.diagnosis.reportCopy.fixedText}</p>}
             <dl className="diagnosis-answer-review">
               {view.result.axes.map((axis) => (

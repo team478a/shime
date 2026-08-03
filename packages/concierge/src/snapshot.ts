@@ -16,11 +16,16 @@ const snapshotCardSchema = z.object({
   height: z.number().int().positive(),
 });
 
-export const conciergeEventSnapshotSchema = z.object({
-  schemaVersion: z.literal(1),
-  template: conciergeTemplatePayloadSchema,
-  cards: z.array(snapshotCardSchema),
-});
+export const conciergeEventSnapshotSchema = z
+  .object({
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
+    template: conciergeTemplatePayloadSchema,
+    cards: z.array(snapshotCardSchema),
+  })
+  .refine((snapshot) => snapshot.schemaVersion === snapshot.template.schemaVersion, {
+    message: "Snapshot and template schema versions must match",
+    path: ["schemaVersion"],
+  });
 
 export type ConciergeEventSnapshot = z.infer<typeof conciergeEventSnapshotSchema>;
 export type ConciergeSnapshotCard = z.infer<typeof snapshotCardSchema>;
@@ -31,6 +36,7 @@ export type ActiveDiagnosisCard = ConciergeSnapshotCard & {
 };
 
 export type ActiveDiagnosis = {
+  schemaVersion: ConciergeEventSnapshot["template"]["schemaVersion"];
   copy: ConciergeEventSnapshot["template"]["copy"];
   reportCopy: ConciergeEventSnapshot["template"]["reportCopy"];
   questions: ConciergeEventSnapshot["template"]["questions"];
@@ -67,6 +73,7 @@ export function parseActiveDiagnosis(input: unknown): ActiveDiagnosis | null {
   if (cards.length !== 8) return null;
 
   return {
+    schemaVersion: parsed.data.template.schemaVersion,
     copy: parsed.data.template.copy,
     reportCopy: parsed.data.template.reportCopy,
     questions: [...parsed.data.template.questions].sort((left, right) => left.displayOrder - right.displayOrder),

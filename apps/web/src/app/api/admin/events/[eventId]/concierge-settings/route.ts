@@ -85,7 +85,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ even
   if (cardVersions.length !== cardIds.length)
     return NextResponse.json({ code: "CARD_VERSION_NOT_FOUND" }, { status: 409 });
   const snapshot = {
-    schemaVersion: 1,
+    schemaVersion: payload.data.schemaVersion,
     template: payload.data,
     cards: [...cardVersions].sort((left, right) => left.id.localeCompare(right.id)),
   };

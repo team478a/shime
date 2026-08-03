@@ -27,6 +27,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ve
     const rows = await tx
       .update(conciergeTemplateVersions)
       .set({
+        schemaVersion: parsed.data.schemaVersion,
         payload: parsed.data,
         updatedAt: new Date(),
       })

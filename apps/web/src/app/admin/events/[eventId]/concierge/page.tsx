@@ -65,6 +65,7 @@ export default async function EventConciergePage({ params }: { params: Promise<{
         versions={versions.map((version) => ({
           id: version.id,
           version: version.version,
+          schemaVersion: version.schemaVersion,
           name: names.get(version.templateId) ?? "名称不明",
         }))}
         summary={summary}

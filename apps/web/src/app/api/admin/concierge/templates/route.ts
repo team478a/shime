@@ -2,12 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  CONCIERGE_MODULE_KEY,
-  CONCIERGE_TEMPLATE_SCHEMA_VERSION,
-  conciergeTemplatePayloadSchema,
-  requirePermission,
-} from "@shime/core";
+import { CONCIERGE_MODULE_KEY, conciergeTemplatePayloadSchema, requirePermission } from "@shime/core";
 import { auditLogs, conciergeTemplates, conciergeTemplateVersions, getDatabase } from "@shime/db";
 import { requireStaffSession } from "../../../../../server/auth";
 
@@ -121,7 +116,7 @@ export async function POST(request: Request) {
           tenantId: session.tenantId,
           templateId: template.id,
           version: (latest[0]?.version ?? 0) + 1,
-          schemaVersion: CONCIERGE_TEMPLATE_SCHEMA_VERSION,
+          schemaVersion: parsed.data.payload.schemaVersion,
           status: "draft",
           payload: parsed.data.payload,
           createdBy: session.userId,

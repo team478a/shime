@@ -34,9 +34,7 @@ export type DiagnosisAnswer = {
   optionCode: string;
 };
 
-export const diagnosisResultSnapshotSchema = z.object({
-  schemaVersion: z.literal(1),
-  algorithmVersion: z.literal("concierge-rule-v1"),
+const diagnosisResultBaseSchema = z.object({
   snapshotHash: z.string().length(64),
   primaryEmotion: z.object({
     code: z.string().min(1),
@@ -48,17 +46,34 @@ export const diagnosisResultSnapshotSchema = z.object({
     title: z.string().min(1),
     message: z.string(),
   }),
-  axes: z
-    .array(
-      z.object({
-        axisCode: z.string().min(1),
-        prompt: z.string().min(1),
-        optionCode: z.string().min(1),
-        optionLabel: z.string().min(1),
-      }),
-    )
-    .length(4),
 });
+
+const diagnosisAxisResultSchema = z.object({
+  axisCode: z.string().min(1),
+  prompt: z.string().min(1),
+  optionCode: z.string().min(1),
+  optionLabel: z.string().min(1),
+});
+
+export const diagnosisResultV1SnapshotSchema = diagnosisResultBaseSchema.extend({
+  schemaVersion: z.literal(1),
+  algorithmVersion: z.literal("concierge-rule-v1"),
+  axes: z.array(diagnosisAxisResultSchema).length(4),
+});
+
+export const diagnosisResultV2SnapshotSchema = diagnosisResultBaseSchema.extend({
+  schemaVersion: z.literal(2),
+  algorithmVersion: z.literal("concierge-rule-v2"),
+  axes: z.array(diagnosisAxisResultSchema).length(3),
+  theme: z.object({ code: z.string().min(1), label: z.string().min(1) }),
+  actionReadiness: z.object({ code: z.string().min(1), label: z.string().min(1) }),
+  supportMessage: z.string().max(500),
+});
+
+export const diagnosisResultSnapshotSchema = z.discriminatedUnion("schemaVersion", [
+  diagnosisResultV1SnapshotSchema,
+  diagnosisResultV2SnapshotSchema,
+]);
 
 export type DiagnosisResultSnapshot = z.infer<typeof diagnosisResultSnapshotSchema>;
 

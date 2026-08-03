@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const CONCIERGE_MODULE_KEY = "concierge";
 export const CONCIERGE_TEMPLATE_SCHEMA_VERSION = 1;
+export const CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION = 2;
+export type ConciergeTemplateSchemaVersion =
+  typeof CONCIERGE_TEMPLATE_SCHEMA_VERSION | typeof CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION;
 
 export const conciergeProtectedMessageKeySchema = z.enum([
   "auth_required",
@@ -77,8 +80,7 @@ export const conciergeCardMappingSchema = z.object({
   active: z.boolean().default(true),
 });
 
-export const conciergeTemplatePayloadSchema = z.object({
-  schemaVersion: z.literal(CONCIERGE_TEMPLATE_SCHEMA_VERSION),
+const conciergeTemplatePayloadBase = {
   copy: editableCopySchema.default({
     pageTitle: "",
     intro: "",
@@ -98,16 +100,33 @@ export const conciergeTemplatePayloadSchema = z.object({
     guidance: "",
   }),
   protectedMessageKeys: z.array(conciergeProtectedMessageKeySchema).default([]),
-  questions: z.array(conciergeQuestionSchema).max(4).default([]),
   emotions: z.array(conciergeEmotionSchema).max(8).default([]),
   cardMappings: z.array(conciergeCardMappingSchema).max(1_000).default([]),
+} as const;
+
+export const conciergeTemplateV1PayloadSchema = z.object({
+  ...conciergeTemplatePayloadBase,
+  schemaVersion: z.literal(CONCIERGE_TEMPLATE_SCHEMA_VERSION),
+  questions: z.array(conciergeQuestionSchema).max(4).default([]),
 });
+
+export const conciergeMarriageV2TemplatePayloadSchema = z.object({
+  ...conciergeTemplatePayloadBase,
+  schemaVersion: z.literal(CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION),
+  questions: z.array(conciergeQuestionSchema).max(3).default([]),
+});
+
+export const conciergeTemplatePayloadSchema = z.discriminatedUnion("schemaVersion", [
+  conciergeTemplateV1PayloadSchema,
+  conciergeMarriageV2TemplatePayloadSchema,
+]);
 
 export type ConciergeTemplatePayload = z.infer<typeof conciergeTemplatePayloadSchema>;
 
 export type ConciergePublishIssue = Readonly<{
   code:
     | "FOUR_AXES_REQUIRED"
+    | "THREE_QUESTIONS_REQUIRED"
     | "QUESTION_INCOMPLETE"
     | "EIGHT_EMOTIONS_REQUIRED"
     | "DUPLICATE_CODE"
@@ -121,8 +140,13 @@ export function validateConciergeTemplateForPublish(payload: ConciergeTemplatePa
   const axisCodes = new Set(payload.questions.map((question) => question.axisCode));
   const emotionCodes = new Set(activeEmotions.map((emotion) => emotion.code));
 
-  if (payload.questions.length !== 4 || axisCodes.size !== 4) {
-    issues.push({ code: "FOUR_AXES_REQUIRED", message: "4つの異なる分析軸に対応する設問が必要です。" });
+  const expectedQuestionCount = payload.schemaVersion === CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION ? 3 : 4;
+  if (payload.questions.length !== expectedQuestionCount || axisCodes.size !== expectedQuestionCount) {
+    issues.push(
+      payload.schemaVersion === CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION
+        ? { code: "THREE_QUESTIONS_REQUIRED", message: "婚活版v2には3つの異なる設問が必要です。" }
+        : { code: "FOUR_AXES_REQUIRED", message: "4つの異なる分析軸に対応する設問が必要です。" },
+    );
   }
   if (payload.questions.some((question) => !question.prompt || question.options.length === 0)) {
     issues.push({ code: "QUESTION_INCOMPLETE", message: "各設問に本文と1件以上の選択肢が必要です。" });
@@ -143,6 +167,8 @@ export function validateConciergeTemplateForPublish(payload: ConciergeTemplatePa
   return issues;
 }
 
-export function createEmptyConciergeTemplate(): ConciergeTemplatePayload {
-  return conciergeTemplatePayloadSchema.parse({ schemaVersion: CONCIERGE_TEMPLATE_SCHEMA_VERSION });
+export function createEmptyConciergeTemplate(
+  schemaVersion: ConciergeTemplateSchemaVersion = CONCIERGE_TEMPLATE_SCHEMA_VERSION,
+): ConciergeTemplatePayload {
+  return conciergeTemplatePayloadSchema.parse({ schemaVersion });
 }

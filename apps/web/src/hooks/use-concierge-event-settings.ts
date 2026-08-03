@@ -11,7 +11,7 @@ export type ConciergeEventSettingsInput = {
 
 const messages: Record<string, string> = {
   DIAGNOSIS_INVALID_SETTINGS: "利用開始日時は終了日時より前にしてください。",
-  DIAGNOSIS_SNAPSHOT_INVALID: "4分析軸・8感情・8カードの設定を確認してください。",
+  DIAGNOSIS_SNAPSHOT_INVALID: "テンプレート形式に対応する設問・8感情・8カードの設定を確認してください。",
 };
 
 export function useConciergeEventSettings(eventId: string) {
