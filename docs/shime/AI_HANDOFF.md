@@ -32,7 +32,8 @@ PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 - 同一tenantのイベントだけを選択可能とし、LINE接続・LIFF ID・Channel Access Tokenが未設定の場合は実行不可。全友だちへ影響するためチェック確認と最終確認ダイアログを必須にした。
 - 検証: 専用単体7件成功、全単体・全結合テスト、architecture、lint（エラー0）、typecheck、production build成功。最終件数は完了報告を参照。
 - 全体`format:check`は既存47ファイル（主にCRLF）の未整形で失敗。今回の変更ファイルはPrettier成功、`git diff --check`成功。
-- **まだcommit、push、deploy、LINE公式アカウントへの実反映は行っていない。** 次は変更レビュー後にreleaseブランチへ取り込み、productionへデプロイして、UATイベントを対象に管理画面から1回だけ生成・反映し、LINE実機で常設導線を確認する。
+- commit `8aa1c7b`を`agent/liff-2.29.2-audit`へpushし、release向けdraft PR #6の説明を更新した。GitHub ActionsはE2E・verifyとも成功した。
+- **PR #6は未マージで、deployおよびLINE公式アカウントへの実反映も行っていない。** 次は承認後にreleaseブランチへ取り込み、productionへデプロイして、UATイベントを対象に管理画面から1回だけ生成・反映し、LINE実機で常設導線を確認する。
 
 ### LIFF 2.29.2更新・LINE認証回帰・IAP監査（2026-08-01）
 
