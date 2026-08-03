@@ -1,4 +1,3 @@
-import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
 import {
   HttpLineRichMenuProvider,
@@ -8,7 +7,7 @@ import {
   PublishLineRichMenu,
   PublishLineRichMenuError,
 } from "@shime/integrations";
-import { SharpLineRichMenuImageRenderer } from "../../apps/web/src/server/line-rich-menu-image";
+import { PngLineRichMenuImageRenderer } from "../../apps/web/src/server/line-rich-menu-image";
 
 const tenantId = "00000000-0000-4000-8000-000000000001";
 const eventId = "00000000-0000-4000-8000-000000000002";
@@ -157,9 +156,14 @@ describe("HTTP LINE rich-menu provider", () => {
 
 describe("LINE rich-menu image", () => {
   it("renders a valid LINE-compatible PNG below one megabyte", async () => {
-    const image = await new SharpLineRichMenuImageRenderer().render({ eventName: "UAT <確認> & test" });
-    const metadata = await sharp(image.bytes).metadata();
-    expect(metadata).toMatchObject({ format: "png", width: 2500, height: 843 });
+    const image = await new PngLineRichMenuImageRenderer().render({ eventName: "UAT <確認> & test" });
+    expect([...image.bytes.slice(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    expect(readPngSize(image.bytes)).toEqual({ width: 2500, height: 843 });
     expect(image.bytes.byteLength).toBeLessThanOrEqual(1_000_000);
   });
 });
+
+function readPngSize(bytes: Uint8Array) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { width: view.getUint32(16), height: view.getUint32(20) };
+}
