@@ -50,3 +50,7 @@ export async function getLineProvider(tenantId: string) {
 export async function getLineWebhookSecret(tenantId: string) {
   return (await loadLineCredentials(tenantId)).channelSecret;
 }
+
+export async function getLineChannelAccessToken(tenantId: string) {
+  return (await loadLineCredentials(tenantId)).channelAccessToken;
+}
