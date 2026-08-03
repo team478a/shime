@@ -31,7 +31,7 @@ export function EventConciergeSettings({
   eventId: string;
   eventName: string;
   current: CurrentSettings | null;
-  versions: { id: string; version: number; name: string }[];
+  versions: { id: string; version: number; schemaVersion: number; name: string }[];
   summary: { eligibleCount: number; notStartedCount: number; inProgressCount: number; submittedCount: number } | null;
 }) {
   const [selected, setSelected] = useState(current?.templateVersionId ?? "");
@@ -71,7 +71,7 @@ export function EventConciergeSettings({
         テンプレートをイベント専用にコピーします。コピー後に元テンプレートを変更しても、このイベントの履歴は変わりません。
       </p>
       <p className="notice">
-        外部AI処理は実行されません。参加者向け公開には、4分析軸・8感情・8カードが揃ったスナップショットが必要です。
+        外部AI処理は実行されません。参加者向け公開には、テンプレート形式に対応する設問、8感情、8カードが揃ったスナップショットが必要です。
       </p>
       <label>
         公開済みテンプレート
@@ -79,7 +79,7 @@ export function EventConciergeSettings({
           <option value="">選択してください</option>
           {versions.map((version) => (
             <option key={version.id} value={version.id}>
-              {version.name} / v{version.version}
+              {version.name} / v{version.version} / {version.schemaVersion === 2 ? "婚活版v2・3問" : "現行v1・4軸"}
             </option>
           ))}
         </select>

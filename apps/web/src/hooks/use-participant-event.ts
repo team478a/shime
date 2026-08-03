@@ -12,6 +12,7 @@ export type ParticipantEventContext = {
   venueName: string | null;
   venueAddress: string | null;
   participantJourney: ParticipantJourneyStep[];
+  seatingMode: "assigned" | "standing";
 };
 
 const requests = new Map<string, Promise<ParticipantEventContext>>();

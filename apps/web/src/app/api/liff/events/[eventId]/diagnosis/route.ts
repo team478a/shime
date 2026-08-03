@@ -47,6 +47,7 @@ export const GET = participantHandler(resolveEventId, async ({ eventId, particip
       data: {
         ...state,
         diagnosis: {
+          schemaVersion: diagnosis.schemaVersion,
           copy: diagnosis.copy,
           reportCopy: diagnosis.reportCopy,
           questions: diagnosis.questions,

@@ -414,6 +414,7 @@ export const applications = pgTable(
     nickname: varchar("nickname", { length: 120 }),
     residenceArea: varchar("residence_area", { length: 240 }),
     participantCategory: varchar("participant_category", { length: 80 }).notNull(),
+    additionalAnswers: jsonb("additional_answers").$type<Record<string, string>>().default({}).notNull(),
     notes: text("notes"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     idempotencyKeyHash: varchar("idempotency_key_hash", { length: 64 }),

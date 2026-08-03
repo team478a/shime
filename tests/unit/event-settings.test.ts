@@ -32,4 +32,11 @@ describe("event settings merge", () => {
       ],
     });
   });
+
+  it("stores an event-scoped standing format without removing retained seating configuration", () => {
+    expect(mergeEventSettings({ conversationRounds: 3 }, { seatingMode: "standing" })).toEqual({
+      conversationRounds: 3,
+      seatingMode: "standing",
+    });
+  });
 });

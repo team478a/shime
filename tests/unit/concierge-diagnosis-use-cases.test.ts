@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { CONCIERGE_TEMPLATE_SCHEMA_VERSION, type ConciergeTemplatePayload } from "@shime/core";
+import {
+  CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION,
+  CONCIERGE_TEMPLATE_SCHEMA_VERSION,
+  type ConciergeTemplatePayload,
+} from "@shime/core";
 import {
   type ConciergeDiagnosisRepository,
   createDeterministicDiagnosisResult,
@@ -89,6 +93,20 @@ function validCards() {
   }));
 }
 
+function validMarriageV2Template(): ConciergeTemplatePayload {
+  const template = validTemplate();
+  return {
+    ...template,
+    schemaVersion: CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION,
+    questions: template.questions.slice(0, 3).map((question, index) => ({
+      ...question,
+      axisCode: ["today_feeling", "today_priority", "today_expectation"][index]!,
+      prompt: ["今日の気持ち", "今日大切にしたいこと", "今日期待していること"][index]!,
+      displayOrder: index + 1,
+    })),
+  };
+}
+
 function rawSnapshot(
   overrides: { template?: Partial<ConciergeTemplatePayload>; cards?: ReturnType<typeof validCards> } = {},
 ) {
@@ -96,6 +114,14 @@ function rawSnapshot(
     schemaVersion: 1,
     template: { ...validTemplate(), ...overrides.template },
     cards: overrides.cards ?? validCards(),
+  };
+}
+
+function rawMarriageV2Snapshot() {
+  return {
+    schemaVersion: CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION,
+    template: validMarriageV2Template(),
+    cards: validCards(),
   };
 }
 
@@ -146,6 +172,11 @@ const answers: DiagnosisAnswer[] = Array.from({ length: 4 }, (_, index) => ({
   axisCode: `axis_${index + 1}`,
   optionCode: "opt_a",
 }));
+const marriageV2Answers: DiagnosisAnswer[] = [
+  { axisCode: "today_feeling", optionCode: "opt_a" },
+  { axisCode: "today_priority", optionCode: "opt_b" },
+  { axisCode: "today_expectation", optionCode: "opt_a" },
+];
 
 describe("parseActiveDiagnosis", () => {
   it("parses a valid snapshot into four axes, eight emotions, and eight non-duplicate cards", () => {
@@ -161,6 +192,20 @@ describe("parseActiveDiagnosis", () => {
   it("rejects a snapshot with fewer than four question axes", () => {
     const snapshot = rawSnapshot({ template: { questions: validTemplate().questions.slice(0, 3) } });
     expect(parseActiveDiagnosis(snapshot)).toBeNull();
+  });
+
+  it("parses a marriage v2 snapshot with exactly three questions without changing v1", () => {
+    const diagnosis = parseActiveDiagnosis(rawMarriageV2Snapshot());
+    expect(diagnosis?.schemaVersion).toBe(2);
+    expect(diagnosis?.questions.map((question) => question.axisCode)).toEqual([
+      "today_feeling",
+      "today_priority",
+      "today_expectation",
+    ]);
+  });
+
+  it("rejects a snapshot whose wrapper and template schema versions do not match", () => {
+    expect(parseActiveDiagnosis({ ...rawMarriageV2Snapshot(), schemaVersion: 1 })).toBeNull();
   });
 
   it("rejects a snapshot with fewer than eight active emotions", () => {
@@ -473,6 +518,21 @@ describe("SubmitDiagnosis", () => {
     });
   });
 
+  it("rejects a marriage v2 submission when fewer than three questions are answered", async () => {
+    const useCase = new SubmitDiagnosis(
+      repository({
+        findConfiguration: async () => configuration({ snapshot: rawMarriageV2Snapshot() }),
+        findSession: async () => session({ selectedCardAssetVersionId: cardId(1) }),
+        listAnswers: async () => marriageV2Answers.slice(0, 2),
+      }),
+    );
+    await expect(useCase.execute(scope, { expectedRevision: 0 }, now)).resolves.toEqual({
+      ok: false,
+      code: "DIAGNOSIS_INCOMPLETE",
+      status: 409,
+    });
+  });
+
   it("requires a started session before submitting", async () => {
     const useCase = new SubmitDiagnosis(repository({ findSession: async () => null }));
     await expect(useCase.execute(scope, { expectedRevision: 0 }, now)).resolves.toEqual({
@@ -529,6 +589,27 @@ describe("SubmitDiagnosis", () => {
       card: { assetVersionId: cardId(1) },
     });
     expect(first.data.result.axes).toHaveLength(4);
+  });
+
+  it("submits a complete marriage v2 three-question result", async () => {
+    const submit = vi.fn(async () => session({ status: "submitted", submittedAt: now }));
+    const useCase = new SubmitDiagnosis(
+      repository({
+        findConfiguration: async () => configuration({ snapshot: rawMarriageV2Snapshot() }),
+        findSession: async () => session({ selectedCardAssetVersionId: cardId(1) }),
+        listAnswers: async () => marriageV2Answers,
+        submit,
+      }),
+    );
+
+    const result = await useCase.execute(scope, { expectedRevision: 0 }, now);
+
+    if (!result.ok) throw new Error("expected success");
+    expect(result.data.result).toMatchObject({
+      schemaVersion: CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION,
+      algorithmVersion: "concierge-rule-v2",
+    });
+    expect(result.data.result.axes).toHaveLength(3);
   });
 });
 
@@ -706,5 +787,24 @@ describe("createDeterministicDiagnosisResult", () => {
     });
     expect(result?.primaryEmotion.code).toBe("emotion_3");
     expect(result?.card.assetVersionId).toBe(cardId(3));
+  });
+
+  it("creates a structured marriage v2 result from Q1 to Q3 without external AI", () => {
+    const marriageV2Diagnosis = parseActiveDiagnosis(rawMarriageV2Snapshot())!;
+    const result = createDeterministicDiagnosisResult({
+      diagnosis: marriageV2Diagnosis,
+      snapshotHash: "hash",
+      selectedCardAssetVersionId: cardId(1),
+      answers: marriageV2Answers,
+    });
+
+    expect(result).toMatchObject({
+      schemaVersion: 2,
+      algorithmVersion: "concierge-rule-v2",
+      theme: { code: "opt_b", label: "選択肢B" },
+      actionReadiness: { code: "opt_a", label: "選択肢A" },
+      supportMessage: "メッセージ1",
+    });
+    expect(result?.axes).toHaveLength(3);
   });
 });

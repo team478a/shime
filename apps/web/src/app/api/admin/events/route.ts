@@ -75,6 +75,7 @@ export async function POST(request: Request) {
     eventTermsVersion,
     privacyVersion,
     contactExchangeMode,
+    seatingMode,
     ...eventData
   } = parsed.data;
   const settings = mergeEventSettings(
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
       eventTermsVersion,
       privacyVersion,
       contactExchangeMode,
+      seatingMode,
     },
   );
   const candidate = {

@@ -28,9 +28,7 @@ export function createDeterministicDiagnosisResult(input: {
   });
   if (axes.length !== input.diagnosis.questions.length) return null;
 
-  return {
-    schemaVersion: 1,
-    algorithmVersion: "concierge-rule-v1",
+  const base = {
     snapshotHash: input.snapshotHash,
     primaryEmotion: {
       code: emotion.code,
@@ -43,5 +41,25 @@ export function createDeterministicDiagnosisResult(input: {
       message: card.message,
     },
     axes,
+  };
+
+  if (input.diagnosis.schemaVersion === 2) {
+    const theme = axes[1];
+    const actionReadiness = axes[2];
+    if (!theme || !actionReadiness) return null;
+    return {
+      ...base,
+      schemaVersion: 2,
+      algorithmVersion: "concierge-rule-v2",
+      theme: { code: theme.optionCode, label: theme.optionLabel },
+      actionReadiness: { code: actionReadiness.optionCode, label: actionReadiness.optionLabel },
+      supportMessage: card.message,
+    };
+  }
+
+  return {
+    ...base,
+    schemaVersion: 1,
+    algorithmVersion: "concierge-rule-v1",
   };
 }

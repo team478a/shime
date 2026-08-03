@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { hasPermission } from "@shime/core";
+import { getEventSeatingMode, hasPermission } from "@shime/core";
 import { events, getDatabase } from "@shime/db";
 import { getStaffSession } from "../../server/auth";
 import { getEventConfigurationReadiness } from "../../server/event-settings";
@@ -16,9 +16,10 @@ export default async function AdminPage() {
   const canWriteEvent = hasPermission(session.role, "event:write");
   const eventItems = await Promise.all(
     eventRows.map(async (event) => {
-      const navigation = getEventAdminNavigation(session.role, event.id);
+      const navigationOptions = { seatingMode: getEventSeatingMode(event.settings) };
+      const navigation = getEventAdminNavigation(session.role, event.id, navigationOptions);
       const items = navigation.flatMap((group) => group.items);
-      const quickActions = getEventAdminQuickActions(session.role, event.id);
+      const quickActions = getEventAdminQuickActions(session.role, event.id, navigationOptions);
       return {
         event,
         configuration: await getEventConfigurationReadiness(session.tenantId, event.id, event),

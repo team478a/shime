@@ -29,6 +29,7 @@ export type DiagnosisAnswer = { axisCode: string; optionCode: string };
 
 export type DiagnosisView = {
   diagnosis: {
+    schemaVersion: 1 | 2;
     copy: {
       pageTitle: string;
       intro: string;
@@ -61,9 +62,13 @@ export type DiagnosisView = {
   } | null;
   answers: DiagnosisAnswer[];
   result: {
+    schemaVersion: 1 | 2;
     primaryEmotion: { code: string; label: string; description: string };
     card: { assetVersionId: string; title: string; message: string };
     axes: Array<{ axisCode: string; prompt: string; optionCode: string; optionLabel: string }>;
+    theme?: { code: string; label: string };
+    actionReadiness?: { code: string; label: string };
+    supportMessage?: string;
   } | null;
 };
 

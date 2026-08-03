@@ -55,6 +55,13 @@ export const DEFAULT_PARTICIPANT_JOURNEY: ParticipantJourneyStep[] = [
   { id: "diagnosis", enabled: false },
 ];
 
+export const STANDING_DIAGNOSIS_PARTICIPANT_JOURNEY: ParticipantJourneyStep[] = [
+  { id: "dream", enabled: true },
+  { id: "questionnaire", enabled: false },
+  { id: "diagnosis", enabled: true },
+  { id: "pass", enabled: true },
+];
+
 export type ParticipantJourneyVersion = {
   id: string;
   version: number;

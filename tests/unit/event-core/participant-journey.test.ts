@@ -7,6 +7,7 @@ import {
   participantJourneyStepsSchema,
   PublishParticipantJourneyDraft,
   SaveParticipantJourneyDraft,
+  STANDING_DIAGNOSIS_PARTICIPANT_JOURNEY,
 } from "@shime/event-core";
 
 const scope = {
@@ -36,6 +37,20 @@ describe("participant journey configuration", () => {
       DEFAULT_PARTICIPANT_JOURNEY[3],
     ];
     expect(participantJourneyStepsSchema.safeParse(steps).success).toBe(false);
+  });
+
+  it("supports the standing event flow with diagnosis and no seating questionnaire", () => {
+    expect(participantJourneyStepsSchema.parse(STANDING_DIAGNOSIS_PARTICIPANT_JOURNEY)).toEqual([
+      { id: "dream", enabled: true },
+      { id: "questionnaire", enabled: false },
+      { id: "diagnosis", enabled: true },
+      { id: "pass", enabled: true },
+    ]);
+  });
+
+  it("allows optional participant steps to be disabled while PASS remains enabled", () => {
+    const steps = DEFAULT_PARTICIPANT_JOURNEY.map((step) => (step.id === "pass" ? step : { ...step, enabled: false }));
+    expect(participantJourneyStepsSchema.parse(steps)).toEqual(steps);
   });
 
   it("blocks publishing diagnosis until its participant flow exists", async () => {

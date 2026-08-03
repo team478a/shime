@@ -1,6 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 
-async function mockPassport(page: Page, seat: { tableCode: string; seatCode: string } | null) {
+async function mockPassport(
+  page: Page,
+  seat: { tableCode: string; seatCode: string } | null,
+  seatingMode: "assigned" | "standing" = "assigned",
+) {
   await page.route("**/api/liff/events/event-1", async (route) =>
     route.fulfill({
       status: 200,
@@ -13,6 +17,7 @@ async function mockPassport(page: Page, seat: { tableCode: string; seatCode: str
           endsAt: null,
           venueName: "UAT会場",
           venueAddress: null,
+          seatingMode,
         },
       }),
     }),
@@ -67,4 +72,14 @@ test("未公開または未配置では席案内準備中と表示する", async
 
   await expect(page.getByText("席案内は準備中です。運営が公開すると、ここに表示されます。")).toBeVisible();
   await expect(page.getByRole("button", { name: "席案内を更新" })).toBeVisible();
+});
+
+test("立食イベントでは席案内を表示しない", async ({ page }) => {
+  await mockPassport(page, { tableCode: "T01", seatCode: "T01-1" }, "standing");
+
+  await page.goto("/liff/passport?eventId=event-1");
+
+  await expect(page.getByRole("heading", { name: "現在の席" })).toHaveCount(0);
+  await expect(page.getByText("席案内は準備中です。運営が公開すると、ここに表示されます。")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "席案内を更新" })).toHaveCount(0);
 });

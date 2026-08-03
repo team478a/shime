@@ -15,6 +15,7 @@ const base = {
   phone: "090-1234-5678",
   birthDate: "1990-04-15",
   participantCategory: "group_a",
+  additionalAnswers: {},
   status: "confirmed" as const,
 };
 describe("application validation", () => {
@@ -35,6 +36,13 @@ describe("application validation", () => {
     ));
   it("produces deterministic idempotency hashes", () =>
     expect(hashIdempotencyKey("request-123456789")).toBe(hashIdempotencyKey("request-123456789")));
+  it("validates additional profile answers without accepting arbitrary shapes", () => {
+    expect(
+      applicationInputSchema.parse({ ...base, additionalAnswers: { occupation: "会社員", support_wanted: "趣味仲間" } })
+        .additionalAnswers,
+    ).toEqual({ occupation: "会社員", support_wanted: "趣味仲間" });
+    expect(applicationInputSchema.safeParse({ ...base, additionalAnswers: { InvalidKey: "x" } }).success).toBe(false);
+  });
   it("previews re-import differences", () =>
     expect(applicationDiff({ ...base, nickname: "旧" }, { ...base, nickname: "新" })).toContain("nickname"));
   it("returns CSV row numbers and duplicate external IDs", () => {

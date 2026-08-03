@@ -3,6 +3,11 @@ import { z } from "zod";
 
 export const applicationStatuses = ["draft", "submitted", "confirmed", "cancelled", "rejected", "waitlisted"] as const;
 
+export const applicationAdditionalAnswersSchema = z
+  .record(z.string().regex(/^[a-z0-9_]{2,80}$/), z.string().trim().max(2_000))
+  .default({})
+  .refine((answers) => Object.keys(answers).length <= 40, "Too many additional answers");
+
 export const applicationFieldsSchema = z.object({
   externalId: z.string().trim().min(1).max(160).optional(),
   status: z.enum(applicationStatuses).default("submitted"),
@@ -17,6 +22,7 @@ export const applicationFieldsSchema = z.object({
   nickname: z.string().trim().max(120).optional(),
   residenceArea: z.string().trim().max(240).optional(),
   participantCategory: z.string().trim().min(1).max(80),
+  additionalAnswers: applicationAdditionalAnswersSchema,
   notes: z.string().trim().max(2_000).optional(),
 });
 
