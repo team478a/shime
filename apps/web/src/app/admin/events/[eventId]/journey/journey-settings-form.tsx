@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   type ParticipantJourneyStep,
   participantJourneyStepsSchema,
+  STANDING_DIAGNOSIS_PARTICIPANT_JOURNEY,
 } from "@shime/event-core/participant-journey-types";
 
 const STEP_LABELS: Record<ParticipantJourneyStep["id"], string> = {
@@ -26,17 +27,20 @@ function canMove(steps: ParticipantJourneyStep[], index: number, offset: -1 | 1)
   return move(steps, index, offset) !== steps;
 }
 
-function toggleDiagnosis(steps: ParticipantJourneyStep[]) {
-  const next = steps.map((step) => (step.id === "diagnosis" ? { ...step, enabled: !step.enabled } : step));
+function toggleStep(steps: ParticipantJourneyStep[], stepId: ParticipantJourneyStep["id"]) {
+  if (stepId === "pass") return steps;
+  const next = steps.map((step) => (step.id === stepId ? { ...step, enabled: !step.enabled } : step));
   return participantJourneyStepsSchema.safeParse(next).success ? next : steps;
 }
 
 export function JourneySettingsForm({
   initialSteps,
+  seatingMode,
   saveAction,
   publishAction,
 }: {
   initialSteps: ParticipantJourneyStep[];
+  seatingMode: "assigned" | "standing";
   saveAction: (formData: FormData) => void | Promise<void>;
   publishAction: (formData: FormData) => void | Promise<void>;
 }) {
@@ -46,6 +50,19 @@ export function JourneySettingsForm({
   return (
     <div className="admin-stack">
       <p>上下ボタンで順序を変更できます。公開するまで現在の参加者導線は変更されません。</p>
+      {seatingMode === "standing" && (
+        <div className="operation-note">
+          <strong>立食イベント用</strong>
+          <p>Dream → SHIME診断 → PASSの順にし、席案内5問を使わない導線を設定できます。</p>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setSteps(STANDING_DIAGNOSIS_PARTICIPANT_JOURNEY.map((step) => ({ ...step })))}
+          >
+            立食＋診断導線を適用
+          </button>
+        </div>
+      )}
       <ol className="journey-settings-list">
         {steps.map((step, index) => (
           <li className="admin-list-card" key={step.id}>
@@ -55,11 +72,11 @@ export function JourneySettingsForm({
               <small>{step.enabled ? "参加者導線で使用" : "準備中（順序のみ予約・参加者には非表示）"}</small>
             </div>
             <div className="actions">
-              {step.id === "diagnosis" && (
+              {step.id !== "pass" && (
                 <button
                   type="button"
                   className={step.enabled ? "secondary" : undefined}
-                  onClick={() => setSteps((current) => toggleDiagnosis(current))}
+                  onClick={() => setSteps((current) => toggleStep(current, step.id))}
                 >
                   {step.enabled ? "導線から外す" : "導線に追加"}
                 </button>
@@ -85,7 +102,8 @@ export function JourneySettingsForm({
         ))}
       </ol>
       <p className="participant-privacy">
-        Dreamと席案内5問はSHIME PASSより前に必要です。SHIME診断は、イベントの診断設定をONにした後で公開できます。
+        使用するDreamと席案内5問はSHIME
+        PASSより前に配置します。SHIME診断は、イベントの診断設定をONにした後で公開できます。PASSは無効にできません。
       </p>
       <div className="actions">
         <form action={saveAction}>

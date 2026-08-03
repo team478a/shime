@@ -36,4 +36,15 @@ describe("participant journey", () => {
       ]).map((step) => step.key),
     ).toEqual(["questionnaire", "dream", "pass", "preference", "result"]);
   });
+
+  it("uses the standing diagnosis order without the seating questionnaire", () => {
+    expect(
+      getParticipantJourney([
+        { id: "dream", enabled: true },
+        { id: "questionnaire", enabled: false },
+        { id: "diagnosis", enabled: true },
+        { id: "pass", enabled: true },
+      ]).map((step) => step.key),
+    ).toEqual(["dream", "diagnosis", "pass", "preference", "result"]);
+  });
 });

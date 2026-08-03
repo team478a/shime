@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 
-import { hasPermission } from "@shime/core";
+import { getEventSeatingMode, hasPermission } from "@shime/core";
 import { DEFAULT_PARTICIPANT_JOURNEY } from "@shime/event-core";
 import { events, getDatabase } from "@shime/db";
 import { getStaffSession } from "@shime/web/server/auth";
@@ -23,7 +23,7 @@ export default async function ParticipantJourneySettingsPage({
   const { eventId } = await params;
   if (session.eventId && session.eventId !== eventId) notFound();
   const [event] = await getDatabase()
-    .select({ id: events.id, name: events.name })
+    .select({ id: events.id, name: events.name, settings: events.settings })
     .from(events)
     .where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId)))
     .limit(1);
@@ -68,6 +68,7 @@ export default async function ParticipantJourneySettingsPage({
         </dl>
         <JourneySettingsForm
           initialSteps={initialSteps}
+          seatingMode={getEventSeatingMode(event.settings)}
           saveAction={saveJourneyAction.bind(null, eventId)}
           publishAction={publishJourneyAction.bind(null, eventId)}
         />
