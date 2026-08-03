@@ -22,7 +22,7 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 - 依存監査で新しい勧告を検出し、`brace-expansion 5.0.9`と`postcss 8.5.23`へ固定版・overrideを同期した。再監査は既知脆弱性0件。
 - 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体340件、結合38件、production build成功、E2E 43件成功・5件skip、dependency audit脆弱性0件。
 - `format:check`は既知48ファイルのWindows改行差で失敗。`readiness`は欠損ファイル0件だが正式入力14項目が未確定、`readiness:strict`も同理由で失敗。コード不具合とは分離する。
-- レビュー修正は`e299369`として作業ブランチへcommit/push済み。release/mainへの直接push、DB migration適用、deployment、本番データ使用、LINE通知は実施していない。次は追補PRのCI確認と再レビュー。
+- レビュー修正は`e299369`として作業ブランチへcommit/push済み。追補PR #11を作成し、初回GitHub Actionsのverify・E2Eはいずれも成功した。release/mainへの直接push、DB migration適用、deployment、本番データ使用、LINE通知は実施していない。次はPR #11の独立再レビューとマージ判断。
 
 ### marriage_v2 3問診断（2026-08-03、実装済み・未デプロイ）
 
