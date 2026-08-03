@@ -1,5 +1,25 @@
 const protectedFields = new Set(["full_name", "participant_category", "event_terms_consent", "privacy_consent"]);
 
+export const STANDARD_PROFILE_SUPPORT_FORM_FIELDS = [
+  { fieldKey: "occupation", label: "職業", type: "text", requirement: "optional", displayOrder: 8 },
+  { fieldKey: "hobbies", label: "趣味", type: "text", requirement: "optional", displayOrder: 9 },
+  { fieldKey: "holiday_style", label: "休日の過ごし方", type: "text", requirement: "optional", displayOrder: 10 },
+  {
+    fieldKey: "support_wanted",
+    label: "応援してほしいこと",
+    type: "text",
+    requirement: "optional",
+    displayOrder: 11,
+  },
+  {
+    fieldKey: "support_offered",
+    label: "応援できること",
+    type: "text",
+    requirement: "optional",
+    displayOrder: 12,
+  },
+] as const;
+
 export const defaultEventFormFields = [
   { fieldKey: "full_name", label: "氏名", type: "text", requirement: "required", displayOrder: 1 },
   { fieldKey: "full_name_kana", label: "氏名かな", type: "text", requirement: "optional", displayOrder: 2 },
@@ -8,7 +28,8 @@ export const defaultEventFormFields = [
   { fieldKey: "email", label: "メールアドレス", type: "email", requirement: "optional", displayOrder: 5 },
   { fieldKey: "nickname", label: "ニックネーム", type: "text", requirement: "optional", displayOrder: 6 },
   { fieldKey: "residence_area", label: "居住エリア", type: "text", requirement: "optional", displayOrder: 7 },
-  { fieldKey: "participant_category", label: "参加区分", type: "select", requirement: "required", displayOrder: 8 },
+  ...STANDARD_PROFILE_SUPPORT_FORM_FIELDS,
+  { fieldKey: "participant_category", label: "参加区分", type: "select", requirement: "required", displayOrder: 13 },
 ] as const;
 
 export function validateFormFieldRequirement(fieldKey: string, requirement: "required" | "optional" | "hidden"): void {

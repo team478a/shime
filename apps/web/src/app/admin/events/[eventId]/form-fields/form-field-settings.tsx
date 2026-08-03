@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { STANDARD_PROFILE_SUPPORT_FORM_FIELDS } from "@shime/core/events/config";
+
 type FieldType = "text" | "email" | "tel" | "date" | "select" | "checkbox";
 type Requirement = "required" | "optional" | "hidden";
 type Row = {
@@ -201,6 +203,21 @@ export function FormFieldSettings({
         </fieldset>
       ))}
       <div className="actions">
+        <button
+          type="button"
+          className="secondary"
+          onClick={() =>
+            setRows((current) => {
+              const existing = new Set(current.map((row) => row.fieldKey));
+              const additions = STANDARD_PROFILE_SUPPORT_FORM_FIELDS.filter(
+                (field) => !existing.has(field.fieldKey),
+              ).map((field) => ({ ...field, displayOrder: current.length + 1, options: "" }));
+              return [...current, ...additions].map((row, index) => ({ ...row, displayOrder: index + 1 }));
+            })
+          }
+        >
+          プロフィール・応援5項目を追加
+        </button>
         <button
           type="button"
           className="secondary"

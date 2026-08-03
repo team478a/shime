@@ -4,7 +4,11 @@ import { buildLiffApplicationLink } from "@shime/core/line/public-url";
 import { useRef, useState, type FormEvent } from "react";
 
 import { ParticipantNotice } from "../../../components/participant-ui";
-import { APPLICATION_STEPS, type PublicApplicationField } from "../../../lib/application-form";
+import {
+  APPLICATION_STEPS,
+  PUBLIC_APPLICATION_FIELD_MAP,
+  type PublicApplicationField,
+} from "../../../lib/application-form";
 
 type EventSummary = Readonly<{
   startsAt: string;
@@ -134,7 +138,15 @@ export function ApplicationForm({
     setBusy(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    const application = Object.fromEntries(
+    const standardInputNames = new Set<string>(Object.values(PUBLIC_APPLICATION_FIELD_MAP));
+    const additionalAnswers = Object.fromEntries(
+      fields.flatMap((field) => {
+        if (standardInputNames.has(field.inputName)) return [];
+        const value = String(form.get(field.inputName) ?? "").trim();
+        return value ? [[field.fieldKey, value]] : [];
+      }),
+    );
+    const application: Record<string, unknown> = Object.fromEntries(
       [
         "fullName",
         "fullNameKana",
@@ -146,6 +158,7 @@ export function ApplicationForm({
         "participantCategory",
       ].map((key) => [key, form.get(key) || undefined]),
     );
+    application.additionalAnswers = additionalAnswers;
     try {
       const response = await fetch(`/api/public/events/${eventId}/applications`, {
         method: "POST",
