@@ -2,12 +2,14 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-03（Asia/Tokyo、Codex。実運用リハーサルへ切替）
-作業ブランチ: `agent/liff-2.29.2-audit`
-deployment source HEAD: `6c2906b9ecc2f2af3d11665dbca1fd3871b06acb`
+最終更新: 2026-08-03（Asia/Tokyo、Codex。LINEリッチメニュー管理機能をproductionへ反映）
+作業ブランチ: `agent/record-rich-menu-production-deploy`
+deployment source HEAD: `7a616a9`（PR #7 merge commit）
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
+PR #6 merge commit: `7f5440979efe4e23077fd9c7dbe10d3349db0172`
+PR #7 merge commit: `7a616a9`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
 
@@ -23,7 +25,7 @@ PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 - production隔離UATのA01を再検索した際、受付済み参加者には受付確定操作が表示されず二重受付を防止した。理由「受付操作の訂正」とリハーサル補足付きで受付を取消し、参加者番号・受付番号を維持したまま再受付して受付済みへ復帰した。QRカメラと2端末同時受付は未確認。
 - A01の参加者側PASS同期確認時、公式LINEにリッチメニューまたは参加画面への常設導線がなく、参加者が再入場方法を判断できないことを実機運用課題として検出した。管理画面が生成するevent付きLIFF再開URLを一時代替とし、8月4日までにリッチメニューまたは公式メッセージの常設導線を確定する。代替導線未確定のままならP0へ昇格する。
 
-### 管理画面LINEリッチメニュー生成（2026-08-03、未デプロイ）
+### 管理画面LINEリッチメニュー生成（2026-08-03、production反映済み・LINE実反映は未実施）
 
 - システム管理者専用の`外部接続・運用設定`へ、イベントを選択してSHIME標準リッチメニューを生成し、LINE公式アカウントの既定メニューへ反映する機能を追加した。
 - 生成画像はLINE仕様に合わせたPNG（2500x843、1MB以下）。タップ領域は選択イベントのevent付きLIFF再開URLを開く。
@@ -32,8 +34,11 @@ PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 - 同一tenantのイベントだけを選択可能とし、LINE接続・LIFF ID・Channel Access Tokenが未設定の場合は実行不可。全友だちへ影響するためチェック確認と最終確認ダイアログを必須にした。
 - 検証: 専用単体7件成功、全単体・全結合テスト、architecture、lint（エラー0）、typecheck、production build成功。最終件数は完了報告を参照。
 - 全体`format:check`は既存47ファイル（主にCRLF）の未整形で失敗。今回の変更ファイルはPrettier成功、`git diff --check`成功。
-- commit `8aa1c7b`を`agent/liff-2.29.2-audit`へpushし、release向けdraft PR #6の説明を更新した。GitHub ActionsはE2E・verifyとも成功した。
-- **PR #6は未マージで、deployおよびLINE公式アカウントへの実反映も行っていない。** 次は承認後にreleaseブランチへ取り込み、productionへデプロイして、UATイベントを対象に管理画面から1回だけ生成・反映し、LINE実機で常設導線を確認する。
+- commit `8aa1c7b`を含むPR #6をreleaseへマージした。merge commitは`7f5440979efe4e23077fd9c7dbe10d3349db0172`。
+- 初回production deployment `dpl_451o1nD5KpddNHQhR4LFU9xj7sWM`では、Vercel Linux環境で`sharp`の`libvips`ネイティブライブラリをロードできず、リッチメニューAPIが認証前に500となる不具合を検出した。LINE API呼出し前の失敗であり、LINE公式アカウント側の変更は発生していない。
+- ネイティブ依存を使わない決定論的PNG生成へ置換し、単体7件、format、architecture、lint、typecheck、全test、build、E2E、dependency audit、readinessをGitHub Actionsで確認した。修正PR #7をreleaseへマージし、merge commitは`7a616a9`。
+- 最終production deploymentは`dpl_6Ln3XKd2HHKP5wjH4Cg5A192PmJ3`。`https://app.shimelife.jp`へalias済みで、health 200、未認証管理画面307、未認証リッチメニューAPI 401を確認した。
+- **管理機能はproductionへ反映済みだが、LINE公式アカウントへのリッチメニュー生成・既定反映はまだ実行していない。** 次はシステム管理者が隔離UATイベントを選択して1回だけ生成・反映し、同じLINE公式アカウントの実機で常設導線と参加画面復帰を確認する。実イベントを選択しないこと。
 
 ### LIFF 2.29.2更新・LINE認証回帰・IAP監査（2026-08-01）
 
