@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
+import { LineRichMenuConsole } from "./line-rich-menu-console";
 type Data = {
   line: {
     enabled: boolean;
@@ -194,6 +195,7 @@ export function PlatformConsole() {
           </div>
         </form>
       </section>
+      <LineRichMenuConsole />
       <section className="panel wide">
         <h2>AI Provider</h2>
         <p>

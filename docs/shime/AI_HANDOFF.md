@@ -2,14 +2,53 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-07-31 22:10（Asia/Tokyo、Codex。初心者向けクライアントUAT手順公開）
-作業ブランチ: `release/2026-08-08-readiness`
+最終更新: 2026-08-03（Asia/Tokyo、Codex。実運用リハーサルへ切替）
+作業ブランチ: `agent/liff-2.29.2-audit`
 deployment source HEAD: `6c2906b9ecc2f2af3d11665dbca1fd3871b06acb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### 実運用リハーサルへ切替（2026-08-03）
+
+- 8月8日の本番を優先し、新機能追加を停止して、全規模、複数端末、障害、代替運用、復旧を含む実運用テストへ切り替えた。
+- `pnpm readiness`相当を再実行し、欠損ファイル0件、`REQUIRED_INPUT`15件、`productionReady: false`を確認した。strict失敗はコード不具合ではなく正式イベント情報未確定による。
+- 少人数の正常系はproduction隔離UATで申込、LINE連携、Dream、5問、PASS、受付、席公開・PASS席表示まで確認済み。
+- 現在のP0は、正式情報15項目、50名・受付5端末相当、紙運用、別環境復旧、希望・結果・通知、定期ジョブ・監視の実地確認。
+- 実施順、中止条件、8月7日Go判定、8月8日開始前ゲートを`PRODUCTION_OPERATIONAL_REHEARSAL_PLAN_20260803.md`へ記録した。
+- productionイベント変更、通知送信、deploy、migrationは実施していない。
+- production隔離UATの合成参加者で本人連携リンクを再発行し、誤った補助本人確認と、同一eventですでに別参加者へ連携済みのLINEアカウントによる二重連携が拒否されることを実機確認した。拒否後も対象参加者は未採番・未連携、リンクは有効のまま維持された。使用済み・期限切れ・2端末同時確定は引き続き未確認。
+- production隔離UATのA01を再検索した際、受付済み参加者には受付確定操作が表示されず二重受付を防止した。理由「受付操作の訂正」とリハーサル補足付きで受付を取消し、参加者番号・受付番号を維持したまま再受付して受付済みへ復帰した。QRカメラと2端末同時受付は未確認。
+- A01の参加者側PASS同期確認時、公式LINEにリッチメニューまたは参加画面への常設導線がなく、参加者が再入場方法を判断できないことを実機運用課題として検出した。管理画面が生成するevent付きLIFF再開URLを一時代替とし、8月4日までにリッチメニューまたは公式メッセージの常設導線を確定する。代替導線未確定のままならP0へ昇格する。
+
+### 管理画面LINEリッチメニュー生成（2026-08-03、未デプロイ）
+
+- システム管理者専用の`外部接続・運用設定`へ、イベントを選択してSHIME標準リッチメニューを生成し、LINE公式アカウントの既定メニューへ反映する機能を追加した。
+- 生成画像はLINE仕様に合わせたPNG（2500x843、1MB以下）。タップ領域は選択イベントのevent付きLIFF再開URLを開く。
+- LINE公式APIの検証、メニュー作成、画像登録、既定反映の順に実行し、生成版・対象イベント・実行者・日時を設定履歴と監査ログへ保存する。過去メニューは削除せず履歴を保持する。
+- LINE反映前の失敗では既存の既定メニューを変更しない。LINE反映後にDB記録が失敗した場合は以前の既定メニューを復元し、新規作成メニューを削除する。
+- 同一tenantのイベントだけを選択可能とし、LINE接続・LIFF ID・Channel Access Tokenが未設定の場合は実行不可。全友だちへ影響するためチェック確認と最終確認ダイアログを必須にした。
+- 検証: 専用単体7件成功、全単体・全結合テスト、architecture、lint（エラー0）、typecheck、production build成功。最終件数は完了報告を参照。
+- 全体`format:check`は既存47ファイル（主にCRLF）の未整形で失敗。今回の変更ファイルはPrettier成功、`git diff --check`成功。
+- commit `8aa1c7b`を`agent/liff-2.29.2-audit`へpushし、release向けdraft PR #6の説明を更新した。GitHub ActionsはE2E・verifyとも成功した。
+- **PR #6は未マージで、deployおよびLINE公式アカウントへの実反映も行っていない。** 次は承認後にreleaseブランチへ取り込み、productionへデプロイして、UATイベントを対象に管理画面から1回だけ生成・反映し、LINE実機で常設導線を確認する。
+
+### LIFF 2.29.2更新・LINE認証回帰・IAP監査（2026-08-01）
+
+- `@line/liff`はnpm packageをClient Componentから直接importする方式で、CDNは使用していない。
+- npm registryの現在版`2.29.2`へ更新し、lockfileの全LIFFモジュールも`2.29.2`に更新した。
+- LINE IDトークンをLINE検証APIへ`client_id`付きで送るテスト、期限切れ拒否テストを追加した。
+- LIFF戻りの直接query、`liff.state`、tokenなし再入場、直接値とstateの優先順を自動テストした。
+- LINE IAPは未実装。SDKの依存に`@liff/iap`が含まれることと、SHIMEで課金機能が実装済みであることを混同しない。
+- Messaging API Webhookは署名検証とtenant+webhook event IDの重複排除を実装済み。IAP Webhookの署名・`orderId`冪等性・付与処理は未実装で、IAP有効化前P0とした。
+- IAP手数料率と規約同意日は対象channelの申請画面の実表示/操作記録がないため未確認。推測値は記録しない。
+- 検証: 変更ファイルformat成功、architecture成功、lintエラー0、typecheck成功、単体316件、結合37件、build成功、E2E 40件成功・4件skip、dependency auditは脆弱性0件。
+- 全体`format:check`はWindows working treeの既存47ファイルのCRLF差で失敗したが、今回の変更ファイルは全て成功。
+- 詳細: `docs/shime/LINE_LIFF_IAP_AUDIT_20260801.md`
+- commit `0e1c4f9`をpushし、`release/2026-08-08-readiness`向けdraft PR #6を作成した。
+- 次の操作: PR #6のCI確認後、隔離UATでLINEログイン→本人連携→Dream画面復帰を1回確認する。マージ・deployは別承認まで行わない。
 
 ### 初心者向けクライアントUAT手順公開（2026-07-31）
 
