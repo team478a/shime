@@ -6,8 +6,8 @@ confirmModulesPurge: false
 hoist: true
 
 overrides:
-  "brace-expansion": "5.0.8"
-  "postcss": "8.5.18"
+  "brace-expansion": "5.0.9"
+  "postcss": "8.5.23"
   "next>sharp": "0.35.3"
   "@esbuild-kit/core-utils>esbuild": "0.25.12"
 

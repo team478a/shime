@@ -2,8 +2,25 @@ import { randomUUID } from "node:crypto";
 import { and, eq, isNull, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { applicationFieldsSchema, createOpaqueToken, hashIdempotencyKey, LINK_TOKEN_TTL_MS, normalizeEmail, normalizeName, normalizePhone } from "@shime/core";
-import { applicationConsents, applications, duplicateCandidates, events, getDatabase, participants } from "@shime/db";
+import {
+  applicationFieldsSchema,
+  createOpaqueToken,
+  hashIdempotencyKey,
+  LINK_TOKEN_TTL_MS,
+  normalizeEmail,
+  normalizeName,
+  normalizePhone,
+  validateConfiguredApplicationInput,
+} from "@shime/core";
+import {
+  applicationConsents,
+  applications,
+  duplicateCandidates,
+  eventFormFields,
+  events,
+  getDatabase,
+  participants,
+} from "@shime/db";
 import { getEnv } from "@shime/web/env";
 
 const publicApplicationSchema = applicationFieldsSchema.omit({ externalId: true, status: true, notes: true }).refine((value) => Boolean(value.phone || value.email), { message: "Phone or email is required", path: ["phone"] });
@@ -19,7 +36,30 @@ export async function POST(request: Request, context: Context) {
   const now = new Date(); if ((event.applicationOpensAt && now < event.applicationOpensAt) || (event.applicationClosesAt && now > event.applicationClosesAt)) return NextResponse.json({ code: "APPLICATION_WINDOW_CLOSED", request_id: requestId }, { status: 409 });
   const keyHash = hashIdempotencyKey(idempotencyKey); const existing = await db.select({ id: applications.id }).from(applications).where(and(eq(applications.tenantId, event.tenantId), eq(applications.eventId, event.id), eq(applications.idempotencyKeyHash, keyHash))).limit(1);
   if (existing[0]) { const participantRows = await db.select({ userId: participants.userId }).from(participants).where(and(eq(participants.tenantId, event.tenantId), eq(participants.eventId, event.id), eq(participants.applicationId, existing[0].id))).limit(1); if (participantRows[0]?.userId) return NextResponse.json({ data: { applicationId: existing[0].id, alreadyLinked: true, duplicateSubmission: true }, request_id: requestId }); const replacement = createOpaqueToken(getEnv().LINK_TOKEN_PEPPER); await db.update(participants).set({ linkTokenHash: replacement.tokenHash, linkTokenExpiresAt: new Date(Date.now() + LINK_TOKEN_TTL_MS), linkTokenUsedAt: null, updatedAt: new Date() }).where(and(eq(participants.tenantId, event.tenantId), eq(participants.eventId, event.id), eq(participants.applicationId, existing[0].id), isNull(participants.userId))); return NextResponse.json({ data: { applicationId: existing[0].id, linkToken: replacement.token, duplicateSubmission: true }, request_id: requestId }); }
-  const input = parsed.data.application; const phoneNormalized = normalizePhone(input.phone); const emailNormalized = normalizeEmail(input.email);
+  const input = parsed.data.application;
+  const configuredFields = await db
+    .select({
+      fieldKey: eventFormFields.fieldKey,
+      requirement: eventFormFields.requirement,
+      validation: eventFormFields.validation,
+    })
+    .from(eventFormFields)
+    .where(and(eq(eventFormFields.tenantId, event.tenantId), eq(eventFormFields.eventId, event.id)));
+  const categorySource = event.settings.participantCategories;
+  const categoryCodes = Array.isArray(categorySource)
+    ? categorySource.flatMap((category) => {
+        if (!category || typeof category !== "object") return [];
+        const code = (category as Record<string, unknown>).code;
+        return typeof code === "string" ? [code] : [];
+      })
+    : [];
+  const configuredInputIssues = validateConfiguredApplicationInput(input, configuredFields, categoryCodes);
+  if (configuredInputIssues.length)
+    return NextResponse.json(
+      { code: "INVALID_CONFIGURED_INPUT", field_errors: configuredInputIssues, request_id: requestId },
+      { status: 400 },
+    );
+  const phoneNormalized = normalizePhone(input.phone); const emailNormalized = normalizeEmail(input.email);
   const possible = await db.select().from(applications).where(and(eq(applications.tenantId, event.tenantId), eq(applications.eventId, event.id), or(phoneNormalized ? eq(applications.phoneNormalized, phoneNormalized) : undefined, emailNormalized ? eq(applications.emailNormalized, emailNormalized) : undefined)));
   const link = createOpaqueToken(getEnv().LINK_TOKEN_PEPPER); const [created] = await db.transaction(async (tx) => {
     const rows = await tx.insert(applications).values({ tenantId: event.tenantId, eventId: event.id, source: "shime_form", status: "submitted", ...input, phoneNormalized, emailNormalized, idempotencyKeyHash: keyHash, submittedAt: now }).returning(); const row = rows[0]; if (!row) throw new Error("Application creation failed");

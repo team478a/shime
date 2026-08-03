@@ -2,7 +2,7 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-03（Asia/Tokyo、Codex。marriage_v2 3問診断を追加、未デプロイ）
+最終更新: 2026-08-04（Asia/Tokyo、Codex。PR #10独立レビューとmigration 0016空DB検証、未デプロイ）
 作業ブランチ: `codex/marriage-v2-m2-pre-event`
 deployment source HEAD: `7a616a9`（PR #7 merge commit）
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
@@ -12,6 +12,16 @@ PR #6 merge commit: `7f5440979efe4e23077fd9c7dbe10d3349db0172`
 PR #7 merge commit: `7a616a9`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### PR #10独立レビュー・migration 0016検証（2026-08-04、修正済み・未デプロイ）
+
+- PR #10（`codex/marriage-v2-m2-pre-event` → `release/2026-08-08-readiness`）のrelease差分61ファイルを独立確認した。PR #9のリッチメニュ実機記録commitも含むstacked PRであるため、マージ時はPR #9との重複を解消する。
+- migration `0016_previous_serpent_society.sql`とDrizzle schemaは、`applications.additional_answers jsonb not null default '{}'`で一致する。PGlite空DBへ0000〜0016を順番適用し、列のdefaultと合成プロフィール回答の保存を確認した。production・stagingに0016は未適用。
+- レビューで、画面の必須・選択肢制約が公開申込APIで再検証されていない入力整合性問題を1件検出した。同一tenant/eventの`event_form_fields`と参加区分をAPI境界で照合し、未設定キー、必須漏れ、選択肢外、未設定参加区分を保存前に拒否するよう修正した。
+- 依存監査で新しい勧告を検出し、`brace-expansion 5.0.9`と`postcss 8.5.23`へ固定版・overrideを同期した。再監査は既知脆弱性0件。
+- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体340件、結合38件、production build成功、E2E 43件成功・5件skip、dependency audit脆弱性0件。
+- `format:check`は既知48ファイルのWindows改行差で失敗。`readiness`は欠損ファイル0件だが正式入力14項目が未確定、`readiness:strict`も同理由で失敗。コード不具合とは分離する。
+- 修正は作業ブランチへcommit済み。PRのマージ、release/mainへの直接push、DB migration適用、deployment、本番データ使用、LINE通知は実施していない。次はPR #10のCI確認と再レビュー。
 
 ### marriage_v2 3問診断（2026-08-03、実装済み・未デプロイ）
 
