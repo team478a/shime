@@ -33,6 +33,66 @@ export const applicationInputSchema = applicationFieldsSchema.refine((value) => 
 
 export type ApplicationInput = z.infer<typeof applicationInputSchema>;
 
+export type ConfiguredApplicationField = Readonly<{
+  fieldKey: string;
+  requirement: "required" | "optional" | "hidden";
+  validation: Record<string, unknown>;
+}>;
+
+export type ConfiguredApplicationInput = Omit<ApplicationInput, "externalId" | "notes" | "status">;
+
+const standardApplicationFieldKeys = {
+  full_name: "fullName",
+  full_name_kana: "fullNameKana",
+  birth_date: "birthDate",
+  phone: "phone",
+  email: "email",
+  nickname: "nickname",
+  residence_area: "residenceArea",
+  participant_category: "participantCategory",
+} as const satisfies Record<string, keyof ApplicationInput>;
+
+function configuredFieldValue(input: ConfiguredApplicationInput, fieldKey: string): string {
+  const standardKey = standardApplicationFieldKeys[fieldKey as keyof typeof standardApplicationFieldKeys];
+  const value = standardKey ? input[standardKey] : input.additionalAnswers[fieldKey];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+/**
+ * Re-validates the public form payload against the event snapshot used to render it.
+ * Client-side `required` and select controls are usability helpers only; this check is
+ * the authoritative boundary that rejects stale, hidden, or fabricated answers.
+ */
+export function validateConfiguredApplicationInput(
+  input: ConfiguredApplicationInput,
+  fields: readonly ConfiguredApplicationField[],
+  participantCategoryCodes: readonly string[],
+): string[] {
+  const issues: string[] = [];
+  const visibleFields = fields.filter((field) => field.requirement !== "hidden");
+  const customFields = new Map(
+    visibleFields
+      .filter((field) => !(field.fieldKey in standardApplicationFieldKeys))
+      .map((field) => [field.fieldKey, field]),
+  );
+
+  for (const key of Object.keys(input.additionalAnswers)) {
+    if (!customFields.has(key)) issues.push(`additionalAnswers.${key}`);
+  }
+
+  for (const field of visibleFields) {
+    const value = configuredFieldValue(input, field.fieldKey);
+    if (field.requirement === "required" && !value) issues.push(field.fieldKey);
+    const options = Array.isArray(field.validation.options)
+      ? field.validation.options.filter((option): option is string => typeof option === "string")
+      : [];
+    if (value && options.length > 0 && !options.includes(value)) issues.push(field.fieldKey);
+  }
+
+  if (!participantCategoryCodes.includes(input.participantCategory)) issues.push("participant_category");
+  return [...new Set(issues)];
+}
+
 export function shouldProvisionParticipant(status: ApplicationInput["status"]): boolean {
   return status === "confirmed";
 }
