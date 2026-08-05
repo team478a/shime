@@ -24,6 +24,7 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 - 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体350件、結合40件、production build成功。新規の単体・契約・DB結合テストは12件成功。
 - 全体`format:check`はWindows改行由来の既存432ファイルで失敗。今回変更ファイルは個別Prettierと`git diff --check`で確認する。
 - migration 0017は全環境未適用。release/mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。
+- stacked draft PR #14（base: `codex/marriage-v2-interaction-memo-n0`）を作成した。GitHub Actionsのverify・E2Eは成功し、mergeableを確認した。PR #13/N0とPR #14/N1はいずれも未マージ。
 - 次はN1の独立レビュー。その後のN2で、クライアント承認済み方式に基づく立食用の参加者番号前方一致＋確認、slot作成、片手操作画面、管理画面の版付き設定を実装する。本番日が近いため、0017適用とfeature有効化は別のGo判断とバックアップ承認を必須とする。
 
 ### ワンタップメモ N0調査（2026-08-05、設計完了・未実装）
