@@ -9,13 +9,55 @@ import { useParticipantSeat } from "../../../hooks/use-participant-seat";
 import { useParticipantEvent } from "../../../hooks/use-participant-event";
 import { getPassportStatusLabel } from "../../../lib/status-labels";
 import { useLiffEventId } from "../../../lib/liff-location";
+import { buildParticipantJourneyUrl, type ParticipantJourneyKey } from "../../../lib/participant-journey";
+
+type PreparationStep = "dream" | "questionnaire" | "diagnosis";
+type Preparation = { complete: boolean; incomplete: PreparationStep[] };
 
 type Passport = {
   participantNumber: string;
   status: string;
   receptionCategoryLabel?: string | null;
   receptionNumber?: number | null;
+  preparation?: Preparation | null;
 };
+
+const preparationLabels: Record<PreparationStep, string> = {
+  dream: "Dream登録",
+  questionnaire: "席案内の質問",
+  diagnosis: "SHIME診断",
+};
+
+function getDisplayedStatus(passport: Passport) {
+  const preparationPending = passport.preparation && !passport.preparation.complete;
+  return preparationPending && ["issued", "ready"].includes(passport.status)
+    ? "準備未完了"
+    : getPassportStatusLabel(passport.status);
+}
+
+function PassportPreparationNotice({
+  preparation,
+  eventId,
+}: {
+  preparation: Preparation | null | undefined;
+  eventId: string;
+}) {
+  if (!preparation || preparation.complete) return null;
+  return (
+    <ParticipantNotice>
+      <strong>未完了: {preparation.incomplete.map((step) => preparationLabels[step]).join("、")}</strong>
+      <br />
+      PASSと受付QRは利用できます。混雑時は先に受付し、未完了の準備は後から再開できます。
+      <br />
+      <a
+        className="button-link secondary"
+        href={buildParticipantJourneyUrl(preparation.incomplete[0] as ParticipantJourneyKey, eventId)}
+      >
+        未完了の準備を再開
+      </a>
+    </ParticipantNotice>
+  );
+}
 
 function getReceptionNumber(passport: Passport) {
   if (passport.receptionNumber === null || passport.receptionNumber === undefined) return null;
@@ -71,13 +113,9 @@ export default function PassportPage() {
       const body = await response.json();
       if (!response.ok) {
         setMessage(
-          body.code === "DREAM_REQUIREMENT_NOT_SATISFIED"
-            ? "先に夢登録を完了してください。"
-            : body.code === "QUESTIONNAIRE_NOT_SUBMITTED"
-              ? "先に席案内の5問を提出してください。"
-              : body.code === "QUESTIONNAIRE_NOT_CONFIGURED"
-                ? "運営側で5問がまだ設定されていません。"
-                : "SHIME® PASSを発行できませんでした。",
+          body.code === "PARTICIPATION_NOT_CONFIRMED"
+            ? "参加確定後にSHIME® PASSを発行できます。運営へご確認ください。"
+            : "SHIME® PASSを発行できませんでした。",
         );
         return;
       }
@@ -150,8 +188,9 @@ export default function PassportPage() {
                 </>
               )}
               <dt>準備状況</dt>
-              <dd>{getPassportStatusLabel(passport.status)}</dd>
+              <dd>{getDisplayedStatus(passport)}</dd>
             </dl>
+            <PassportPreparationNotice preparation={passport.preparation} eventId={eventId} />
             <button onClick={issueQr} disabled={Boolean(busyAction)}>
               {busyAction === "qr" ? "QR生成中…" : qr ? "QRを再発行" : "受付QRを表示"}
             </button>

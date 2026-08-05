@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { createOpaqueToken, QR_TOKEN_TTL_MS } from "@shime/core";
+import { canIssuePassportForParticipant, createOpaqueToken, QR_TOKEN_TTL_MS } from "@shime/core";
 import { getDatabase, lovePassports } from "@shime/db";
 import { getEnv } from "@shime/web/env";
 import { participantHandler } from "@shime/web/server/api/participant-handler";
@@ -8,6 +8,9 @@ import { participantHandler } from "@shime/web/server/api/participant-handler";
 export const POST = participantHandler(
   async (_request: Request, { params }: { params: Promise<{ eventId: string }> }) => (await params).eventId,
   async ({ eventId, participant, session }) => {
+    if (!canIssuePassportForParticipant(participant.status)) {
+      return NextResponse.json({ code: "PARTICIPATION_NOT_CONFIRMED" }, { status: 409 });
+    }
     const db = getDatabase();
     const existing = await db
       .select()

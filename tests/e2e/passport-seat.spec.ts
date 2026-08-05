@@ -4,6 +4,8 @@ async function mockPassport(
   page: Page,
   seat: { tableCode: string; seatCode: string } | null,
   seatingMode: "assigned" | "standing" = "assigned",
+  preparation: { complete: boolean; incomplete: Array<"dream" | "questionnaire" | "diagnosis"> } | null = null,
+  passportStatus = "checked_in",
 ) {
   await page.route("**/api/liff/events/event-1", async (route) =>
     route.fulfill({
@@ -29,9 +31,10 @@ async function mockPassport(
       body: JSON.stringify({
         data: {
           participantNumber: "A01",
-          status: "checked_in",
+          status: passportStatus,
           receptionCategoryLabel: "グループA",
           receptionNumber: 1,
+          preparation,
         },
       }),
     }),
@@ -52,6 +55,30 @@ async function mockPassport(
     }),
   );
 }
+
+test("診断未完了でもPASSと受付QRを利用でき、後から再開できる", async ({ page }) => {
+  await mockPassport(page, null, "standing", { complete: false, incomplete: ["diagnosis"] }, "issued");
+  await page.route("**/api/liff/events/event-1/passport/qr", async (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: { qrToken: "a".repeat(43), expiresAt: "2026-08-08T08:00:00.000Z", version: 1 },
+      }),
+    }),
+  );
+
+  await page.goto("/liff/passport?eventId=event-1");
+
+  await expect(page.getByText("準備未完了", { exact: true })).toBeVisible();
+  await expect(page.getByText("未完了: SHIME診断")).toBeVisible();
+  await expect(page.getByRole("link", { name: "未完了の準備を再開" })).toHaveAttribute(
+    "href",
+    "/liff/diagnosis?eventId=event-1",
+  );
+  await page.getByRole("button", { name: "受付QRを表示" }).click();
+  await expect(page.getByAltText("受付用QRコード")).toBeVisible();
+});
 
 test("SHIME PASSに本人の公開済み席だけを表示する", async ({ page }) => {
   await mockPassport(page, { tableCode: "T01", seatCode: "T01-1" });

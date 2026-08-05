@@ -3,7 +3,30 @@ export function isDreamRequirementSatisfied(
   mode: "required_private_allowed" | "optional",
   state: "not_started" | "drafting" | "confirmed" | "skipped",
 ) {
-  return state === "confirmed" || (mode === "optional" && state === "skipped");
+  return mode === "optional" || state === "confirmed";
+}
+
+export type PassportPreparationStep = "dream" | "questionnaire" | "diagnosis";
+
+export function canIssuePassportForParticipant(status: string) {
+  return status === "confirmed" || status === "attended";
+}
+
+export function evaluatePassportPreparation(input: {
+  steps: ReadonlyArray<{ id: string; enabled: boolean }>;
+  dreamMode: "required_private_allowed" | "optional";
+  dreamState: "not_started" | "drafting" | "confirmed" | "skipped";
+  questionnaireSubmitted: boolean;
+  diagnosisSubmitted: boolean;
+}) {
+  const enabled = new Set(input.steps.filter((step) => step.enabled).map((step) => step.id));
+  const incomplete: PassportPreparationStep[] = [];
+  if (enabled.has("dream") && !isDreamRequirementSatisfied(input.dreamMode, input.dreamState)) {
+    incomplete.push("dream");
+  }
+  if (enabled.has("questionnaire") && !input.questionnaireSubmitted) incomplete.push("questionnaire");
+  if (enabled.has("diagnosis") && !input.diagnosisSubmitted) incomplete.push("diagnosis");
+  return { complete: incomplete.length === 0, incomplete };
 }
 export function createParticipantNumber(prefix: string, digits: number) {
   if (!/^[A-Z0-9]{1,4}$/.test(prefix) || digits < 2 || digits > 8) throw new Error("Invalid participant number format");
