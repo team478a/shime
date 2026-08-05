@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -1086,6 +1088,289 @@ export const participantAvoidances = pgTable(
       table.participantId,
       table.avoidedParticipantId,
     ),
+  ],
+);
+
+export const eventInteractionNoteSnapshots = pgTable(
+  "event_interaction_note_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    version: integer("version").notNull(),
+    enabled: boolean("enabled").default(false).notNull(),
+    targetSource: varchar("target_source", { length: 40 }).notNull(),
+    editableUntil: timestamp("editable_until", { withTimezone: true }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("event_interaction_note_snapshots_version_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.version,
+    ),
+    unique("event_interaction_note_snapshots_scope_id_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.id,
+    ),
+    index("event_interaction_note_snapshots_active_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.enabled,
+    ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "event_interaction_note_snapshots_event_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.createdBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "event_interaction_note_snapshots_creator_scope_fk",
+    }),
+  ],
+);
+
+export const interactionNoteOptions = pgTable(
+  "interaction_note_options",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    snapshotId: uuid("snapshot_id")
+      .notNull()
+      .references(() => eventInteractionNoteSnapshots.id),
+    code: varchar("code", { length: 80 }).notNull(),
+    label: varchar("label", { length: 160 }).notNull(),
+    displayOrder: integer("display_order").notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    isNegative: boolean("is_negative").default(false).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    unique("interaction_note_options_scope_code_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.snapshotId,
+      table.code,
+    ),
+    index("interaction_note_options_display_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.snapshotId,
+      table.displayOrder,
+    ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.snapshotId],
+      foreignColumns: [
+        eventInteractionNoteSnapshots.tenantId,
+        eventInteractionNoteSnapshots.eventId,
+        eventInteractionNoteSnapshots.serviceType,
+        eventInteractionNoteSnapshots.id,
+      ],
+      name: "interaction_note_options_snapshot_scope_fk",
+    }),
+  ],
+);
+
+export const interactionSlots = pgTable(
+  "interaction_slots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    source: varchar("source", { length: 40 }).notNull(),
+    sourceRef: varchar("source_ref", { length: 160 }).notNull(),
+    roundNo: integer("round_no"),
+    status: varchar("status", { length: 20 }).default("active").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("interaction_slots_source_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.source,
+      table.sourceRef,
+    ),
+    unique("interaction_slots_scope_id_uidx").on(table.tenantId, table.eventId, table.serviceType, table.id),
+    index("interaction_slots_active_idx").on(table.tenantId, table.eventId, table.serviceType, table.status),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "interaction_slots_event_scope_fk",
+    }),
+  ],
+);
+
+export const interactionSlotParticipants = pgTable(
+  "interaction_slot_participants",
+  {
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    interactionSlotId: uuid("interaction_slot_id")
+      .notNull()
+      .references(() => interactionSlots.id),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => participants.id),
+    roleCode: varchar("role_code", { length: 40 }),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.interactionSlotId, table.participantId],
+      name: "interaction_slot_participants_pk",
+    }),
+    index("interaction_slot_participants_participant_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.participantId,
+    ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.interactionSlotId],
+      foreignColumns: [
+        interactionSlots.tenantId,
+        interactionSlots.eventId,
+        interactionSlots.serviceType,
+        interactionSlots.id,
+      ],
+      name: "interaction_slot_participants_slot_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.participantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "interaction_slot_participants_participant_scope_fk",
+    }),
+  ],
+);
+
+export const interactionNotes = pgTable(
+  "interaction_notes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    snapshotId: uuid("snapshot_id")
+      .notNull()
+      .references(() => eventInteractionNoteSnapshots.id),
+    actorParticipantId: uuid("actor_participant_id")
+      .notNull()
+      .references(() => participants.id),
+    targetParticipantId: uuid("target_participant_id")
+      .notNull()
+      .references(() => participants.id),
+    interactionSlotId: uuid("interaction_slot_id")
+      .notNull()
+      .references(() => interactionSlots.id),
+    feelingCode: varchar("feeling_code", { length: 80 }).notNull(),
+    favorite: boolean("favorite").default(false).notNull(),
+    revision: integer("revision").default(1).notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow().notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("interaction_notes_actor_target_slot_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.snapshotId,
+      table.actorParticipantId,
+      table.targetParticipantId,
+      table.interactionSlotId,
+    ),
+    index("interaction_notes_actor_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.actorParticipantId,
+      table.updatedAt,
+    ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.snapshotId],
+      foreignColumns: [
+        eventInteractionNoteSnapshots.tenantId,
+        eventInteractionNoteSnapshots.eventId,
+        eventInteractionNoteSnapshots.serviceType,
+        eventInteractionNoteSnapshots.id,
+      ],
+      name: "interaction_notes_snapshot_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.snapshotId, table.feelingCode],
+      foreignColumns: [
+        interactionNoteOptions.tenantId,
+        interactionNoteOptions.eventId,
+        interactionNoteOptions.serviceType,
+        interactionNoteOptions.snapshotId,
+        interactionNoteOptions.code,
+      ],
+      name: "interaction_notes_option_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.interactionSlotId, table.actorParticipantId],
+      foreignColumns: [
+        interactionSlotParticipants.tenantId,
+        interactionSlotParticipants.eventId,
+        interactionSlotParticipants.serviceType,
+        interactionSlotParticipants.interactionSlotId,
+        interactionSlotParticipants.participantId,
+      ],
+      name: "interaction_notes_actor_slot_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.interactionSlotId, table.targetParticipantId],
+      foreignColumns: [
+        interactionSlotParticipants.tenantId,
+        interactionSlotParticipants.eventId,
+        interactionSlotParticipants.serviceType,
+        interactionSlotParticipants.interactionSlotId,
+        interactionSlotParticipants.participantId,
+      ],
+      name: "interaction_notes_target_slot_scope_fk",
+    }),
+    check(
+      "interaction_notes_distinct_participants_check",
+      sql`${table.actorParticipantId} <> ${table.targetParticipantId}`,
+    ),
+    check("interaction_notes_revision_positive_check", sql`${table.revision} >= 1`),
   ],
 );
 
