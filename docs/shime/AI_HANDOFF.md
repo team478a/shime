@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-05（Asia/Tokyo、Codex。ワンタップメモN0調査、コード変更なし）
-作業ブランチ: `codex/marriage-v2-interaction-memo-n0`
+最終更新: 2026-08-05（Asia/Tokyo、Codex。ワンタップメモN1保存基盤を実装、未適用・未デプロイ）
+作業ブランチ: `codex/marriage-v2-interaction-memo-n1`
 deployment source HEAD: `7a616a9`（PR #7 merge commit）
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -13,6 +13,18 @@ PR #7 merge commit: `7a616a9`
 PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まない）
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### ワンタップメモ N1基盤（2026-08-05、実装済み・未適用・未デプロイ）
+
+- N0設計から独立した`@shime/interactions`モジュールを追加し、Repository、UseCase、Drizzle実装、参加者GET/PUT APIを実装した。画面、管理設定、立食時の相手選択、通知、集計、AIは追加していない。
+- migration `0017_previous_squadron_sinister.sql`で、イベント別option snapshot、interaction slot、slot participant、本人専用noteを追加した。tenant、event、service、participant、slot、optionの整合性は複合外部キーで保証し、actor自身、slot外、cross-tenant/event/service、snapshot外optionをDBでも拒否する。
+- featureは有効snapshotが存在しない限り既定OFF。参加確定・来場済みの本人だけが、自分と同じ実会話slotの対象一覧と自分のメモを取得・更新できる。相手のメモ、被選択数、氏名、LINE情報は返さない。
+- 保存は主タグ1つ＋favorite、PUT、expected revisionで競合を検出する。同値再送は現在値を返し、unique制約で二重行を防止する。監査ログにはnote内容を残さずrevisionだけを記録する。
+- APIは`Cache-Control: no-store`、成功`{ data }`、失敗`{ code, message, request_id }`。取消・欠席、回避対象、slot外を非公開エラーで拒否する。
+- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体350件、結合40件、production build成功。新規の単体・契約・DB結合テストは12件成功。
+- 全体`format:check`はWindows改行由来の既存432ファイルで失敗。今回変更ファイルは個別Prettierと`git diff --check`で確認する。
+- migration 0017は全環境未適用。release/mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。
+- 次はN1の独立レビュー。その後のN2で、クライアント承認済み方式に基づく立食用の参加者番号前方一致＋確認、slot作成、片手操作画面、管理画面の版付き設定を実装する。本番日が近いため、0017適用とfeature有効化は別のGo判断とバックアップ承認を必須とする。
 
 ### ワンタップメモ N0調査（2026-08-05、設計完了・未実装）
 
