@@ -1,18 +1,62 @@
 import { describe, expect, it } from "vitest";
 import {
   allocateParticipantNumber,
+  canIssuePassportForParticipant,
   createParticipantNumber,
+  evaluatePassportPreparation,
   formatQrPayload,
   getParticipantNumberPrefix,
   isDreamRequirementSatisfied,
   parseQrPayload,
 } from "@shime/core";
 describe("passport rules", () => {
+  it("issues PASS only for confirmed or attended participants", () => {
+    expect(canIssuePassportForParticipant("confirmed")).toBe(true);
+    expect(canIssuePassportForParticipant("attended")).toBe(true);
+    expect(canIssuePassportForParticipant("invited")).toBe(false);
+    expect(canIssuePassportForParticipant("cancelled")).toBe(false);
+  });
   it("requires a dream for required events", () => {
     expect(isDreamRequirementSatisfied("required_private_allowed", "confirmed")).toBe(true);
     expect(isDreamRequirementSatisfied("required_private_allowed", "skipped")).toBe(false);
   });
-  it("allows optional skip", () => expect(isDreamRequirementSatisfied("optional", "skipped")).toBe(true));
+  it("does not block PASS when Dream is optional", () => {
+    expect(isDreamRequirementSatisfied("optional", "not_started")).toBe(true);
+    expect(isDreamRequirementSatisfied("optional", "drafting")).toBe(true);
+    expect(isDreamRequirementSatisfied("optional", "skipped")).toBe(true);
+  });
+  it("reports enabled unfinished preparation without blocking PASS issuance", () => {
+    expect(
+      evaluatePassportPreparation({
+        steps: [
+          { id: "dream", enabled: true },
+          { id: "questionnaire", enabled: false },
+          { id: "diagnosis", enabled: true },
+          { id: "pass", enabled: true },
+        ],
+        dreamMode: "optional",
+        dreamState: "not_started",
+        questionnaireSubmitted: false,
+        diagnosisSubmitted: false,
+      }),
+    ).toEqual({ complete: false, incomplete: ["diagnosis"] });
+  });
+  it("requires only enabled preparation configured as mandatory", () => {
+    expect(
+      evaluatePassportPreparation({
+        steps: [
+          { id: "dream", enabled: true },
+          { id: "questionnaire", enabled: true },
+          { id: "diagnosis", enabled: true },
+          { id: "pass", enabled: true },
+        ],
+        dreamMode: "required_private_allowed",
+        dreamState: "not_started",
+        questionnaireSubmitted: true,
+        diagnosisSubmitted: true,
+      }),
+    ).toEqual({ complete: false, incomplete: ["dream"] });
+  });
   it("creates non-PII participant numbers", () => expect(createParticipantNumber("A", 4)).toMatch(/^A\d{4}$/));
   it("reads both stored participant number setting formats", () => {
     expect(getParticipantNumberPrefix({ groupAPrefix: "A", groupBPrefix: "B" }, "group_a")).toBe("A");

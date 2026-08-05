@@ -1,29 +1,19 @@
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import {
-  allocateParticipantNumber,
-  getEventSeatingMode,
-  getParticipantNumberPrefix,
-  isDreamRequirementSatisfied,
-} from "@shime/core";
-import {
-  applications,
-  eventQuestionnaires,
-  events,
-  getDatabase,
-  lovePassports,
-  participants,
-  questionnaireResponses,
-} from "@shime/db";
+import { allocateParticipantNumber, canIssuePassportForParticipant, getParticipantNumberPrefix } from "@shime/core";
+import { applications, events, getDatabase, lovePassports, participants } from "@shime/db";
 import { participantHandler } from "@shime/web/server/api/participant-handler";
+import { loadPassportPreparation } from "@shime/web/server/passport-preparation";
 
 export const POST = participantHandler(
   async (_request: Request, { params }: { params: Promise<{ eventId: string }> }) => (await params).eventId,
   async ({ eventId, participant, session }) => {
+    if (!canIssuePassportForParticipant(participant.status)) {
+      return NextResponse.json({ code: "PARTICIPATION_NOT_CONFIRMED" }, { status: 409 });
+    }
     const db = getDatabase();
     const details = await db
       .select({
-        mode: events.dreamRegistrationMode,
         settings: events.settings,
         category: applications.participantCategory,
       })
@@ -36,30 +26,13 @@ export const POST = participantHandler(
       .limit(1);
     const detail = details[0];
     if (!detail) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
-    if (!isDreamRequirementSatisfied(detail.mode, participant.dreamState))
-      return NextResponse.json({ code: "DREAM_REQUIREMENT_NOT_SATISFIED" }, { status: 409 });
-    if (getEventSeatingMode(detail.settings) === "assigned") {
-      const questionnaire = await db
-        .select()
-        .from(eventQuestionnaires)
-        .where(and(eq(eventQuestionnaires.tenantId, session.tenantId), eq(eventQuestionnaires.eventId, eventId)))
-        .limit(1);
-      if (!questionnaire[0]) return NextResponse.json({ code: "QUESTIONNAIRE_NOT_CONFIGURED" }, { status: 409 });
-      const response = await db
-        .select()
-        .from(questionnaireResponses)
-        .where(
-          and(
-            eq(questionnaireResponses.tenantId, session.tenantId),
-            eq(questionnaireResponses.eventId, eventId),
-            eq(questionnaireResponses.participantId, participant.id),
-            eq(questionnaireResponses.versionId, questionnaire[0].versionId),
-            eq(questionnaireResponses.status, "submitted"),
-          ),
-        )
-        .limit(1);
-      if (!response[0]) return NextResponse.json({ code: "QUESTIONNAIRE_NOT_SUBMITTED" }, { status: 409 });
-    }
+    const preparation = await loadPassportPreparation({
+      tenantId: session.tenantId,
+      eventId,
+      participantId: participant.id,
+      dreamState: participant.dreamState,
+    });
+    if (!preparation) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
     const numberConfig = detail.settings.participantNumber as
       { prefixes?: Record<string, string>; groupAPrefix?: string; groupBPrefix?: string; digits?: number } | undefined;
     const prefix = getParticipantNumberPrefix(numberConfig, detail.category);
@@ -111,8 +84,8 @@ export const POST = participantHandler(
               tenantId: session.tenantId,
               eventId,
               participantId: participant.id,
-              status: "ready",
-              readyAt: now,
+              status: preparation.complete ? "ready" : "issued",
+              readyAt: preparation.complete ? now : null,
             })
             .returning()
         )[0];
@@ -123,6 +96,7 @@ export const POST = participantHandler(
         passportId: result.passport?.id,
         status: result.passport?.status,
         participantNumber: result.participantNumber,
+        preparation,
       },
     });
   },

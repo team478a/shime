@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-04（Asia/Tokyo、Codex。PR #10マージ後レビュー修正とmigration 0016空DB検証、未デプロイ）
-作業ブランチ: `codex/marriage-v2-m2-pre-event`
+最終更新: 2026-08-05（Asia/Tokyo、Codex。婚活V2のPASS非ブロッキング化、未デプロイ）
+作業ブランチ: `codex/marriage-v2-pass-nonblocking`
 deployment source HEAD: `7a616a9`（PR #7 merge commit）
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -11,8 +11,19 @@ PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 PR #6 merge commit: `7f5440979efe4e23077fd9c7dbe10d3349db0172`
 PR #7 merge commit: `7a616a9`
 PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まない）
+PR #11 merge commit: `fd62ec9e051ce4ccbfd30b176b78fe1d2341b078`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### 婚活V2 PASS・QR非ブロッキング化（2026-08-05、実装済み・未デプロイ）
+
+- 更新仕様に合わせ、参加確定または来場済みの参加者は、Dream・席案内質問・SHIME診断に未完了項目があってもPASSと受付QRを発行できるようにした。未確定・取消済み参加者への発行は拒否する。
+- 公開中の参加者導線を基準に準備状況を算出する。Dreamはイベント設定が任意なら未入力でも完了扱い、無効な導線項目は判定対象外とする。
+- 未完了項目がある新規PASSは`issued`として保存し、PASS画面に「準備未完了」、未完了一覧、再開ボタンを表示する。受付QRはそのまま利用でき、混雑時に受付を優先できる。
+- 受付済みなど当日運用が進んだPASSの状態表示は「受付済み」等を維持し、準備案内だけを併記する。
+- DB migration、production設定、デプロイ、本番データ利用、LINE通知は実施していない。migration 0016も引き続き未適用。
+- 検証: 変更ファイルformat成功、architecture成功、lintエラー0（既存complexity warningのみ）、typecheck成功、単体343件、結合38件、production build成功。対象モバイルE2Eは4件すべて成功したが、隔離worktreeの開発サーバー終了待ちだけがタイムアウトした。
+- 次は独立レビューとreleaseへのマージ判断。その後、明示承認を得てmigration 0016適用、release版デプロイ、本番イベント設定、実機再確認を別作業として行う。
 
 ### PR #10マージ後レビュー・migration 0016検証（2026-08-04、追補修正済み・未デプロイ）
 
