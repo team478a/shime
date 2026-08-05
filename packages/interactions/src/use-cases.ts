@@ -24,6 +24,7 @@ export class GetInteractionMemoWorkspace {
       this.repository.listTargets(scope),
       this.repository.listOwnNotes(scope, snapshot.id),
     ]);
+    const visibleTargets = targets.filter((target) => Boolean(target.participantNumber?.trim()));
     const noteByTarget = new Map(notes.map((note) => [`${note.interactionSlotId}:${note.targetParticipantId}`, note]));
 
     return {
@@ -33,7 +34,7 @@ export class GetInteractionMemoWorkspace {
         snapshotVersion: snapshot.version,
         editableUntil: snapshot.editableUntil?.toISOString() ?? null,
         options,
-        targets: targets.map((target) => ({
+        targets: visibleTargets.map((target) => ({
           ...target,
           note: noteByTarget.get(`${target.interactionSlotId}:${target.targetParticipantId}`) ?? null,
         })),
@@ -69,6 +70,7 @@ export class SaveInteractionMemo {
     if (
       !targets.some(
         (target) =>
+          Boolean(target.participantNumber?.trim()) &&
           target.interactionSlotId === input.interactionSlotId &&
           target.targetParticipantId === input.targetParticipantId,
       )

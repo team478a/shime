@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNull, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, ne, or } from "drizzle-orm";
 import {
   eventInteractionNoteSnapshots,
   getDatabase,
@@ -130,6 +130,7 @@ export function createDrizzleInteractionMemoRepository(): InteractionMemoReposit
               inArray(interactionSlotParticipants.interactionSlotId, slotIds),
               ne(interactionSlotParticipants.participantId, scope.participantId),
               inArray(participants.status, ["confirmed", "attended"]),
+              isNotNull(participants.participantNumber),
             ),
           ),
         getDatabase()

@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import {
   auditLogs,
   eventInteractionNoteSnapshots,
@@ -144,6 +144,7 @@ async function targetIsEligible(
         inArray(interactionSlotParticipants.participantId, [scope.participantId, input.targetParticipantId]),
         eq(interactionSlots.status, "active"),
         inArray(participants.status, ["confirmed", "attended"]),
+        isNotNull(participants.participantNumber),
       ),
     );
   if (new Set(memberships.map((row) => row.participantId)).size !== 2) return false;
