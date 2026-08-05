@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-05（Asia/Tokyo、Codex。ワンタップメモN0〜N2最終レビュー完了、未適用・未デプロイ）
-作業ブランチ: `codex/marriage-v2-interaction-memo-n2`
+最終更新: 2026-08-05（Asia/Tokyo、Codex。ワンタップメモN0〜N2をreleaseへマージ、未適用・未デプロイ）
+作業ブランチ: `codex/interaction-memo-merge-record`
 deployment source HEAD: `7a616a9`（PR #7 merge commit）
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -11,6 +11,9 @@ PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
 PR #6 merge commit: `7f5440979efe4e23077fd9c7dbe10d3349db0172`
 PR #7 merge commit: `7a616a9`
 PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まない）
+PR #13 merge commit: `d53df09274dd0a27e4b1aac24681a85bf9c9a50d`
+PR #14 merge commit: `9c98cf54ccd589af04417ae5f74c2ad3e9d0093d`
+PR #15 merge commit / release HEAD: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
 
@@ -24,8 +27,8 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 - 立食時の相手選択方式（参加者番号前方一致＋本人確認等）は更新版仕様の未決事項`IM-D01`のまま。N2には追加せず、本番featureを有効化しない。管理画面のsnapshot作成・公開も未実装。
 - 検証: architecture baseline成功、lintエラー0（既存warningのみ）、typecheck成功、単体355件、結合40件、production build成功。320pxモバイルE2Eは、8人連続入力、選択更新、お気に入り、横スクロールなし、氏名・連絡先・未採番対象の非表示、初回通信失敗後の選択保持と再試行の2件が成功した。PR #15のGitHub Actions verify・E2Eも成功した。
 - 全体`format:check`はWindows改行由来の既存446ファイルで失敗したため、今回変更ファイルのPrettierと`git diff --check`を個別確認した。
-- N2固有のDB・migration・API契約変更はない。migration 0017は全環境未適用。PR #13/N0とPR #14/N1は最終レビュー完了・Ready、PR #15/N2も最終レビュー完了でMERGEABLE。いずれも未マージであり、release/mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。
-- 次はPR #13→#14→#15の順でマージ判断し、その後にバックアップ、0017適用判断、合成データでの実機UATを別承認で行う。立食の対象者選択方式をクライアントが確定し、実機UATを完了するまではfeatureをOFFに保つ。N3集計・運営ログ、N4ラスト3分は別フェーズとする。
+- N2固有のDB・migration・API契約変更はない。PR #13/N0、PR #14/N1、PR #15/N2は依存順に`release/2026-08-08-readiness`へマージ済み。統合後release HEAD `c7d9b5c`のGitHub Actions verify・E2Eは成功した。
+- migration 0017は全環境未適用。mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。次はバックアップ、0017適用判断、合成データでの実機UATを別承認で行う。立食の対象者選択方式をクライアントが確定し、実機UATを完了するまではfeatureをOFFに保つ。N3集計・運営ログ、N4ラスト3分は別フェーズとする。
 
 ### ワンタップメモ N1基盤（2026-08-05、実装済み・未適用・未デプロイ）
 
@@ -37,9 +40,8 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 - APIは`Cache-Control: no-store`、成功`{ data }`、失敗`{ code, message, request_id }`。取消・欠席、回避対象、slot外を非公開エラーで拒否する。
 - 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体352件、結合40件、production build成功。interaction memoのfocused単体・契約・DB結合テストは14件成功し、旧・新snapshotの同一slot/targetメモ共存も確認した。PR #14のGitHub Actions verify・E2Eも成功した。
 - 全体`format:check`はWindows改行由来の既存432ファイルで失敗。今回変更ファイルは個別Prettierと`git diff --check`で確認する。
-- migration 0017は全環境未適用。release/mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。
-- PR #14（base: `codex/marriage-v2-interaction-memo-n0`）は独立レビュー完了、Ready、MERGEABLE。PR #13/N0も独立レビュー完了、Ready、MERGEABLE。どちらも未マージ。
-- 次は依存順のマージ判断とN2参加者画面の実機UAT。立食用の参加者番号前方一致＋確認、slot作成、管理画面の版付き設定は`IM-D01`未決のためN2へ含めない。本番日が近いため、0017適用とfeature有効化は別のGo判断とバックアップ承認を必須とする。
+- migration 0017は全環境未適用。PR #13〜#15はreleaseへマージ済みだが、mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。
+- 次はN2参加者画面の合成データ実機UAT。立食用の参加者番号前方一致＋確認、slot作成、管理画面の版付き設定は`IM-D01`未決のためN2へ含めない。本番日が近いため、0017適用とfeature有効化は別のGo判断とバックアップ承認を必須とする。
 
 ### ワンタップメモ N0調査（2026-08-05、設計完了・未実装）
 
