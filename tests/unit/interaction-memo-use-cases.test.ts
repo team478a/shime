@@ -86,6 +86,18 @@ describe("interaction memo use cases", () => {
     });
   });
 
+  it("does not expose an unnumbered participant as an actionable target", async () => {
+    const unnumberedTarget = { ...target, targetParticipantId: "participant-3", participantNumber: null };
+    const useCase = new GetInteractionMemoWorkspace(
+      repository({ listTargets: async () => [target, unnumberedTarget] }),
+      () => now,
+    );
+
+    const result = await useCase.execute(scope);
+
+    expect(result.ok && result.data.targets).toEqual([{ ...target, note: null }]);
+  });
+
   it("rejects self selection before repository mutation", async () => {
     const saveOwnNote = vi.fn(async () => ({ status: "saved" as const, note }));
     const useCase = new SaveInteractionMemo(repository({ saveOwnNote }), () => now);
@@ -126,6 +138,26 @@ describe("interaction memo use cases", () => {
       useCase.execute(auditScope, {
         interactionSlotId: target.interactionSlotId,
         targetParticipantId: "participant-3",
+        feelingCode: option.code,
+        favorite: false,
+        expectedRevision: 0,
+      }),
+    ).resolves.toEqual({ ok: false, code: "INTERACTION_TARGET_NOT_ALLOWED", status: 404 });
+    expect(saveOwnNote).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unnumbered target even when the repository returns its slot membership", async () => {
+    const unnumberedTarget = { ...target, participantNumber: null };
+    const saveOwnNote = vi.fn(async () => ({ status: "saved" as const, note }));
+    const useCase = new SaveInteractionMemo(
+      repository({ listTargets: async () => [unnumberedTarget], saveOwnNote }),
+      () => now,
+    );
+
+    await expect(
+      useCase.execute(auditScope, {
+        interactionSlotId: target.interactionSlotId,
+        targetParticipantId: target.targetParticipantId,
         feelingCode: option.code,
         favorite: false,
         expectedRevision: 0,
