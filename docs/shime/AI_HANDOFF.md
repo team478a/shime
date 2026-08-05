@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-05（Asia/Tokyo、Codex。ワンタップメモN1保存基盤を実装、未適用・未デプロイ）
-作業ブランチ: `codex/marriage-v2-interaction-memo-n1`
+最終更新: 2026-08-05（Asia/Tokyo、Codex。ワンタップメモN2参加者UIを実装、未適用・未デプロイ）
+作業ブランチ: `codex/marriage-v2-interaction-memo-n2`
 deployment source HEAD: `7a616a9`（PR #7 merge commit）
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -13,6 +13,17 @@ PR #7 merge commit: `7a616a9`
 PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まない）
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### ワンタップメモ N2参加者UI（2026-08-05、実装済み・未適用・未デプロイ）
+
+- N1の本人専用GET/PUT APIだけを利用する参加者画面`/liff/interactions`を追加した。参加者番号だけをカード表示し、主タグ1つとお気に入りを5〜10秒で選択できる。氏名、連絡先、他参加者のメモ、被選択数は表示・取得しない。
+- SHIME PASSには、有効なイベント別option snapshotがある場合だけ「会話メモを開く」を表示する。feature既定OFF、座席・interaction slot未登録、無効イベントでは既存導線を変えない。
+- 320px幅、2列タグ、44px以上の操作領域、選択直後の自動保存、保存中・保存済み・失敗・競合状態を実装した。通信失敗時は選択を保持して再試行でき、対象ごとの保存を直列化して連打・連続変更による二重保存を防ぐ。revision conflict時は自動上書きせず最新内容を再読込する。
+- 立食時の相手選択方式（参加者番号前方一致＋本人確認等）は更新版仕様の未決事項`IM-D01`のまま。N2には追加せず、本番featureを有効化しない。管理画面のsnapshot作成・公開も未実装。
+- 検証: architecture baseline成功、lintエラー0（既存warning 77件）、typecheck成功、単体352件、結合40件、production build成功。320pxモバイルE2Eは、8人連続入力、選択更新、お気に入り、横スクロールなし、氏名・連絡先非表示、初回通信失敗後の選択保持と再試行の2件が成功した。
+- 全体`format:check`はWindows改行由来の既存446ファイルで失敗したため、今回変更ファイルのPrettierと`git diff --check`を個別確認した。
+- DB・migration・API契約は変更していない。migration 0017は全環境未適用。PR #13/N0、PR #14/N1も未マージであり、release/mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。
+- 次はN2の独立レビューと実機UAT。立食の対象者選択方式をクライアントが確定し、N0〜N2を順にレビュー・適用するまではfeatureをOFFに保つ。N3集計・運営ログ、N4ラスト3分は別フェーズとする。
 
 ### ワンタップメモ N1基盤（2026-08-05、実装済み・未適用・未デプロイ）
 
@@ -25,7 +36,7 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 - 全体`format:check`はWindows改行由来の既存432ファイルで失敗。今回変更ファイルは個別Prettierと`git diff --check`で確認する。
 - migration 0017は全環境未適用。release/mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。
 - stacked draft PR #14（base: `codex/marriage-v2-interaction-memo-n0`）を作成した。GitHub Actionsのverify・E2Eは成功し、mergeableを確認した。PR #13/N0とPR #14/N1はいずれも未マージ。
-- 次はN1の独立レビュー。その後のN2で、クライアント承認済み方式に基づく立食用の参加者番号前方一致＋確認、slot作成、片手操作画面、管理画面の版付き設定を実装する。本番日が近いため、0017適用とfeature有効化は別のGo判断とバックアップ承認を必須とする。
+- 次はN1の独立レビュー。その後のN2は参加者の片手操作画面だけを実装する。立食用の参加者番号前方一致＋確認、slot作成、管理画面の版付き設定は`IM-D01`未決のためN2へ含めない。本番日が近いため、0017適用とfeature有効化は別のGo判断とバックアップ承認を必須とする。
 
 ### ワンタップメモ N0調査（2026-08-05、設計完了・未実装）
 

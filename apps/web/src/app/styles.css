@@ -768,6 +768,113 @@ textarea:focus-visible {
   color: var(--shime-charcoal);
   line-height: 1.7;
 }
+.participant-interaction-entry {
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--shime-border);
+  border-radius: 14px;
+  background: var(--service-background);
+}
+.participant-interaction-entry .eyebrow,
+.participant-interaction-entry h2,
+.participant-interaction-entry p {
+  margin: 0;
+}
+.interaction-memo-page {
+  width: min(100%, 680px);
+}
+.interaction-memo-load-error {
+  display: grid;
+  gap: 12px;
+}
+.interaction-memo-list {
+  display: grid;
+  gap: 18px;
+}
+.interaction-memo-card {
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--shime-border);
+  border-radius: 16px;
+  background: var(--shime-white);
+}
+.interaction-memo-card > p,
+.interaction-memo-card h2 {
+  margin: 0;
+}
+.interaction-memo-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.interaction-memo-card-heading h2 {
+  overflow-wrap: anywhere;
+  font-size: 21px;
+}
+.interaction-memo-card-heading span {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--service-primary-soft);
+  color: var(--service-primary-action);
+  font-size: 12px;
+  font-weight: 750;
+}
+.interaction-feeling-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.interaction-feeling-button,
+.interaction-favorite-button {
+  min-height: 52px;
+}
+.interaction-feeling-button {
+  padding: 10px 8px;
+  border: 1px solid var(--shime-border);
+  background: var(--shime-background);
+  color: var(--shime-charcoal);
+  line-height: 1.35;
+}
+.interaction-feeling-button[aria-pressed="true"],
+.interaction-favorite-button[aria-pressed="true"] {
+  border-color: var(--service-primary-action);
+  background: var(--service-primary-soft);
+  color: var(--service-primary-action);
+  outline: 2px solid var(--service-primary-action);
+  outline-offset: 1px;
+}
+.interaction-save-status {
+  min-height: 46px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 12px;
+  background: var(--shime-background);
+  color: var(--shime-muted);
+  font-size: 13px;
+}
+.interaction-save-status button {
+  flex: 0 0 auto;
+  min-height: 44px;
+}
+@media (max-width: 360px) {
+  .interaction-memo-card {
+    padding: 14px;
+  }
+  .interaction-feeling-grid {
+    gap: 8px;
+  }
+  .interaction-feeling-button {
+    padding-inline: 6px;
+    font-size: 13px;
+  }
+}
 .participant-skip {
   padding: 16px;
   border: 1px solid var(--shime-border);

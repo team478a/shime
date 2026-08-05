@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { formatQrPayload } from "@shime/core/passport/rules";
+import { ParticipantInteractionEntry } from "../../../components/participant-interaction-entry";
 import { ParticipantNotice, ParticipantPageHeader } from "../../../components/participant-ui";
 import { useParticipantSeat } from "../../../hooks/use-participant-seat";
 import { useParticipantEvent } from "../../../hooks/use-participant-event";
@@ -188,6 +189,7 @@ export default function PassportPage() {
                 </button>
               </div>
             )}
+            <ParticipantInteractionEntry eventId={eventId} />
             {qr && (
               <div className="qr-section">
                 <Image
