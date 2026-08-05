@@ -7,6 +7,7 @@
 
 - 参加者APIは`participantHandler`を使用する。
 - URLのevent IDとsessionのtenant/user/participantをサーバーで照合する。
+- `service_type`はサーバー側のmodule境界で固定し、request bodyやqueryから受け取らない。
 - responseは成功 `{ data }`、失敗 `{ code, message?, request_id? }`。
 - `Cache-Control: no-store`を設定する。
 - 相手の氏名、連絡先、LINE ID、相手側メモ、被選択数を返さない。
@@ -124,4 +125,3 @@ request:
 N1では生メモ一覧APIを作らない。
 
 設定管理はmanager/system_admin向けに、snapshot作成・適用・無効化だけを提供する。集計はN3で本人向けに追加し、スタッフ向けの個人別集計は追加しない。
-
