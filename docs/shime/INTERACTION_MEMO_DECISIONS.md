@@ -18,6 +18,7 @@
 | IM-10 | raw feelingと相手情報を監査ログへ複製しない | 漏えい面積を増やさない |
 | IM-11 | PUT＋revisionで自動保存する | 二重タップ冪等性と別端末競合を両立 |
 | IM-12 | 通常スタッフ向け生メモ一覧を作らない | reception/operator/managerの職務に不要 |
+| IM-13 | tenant・eventに加えてservice_typeを全snapshot・slot・noteのscopeへ含める | SHIME OSの別service間で設定や記録を混在させない |
 
 ## N1開始前に必要な判断
 
@@ -65,4 +66,3 @@
 - N1の実装範囲と未決事項を分離した。
 
 N0は完了。次の作業はIM-D01〜D07を承認可能な状態に整理したうえで、別PRのN1基盤へ進むことである。
-

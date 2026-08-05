@@ -5,7 +5,7 @@
 
 ## 設計原則
 
-- tenant、event、participantの整合性をDB複合外部キーでも保証する。
+- tenant、event、service、participantの整合性をDB複合外部キーでも保証する。
 - 選択肢はイベントへ適用した時点の版を固定し、後から文言を変更しても過去イベントを再現できるようにする。
 - 生メモは本人専用とし、希望、結果、通知、AIデータへ直接結合しない。
 - 着席と立食を同じinteraction slotで表現する。
@@ -23,7 +23,7 @@
 - `event_id`
 - `version`
 - `enabled`
-- `target_source`: `seating_pairs | self_reported | operator_import`
+- `target_source`: N1は`interaction_slot`。将来の`self_reported | operator_import`は方式確定後に追加する
 - `editable_until`
 - `created_by`
 - `created_at`
@@ -31,8 +31,8 @@
 
 制約:
 
-- UNIQUE `(tenant_id, event_id, version)`
-- UNIQUE `(tenant_id, event_id, id)` を複合FK参照先として作成
+- UNIQUE `(tenant_id, event_id, service_type, version)`
+- UNIQUE `(tenant_id, event_id, service_type, id)` を複合FK参照先として作成
 - FK `(tenant_id, event_id)` → `events(tenant_id, id)`
 - 公開後のsnapshotは更新しない。変更時は新versionを作成する。
 
@@ -62,8 +62,8 @@
 
 制約:
 
-- UNIQUE `(tenant_id, event_id, snapshot_id, code)`
-- FK `(tenant_id, event_id, snapshot_id)` → event snapshot
+- UNIQUE `(tenant_id, event_id, service_type, snapshot_id, code)`
+- FK `(tenant_id, event_id, service_type, snapshot_id)` → event snapshot
 - 公開後の行は更新・削除せず、新snapshotへコピーする。
 
 ### `interaction_slots`
@@ -84,8 +84,8 @@
 
 制約:
 
-- UNIQUE `(tenant_id, event_id, source, source_ref)`
-- UNIQUE `(tenant_id, event_id, id)`
+- UNIQUE `(tenant_id, event_id, service_type, source, source_ref)`
+- UNIQUE `(tenant_id, event_id, service_type, id)`
 - FK `(tenant_id, event_id)` → events
 - 同じsourceを再処理しても同じslotになる。
 
@@ -95,6 +95,7 @@ slotに参加した参加者を表す。
 
 - `tenant_id`
 - `event_id`
+- `service_type`
 - `interaction_slot_id`
 - `participant_id`
 - `role_code` nullable
@@ -102,8 +103,8 @@ slotに参加した参加者を表す。
 
 制約:
 
-- UNIQUE `(tenant_id, event_id, interaction_slot_id, participant_id)`
-- FK slot scope
+- UNIQUE `(tenant_id, event_id, service_type, interaction_slot_id, participant_id)`
+- FK `(tenant_id, event_id, service_type, interaction_slot_id)` → slot scope
 - FK participant scope
 - actorとtargetは両方とも同じslotに存在しなければならない。
 
@@ -128,11 +129,11 @@ slotに参加した参加者を表す。
 制約:
 
 - CHECK `actor_participant_id <> target_participant_id`
-- UNIQUE `(tenant_id, event_id, actor_participant_id, target_participant_id, interaction_slot_id)`
+- UNIQUE `(tenant_id, event_id, service_type, actor_participant_id, target_participant_id, interaction_slot_id)`
 - FK actor participant scope
 - FK target participant scope
-- FK slot scope
-- FK option `(tenant_id, event_id, snapshot_id, feeling_code)`
+- FK slot scopeは`service_type`を含め、actorとtargetのslot membershipをそれぞれ複合FKで保証
+- FK option `(tenant_id, event_id, service_type, snapshot_id, feeling_code)`
 - `revision >= 1`
 
 ## 競合と冪等性
@@ -158,5 +159,4 @@ slotに参加した参加者を表す。
 - 新規migration 0017以降として作成する。0016以前を変更しない。
 - nullable追加や既存データbackfillは不要。
 - featureを無効のままmigration適用できる後方互換構造にする。
-- empty DB適用、同一scope INSERT成功、cross-tenant/event/participant拒否を結合テストする。
-
+- empty DB適用、同一scope INSERT成功、cross-tenant/event/service/participant拒否を結合テストする。
