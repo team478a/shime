@@ -19,6 +19,7 @@
 | IM-11 | PUT＋revisionで自動保存する | 二重タップ冪等性と別端末競合を両立 |
 | IM-12 | 通常スタッフ向け生メモ一覧を作らない | reception/operator/managerの職務に不要 |
 | IM-13 | tenant・eventに加えてservice_typeを全snapshot・slot・noteのscopeへ含める | SHIME OSの別service間で設定や記録を混在させない |
+| IM-14 | noteの一意性にsnapshot_idを含める | 新snapshot公開後も旧版メモを不変のまま保持し、新版の入力と競合させない |
 
 ## N1開始前に必要な判断
 

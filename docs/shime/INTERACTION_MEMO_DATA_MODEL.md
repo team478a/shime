@@ -129,7 +129,7 @@ slotに参加した参加者を表す。
 制約:
 
 - CHECK `actor_participant_id <> target_participant_id`
-- UNIQUE `(tenant_id, event_id, service_type, actor_participant_id, target_participant_id, interaction_slot_id)`
+- UNIQUE `(tenant_id, event_id, service_type, snapshot_id, actor_participant_id, target_participant_id, interaction_slot_id)`
 - FK actor participant scope
 - FK target participant scope
 - FK slot scopeは`service_type`を含め、actorとtargetのslot membershipをそれぞれ複合FKで保証
@@ -138,7 +138,8 @@ slotに参加した参加者を表す。
 
 ## 競合と冪等性
 
-- APIはPUTを使用し、同じslot・targetへの保存をupsertする。
+- APIはPUTを使用し、同じsnapshot・slot・targetへの保存をupsertする。
+- 新しいsnapshotを有効化した場合も旧snapshotのメモは変更せず、新snapshot側に別行として保存する。
 - クライアントは`expected_revision`を送る。
 - revision不一致は409 `REVISION_CONFLICT`。
 - 同じ値・同じrevisionの再送は現在値を返し、重複行を作らない。
