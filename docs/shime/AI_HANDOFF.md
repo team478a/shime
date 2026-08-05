@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-04（Asia/Tokyo、Codex。PR #10マージ後レビュー修正とmigration 0016空DB検証、未デプロイ）
-作業ブランチ: `codex/marriage-v2-m2-pre-event`
+最終更新: 2026-08-05（Asia/Tokyo、Codex。ワンタップメモN0調査、コード変更なし）
+作業ブランチ: `codex/marriage-v2-interaction-memo-n0`
 deployment source HEAD: `7a616a9`（PR #7 merge commit）
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -13,6 +13,15 @@ PR #7 merge commit: `7a616a9`
 PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まない）
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### ワンタップメモ N0調査（2026-08-05、設計完了・未実装）
+
+- 更新版仕様が指定するN0を実施し、現行participants、席配置、conversation pairs、preferences、matching、participant認証、Concierge、notification、audit、permissionを調査した。
+- 現行`conversation_pairs`は着席配置公開時だけ生成され、`round_no=1`固定である。立食イベントでは会話相手を自動生成できないため、既存テーブルの意味を変えず、汎用`interaction_slots`とslot participantsを新設する方針とした。
+- メモは希望入力へ保存せず、本人だけが取得・更新できる独立interaction moduleとする。通常スタッフの生メモ閲覧、相手通知、人気集計、AI、ラスト3分、チャットはN1対象外。
+- event別の不変option snapshot、主タグ1つ＋favorite、PUT＋revision、DB複合scope制約、320px片手操作のAPI・画面案をN0成果物5件へ記録した。
+- N1前の主要未決は、立食時の会話相手登録方式。推奨は参加者番号前方一致＋確認によるself-reportだが、承認・実機UATまではfeatureを既定OFFとする。
+- DB、migration、API、UI、production、staging、通知には変更を加えていない。
 
 ### PR #10マージ後レビュー・migration 0016検証（2026-08-04、追補修正済み・未デプロイ）
 
