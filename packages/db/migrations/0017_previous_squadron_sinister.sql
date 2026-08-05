@@ -107,7 +107,7 @@ ALTER TABLE "interaction_slots" ADD CONSTRAINT "interaction_slots_event_scope_fk
 CREATE UNIQUE INDEX "event_interaction_note_snapshots_version_uidx" ON "event_interaction_note_snapshots" USING btree ("tenant_id","event_id","service_type","version");--> statement-breakpoint
 CREATE INDEX "event_interaction_note_snapshots_active_idx" ON "event_interaction_note_snapshots" USING btree ("tenant_id","event_id","service_type","enabled");--> statement-breakpoint
 CREATE INDEX "interaction_note_options_display_idx" ON "interaction_note_options" USING btree ("tenant_id","event_id","service_type","snapshot_id","display_order");--> statement-breakpoint
-CREATE UNIQUE INDEX "interaction_notes_actor_target_slot_uidx" ON "interaction_notes" USING btree ("tenant_id","event_id","service_type","actor_participant_id","target_participant_id","interaction_slot_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "interaction_notes_actor_target_slot_uidx" ON "interaction_notes" USING btree ("tenant_id","event_id","service_type","snapshot_id","actor_participant_id","target_participant_id","interaction_slot_id");--> statement-breakpoint
 CREATE INDEX "interaction_notes_actor_idx" ON "interaction_notes" USING btree ("tenant_id","event_id","service_type","actor_participant_id","updated_at");--> statement-breakpoint
 CREATE INDEX "interaction_slot_participants_participant_idx" ON "interaction_slot_participants" USING btree ("tenant_id","event_id","service_type","participant_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "interaction_slots_source_uidx" ON "interaction_slots" USING btree ("tenant_id","event_id","service_type","source","source_ref");--> statement-breakpoint

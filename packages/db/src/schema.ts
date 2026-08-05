@@ -1311,6 +1311,7 @@ export const interactionNotes = pgTable(
       table.tenantId,
       table.eventId,
       table.serviceType,
+      table.snapshotId,
       table.actorParticipantId,
       table.targetParticipantId,
       table.interactionSlotId,

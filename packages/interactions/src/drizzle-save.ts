@@ -27,7 +27,7 @@ export async function saveOwnNoteWithDrizzle(
       if (!(await optionIsEnabled(transaction, scope, snapshot.id, input.feelingCode))) return { status: "closed" };
       if (!(await targetIsEligible(transaction, scope, input))) return { status: "invalid_target" };
 
-      const existing = await findNote(transaction, scope, input);
+      const existing = await findNote(transaction, scope, snapshot.id, input);
       if (existing) {
         if (existing.feelingCode === input.feelingCode && existing.favorite === input.favorite)
           return { status: "saved", note: existing };
@@ -199,7 +199,12 @@ async function optionIsEnabled(
   );
 }
 
-async function findNote(transaction: Transaction, scope: InteractionMemoAuditScope, input: SaveInteractionMemoInput) {
+async function findNote(
+  transaction: Transaction,
+  scope: InteractionMemoAuditScope,
+  snapshotId: string,
+  input: SaveInteractionMemoInput,
+) {
   const row = (
     await transaction
       .select()
@@ -209,6 +214,7 @@ async function findNote(transaction: Transaction, scope: InteractionMemoAuditSco
           eq(interactionNotes.tenantId, scope.tenantId),
           eq(interactionNotes.eventId, scope.eventId),
           eq(interactionNotes.serviceType, scope.serviceType),
+          eq(interactionNotes.snapshotId, snapshotId),
           eq(interactionNotes.actorParticipantId, scope.participantId),
           eq(interactionNotes.targetParticipantId, input.targetParticipantId),
           eq(interactionNotes.interactionSlotId, input.interactionSlotId),
