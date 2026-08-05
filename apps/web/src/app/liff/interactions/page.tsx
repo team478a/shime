@@ -2,13 +2,18 @@
 
 import { ParticipantNotice, ParticipantPageHeader } from "../../../components/participant-ui";
 import { useInteractionMemo } from "../../../hooks/use-interaction-memo";
-import { formatInteractionMemoSavedAt, interactionMemoTargetKey } from "../../../lib/interaction-memo-client";
+import {
+  formatInteractionMemoSavedAt,
+  getDisplayableInteractionMemoTargets,
+  interactionMemoTargetKey,
+} from "../../../lib/interaction-memo-client";
 import { useLiffEventId } from "../../../lib/liff-location";
 
 export default function InteractionMemoPage() {
   const eventId = useLiffEventId();
   const memo = useInteractionMemo(eventId);
   const workspace = memo.workspace;
+  const displayableTargets = getDisplayableInteractionMemoTargets(workspace);
 
   return (
     <main>
@@ -43,21 +48,22 @@ export default function InteractionMemoPage() {
         {memo.loadStatus === "loaded" && workspace && !workspace.enabled && (
           <ParticipantNotice>このイベントでは会話メモを利用できません。</ParticipantNotice>
         )}
-        {memo.loadStatus === "loaded" && workspace?.enabled && workspace.targets.length === 0 && (
-          <ParticipantNotice>会話相手が登録されると、ここに参加者番号が表示されます。</ParticipantNotice>
+        {memo.loadStatus === "loaded" && workspace?.enabled && displayableTargets.length === 0 && (
+          <ParticipantNotice>
+            参加者番号を確認できる会話相手が登録されると、ここにカードが表示されます。
+          </ParticipantNotice>
         )}
 
-        {workspace?.enabled && workspace.targets.length > 0 && (
+        {workspace?.enabled && displayableTargets.length > 0 && (
           <div className="interaction-memo-list">
-            {workspace.targets.map((target) => {
+            {displayableTargets.map((target) => {
               const key = interactionMemoTargetKey(target);
               const saveState = memo.saveStates[key];
               const status = saveState?.status ?? (target.note ? "saved" : "idle");
-              const label = target.participantNumber ?? "番号確認中";
               return (
                 <article className="interaction-memo-card" key={key} aria-labelledby={`interaction-${key}`}>
                   <div className="interaction-memo-card-heading">
-                    <h2 id={`interaction-${key}`}>{label}との会話</h2>
+                    <h2 id={`interaction-${key}`}>{target.participantNumber}との会話</h2>
                     {target.roundNo !== null && <span>会話 {target.roundNo}</span>}
                   </div>
                   <p>あなたが感じたことを1つ選んでください。</p>

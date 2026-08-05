@@ -50,6 +50,15 @@ export function replaceInteractionMemoNote(
   };
 }
 
+export function getDisplayableInteractionMemoTargets(
+  workspace: Pick<InteractionMemoWorkspaceDto, "targets"> | null | undefined,
+): Array<InteractionMemoTargetDto & { participantNumber: string }> {
+  return (workspace?.targets ?? []).filter(
+    (target): target is InteractionMemoTargetDto & { participantNumber: string } =>
+      Boolean(target.participantNumber?.trim()),
+  );
+}
+
 export function formatInteractionMemoSavedAt(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";

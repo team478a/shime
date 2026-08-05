@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatInteractionMemoSavedAt,
+  getDisplayableInteractionMemoTargets,
   interactionMemoTargetKey,
   type InteractionMemoWorkspaceDto,
   replaceInteractionMemoNote,
@@ -48,5 +49,22 @@ describe("interaction memo client state", () => {
   it("formats saved time in Japan without exposing a date or locale-dependent seconds", () => {
     expect(formatInteractionMemoSavedAt("2026-08-08T05:10:00.000Z")).toBe("14:10");
     expect(formatInteractionMemoSavedAt("invalid")).toBe("");
+  });
+
+  it("does not offer a target that cannot be identified by participant number", () => {
+    const targets = getDisplayableInteractionMemoTargets({
+      targets: [
+        ...workspace.targets,
+        {
+          interactionSlotId: "slot-3",
+          targetParticipantId: "participant-4",
+          participantNumber: null,
+          roundNo: 3,
+          note: null,
+        },
+      ],
+    });
+
+    expect(targets.map((target) => target.participantNumber)).toEqual(["B01", "B02"]);
   });
 });

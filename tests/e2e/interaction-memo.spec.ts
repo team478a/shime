@@ -41,18 +41,27 @@ async function mockInteractionMemo(page: Page, failFirstSave = false) {
           snapshotVersion: 1,
           editableUntil: "2026-08-08T07:00:00.000Z",
           options,
-          targets: Array.from({ length: 8 }, (_, index) => {
-            const targetParticipantId = `1000000${index}-0000-4000-8000-000000000001`;
-            const interactionSlotId = `2000000${index}-0000-4000-8000-000000000001`;
-            const saved = notes.get(targetParticipantId);
-            return {
-              interactionSlotId,
-              targetParticipantId,
-              participantNumber: `B0${index + 1}`,
-              roundNo: index + 1,
-              note: saved ? { id: `note-${index}`, interactionSlotId, targetParticipantId, ...saved } : null,
-            };
-          }),
+          targets: [
+            ...Array.from({ length: 8 }, (_, index) => {
+              const targetParticipantId = `1000000${index}-0000-4000-8000-000000000001`;
+              const interactionSlotId = `2000000${index}-0000-4000-8000-000000000001`;
+              const saved = notes.get(targetParticipantId);
+              return {
+                interactionSlotId,
+                targetParticipantId,
+                participantNumber: `B0${index + 1}`,
+                roundNo: index + 1,
+                note: saved ? { id: `note-${index}`, interactionSlotId, targetParticipantId, ...saved } : null,
+              };
+            }),
+            {
+              interactionSlotId: "30000000-0000-4000-8000-000000000001",
+              targetParticipantId: "40000000-0000-4000-8000-000000000001",
+              participantNumber: null,
+              roundNo: 9,
+              note: null,
+            },
+          ],
         },
       }),
     });
@@ -117,6 +126,7 @@ test.describe("ワンタップメモ（320px）", () => {
     );
     await expect(page.getByText("参加者氏名")).toHaveCount(0);
     await expect(page.getByText("example@example.com")).toHaveCount(0);
+    await expect(page.getByText("番号確認中")).toHaveCount(0);
   });
 
   test("通信失敗後も選択を保持し、同じカードから再試行できる", async ({ page }) => {
