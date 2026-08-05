@@ -57,6 +57,18 @@ describe("interaction memo migration and scope constraints", () => {
       ),
     ).resolves.toBeDefined();
 
+    const nextSnapshotId = id(7, 32);
+    const nextOptionId = id(7, 33);
+    await expect(
+      client.exec(
+        [
+          `insert into event_interaction_note_snapshots(id, tenant_id, event_id, service_type, version, enabled, target_source, editable_until, created_by) values ('${nextSnapshotId}','${first.tenantId}','${first.eventId}','marriage',2,true,'interaction_slot',now() + interval '1 day','${first.staffUserId}')`,
+          `insert into interaction_note_options(id, tenant_id, event_id, service_type, snapshot_id, code, label, display_order) values ('${nextOptionId}','${first.tenantId}','${first.eventId}','marriage','${nextSnapshotId}','comfortable','Comfortable v2',1)`,
+          `insert into interaction_notes(tenant_id,event_id,service_type,snapshot_id,actor_participant_id,target_participant_id,interaction_slot_id,feeling_code,favorite) values ('${first.tenantId}','${first.eventId}','marriage','${nextSnapshotId}','${first.participantIds[0]}','${first.participantIds[1]}','${first.slotId}','comfortable',false)`,
+        ].join(";\n"),
+      ),
+    ).resolves.toBeDefined();
+
     await expect(
       client.exec(
         `insert into interaction_slots(tenant_id,event_id,service_type,source,source_ref) values ('${first.tenantId}','${second.eventId}','marriage','standing','cross-event')`,

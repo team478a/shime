@@ -5986,6 +5986,12 @@
               "nulls": "last"
             },
             {
+              "expression": "snapshot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
               "expression": "actor_participant_id",
               "isExpression": false,
               "asc": true,
