@@ -2,7 +2,7 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-05（Asia/Tokyo、Codex。ワンタップメモN2参加者UIを実装、未適用・未デプロイ）
+最終更新: 2026-08-05（Asia/Tokyo、Codex。ワンタップメモN0〜N2最終レビュー完了、未適用・未デプロイ）
 作業ブランチ: `codex/marriage-v2-interaction-memo-n2`
 deployment source HEAD: `7a616a9`（PR #7 merge commit）
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
@@ -18,13 +18,14 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 
 - N1の本人専用GET/PUT APIだけを利用する参加者画面`/liff/interactions`を追加した。参加者番号だけをカード表示し、主タグ1つとお気に入りを5〜10秒で選択できる。氏名、連絡先、他参加者のメモ、被選択数は表示・取得しない。
 - マージ前レビューで、未採番対象を「番号確認中」として選べる誤記録リスクを検出した。氏名を代替表示せず、参加者番号を安全に識別できない対象はカードから除外するよう修正した。
+- N1再レビューで、未採番対象がAPIには残る問題も検出した。RepositoryとUseCaseの双方で未採番対象を返さず、直接PUTも404で拒否するよう修正した。
 - SHIME PASSには、有効なイベント別option snapshotがある場合だけ「会話メモを開く」を表示する。feature既定OFF、座席・interaction slot未登録、無効イベントでは既存導線を変えない。
 - 320px幅、2列タグ、44px以上の操作領域、選択直後の自動保存、保存中・保存済み・失敗・競合状態を実装した。通信失敗時は選択を保持して再試行でき、対象ごとの保存を直列化して連打・連続変更による二重保存を防ぐ。revision conflict時は自動上書きせず最新内容を再読込する。
 - 立食時の相手選択方式（参加者番号前方一致＋本人確認等）は更新版仕様の未決事項`IM-D01`のまま。N2には追加せず、本番featureを有効化しない。管理画面のsnapshot作成・公開も未実装。
-- 検証: architecture baseline成功、lintエラー0（既存warning 77件）、typecheck成功、単体353件、結合40件、production build成功。320pxモバイルE2Eは、8人連続入力、選択更新、お気に入り、横スクロールなし、氏名・連絡先・未採番対象の非表示、初回通信失敗後の選択保持と再試行の2件が成功した。
+- 検証: architecture baseline成功、lintエラー0（既存warningのみ）、typecheck成功、単体355件、結合40件、production build成功。320pxモバイルE2Eは、8人連続入力、選択更新、お気に入り、横スクロールなし、氏名・連絡先・未採番対象の非表示、初回通信失敗後の選択保持と再試行の2件が成功した。PR #15のGitHub Actions verify・E2Eも成功した。
 - 全体`format:check`はWindows改行由来の既存446ファイルで失敗したため、今回変更ファイルのPrettierと`git diff --check`を個別確認した。
-- DB・migration・API契約は変更していない。migration 0017は全環境未適用。PR #13/N0、PR #14/N1も未マージであり、release/mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。
-- 次はN2の独立レビューと実機UAT。立食の対象者選択方式をクライアントが確定し、N0〜N2を順にレビュー・適用するまではfeatureをOFFに保つ。N3集計・運営ログ、N4ラスト3分は別フェーズとする。
+- N2固有のDB・migration・API契約変更はない。migration 0017は全環境未適用。PR #13/N0とPR #14/N1は最終レビュー完了・Ready、PR #15/N2も最終レビュー完了でMERGEABLE。いずれも未マージであり、release/mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。
+- 次はPR #13→#14→#15の順でマージ判断し、その後にバックアップ、0017適用判断、合成データでの実機UATを別承認で行う。立食の対象者選択方式をクライアントが確定し、実機UATを完了するまではfeatureをOFFに保つ。N3集計・運営ログ、N4ラスト3分は別フェーズとする。
 
 ### ワンタップメモ N1基盤（2026-08-05、実装済み・未適用・未デプロイ）
 
@@ -32,12 +33,13 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 - migration `0017_previous_squadron_sinister.sql`で、イベント別option snapshot、interaction slot、slot participant、本人専用noteを追加した。tenant、event、service、participant、slot、optionの整合性は複合外部キーで保証し、actor自身、slot外、cross-tenant/event/service、snapshot外optionをDBでも拒否する。
 - featureは有効snapshotが存在しない限り既定OFF。参加確定・来場済みの本人だけが、自分と同じ実会話slotの対象一覧と自分のメモを取得・更新できる。相手のメモ、被選択数、氏名、LINE情報は返さない。
 - 保存は主タグ1つ＋favorite、PUT、expected revisionで競合を検出する。同値再送は現在値を返し、unique制約で二重行を防止する。監査ログにはnote内容を残さずrevisionだけを記録する。
+- 再レビューでnoteの一意制約と既存行検索へ`snapshot_id`を追加した。新snapshotを有効化しても旧版メモを変更せず、新版入力を別行として保存できる。migration SQL、Drizzle schema、metadataは一致し、schema driftがないことを確認した。
 - APIは`Cache-Control: no-store`、成功`{ data }`、失敗`{ code, message, request_id }`。取消・欠席、回避対象、slot外を非公開エラーで拒否する。
-- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体350件、結合40件、production build成功。新規の単体・契約・DB結合テストは12件成功。
+- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体352件、結合40件、production build成功。interaction memoのfocused単体・契約・DB結合テストは14件成功し、旧・新snapshotの同一slot/targetメモ共存も確認した。PR #14のGitHub Actions verify・E2Eも成功した。
 - 全体`format:check`はWindows改行由来の既存432ファイルで失敗。今回変更ファイルは個別Prettierと`git diff --check`で確認する。
 - migration 0017は全環境未適用。release/mainへのマージ、staging/production deployment、本番設定、実データ使用、LINE通知は実施していない。
-- stacked draft PR #14（base: `codex/marriage-v2-interaction-memo-n0`）を作成した。GitHub Actionsのverify・E2Eは成功し、mergeableを確認した。PR #13/N0とPR #14/N1はいずれも未マージ。
-- 次はN1の独立レビュー。その後のN2は参加者の片手操作画面だけを実装する。立食用の参加者番号前方一致＋確認、slot作成、管理画面の版付き設定は`IM-D01`未決のためN2へ含めない。本番日が近いため、0017適用とfeature有効化は別のGo判断とバックアップ承認を必須とする。
+- PR #14（base: `codex/marriage-v2-interaction-memo-n0`）は独立レビュー完了、Ready、MERGEABLE。PR #13/N0も独立レビュー完了、Ready、MERGEABLE。どちらも未マージ。
+- 次は依存順のマージ判断とN2参加者画面の実機UAT。立食用の参加者番号前方一致＋確認、slot作成、管理画面の版付き設定は`IM-D01`未決のためN2へ含めない。本番日が近いため、0017適用とfeature有効化は別のGo判断とバックアップ承認を必須とする。
 
 ### ワンタップメモ N0調査（2026-08-05、設計完了・未実装）
 
