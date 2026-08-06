@@ -2,9 +2,9 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。会話メモ設定・版管理のstaging migration適用）
+最終更新: 2026-08-07（Asia/Tokyo、Codex。会話メモ設定・版管理のstaging配備・合成UAT）
 作業ブランチ: `codex/interaction-memo-admin-settings`
-会話メモ設定PR: `#23`（release向け、実装HEAD `4905b74`、GitHub Actions障害によるCI再実行待ち）
+会話メモ設定PR: `#23`（release向け、配備前HEAD `626cfe7`、GitHub Actions障害による最新CI再確認待ち）
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -19,7 +19,7 @@ release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
 
-### 会話メモ設定・版管理（2026-08-07、実装・独立レビュー・staging migration済み、未デプロイ）
+### 会話メモ設定・版管理（2026-08-07、実装・独立レビュー・staging migration・配備・合成UAT済み）
 
 - イベント管理画面に「会話メモ設定」を追加した。参加者番号による本人選択、運営作成枠、運営取込枠の登録方式、入力終了日時、公開プロフィールallowlist、最大8件の主タグ選択肢を新しい下書きとして作成できる。
 - 公開中の設定を直接編集せず、下書き作成→権限者による公開→停止の専用フローと全版履歴を実装した。新版公開時は同一tenant/event/serviceの旧公開版を自動停止し、過去のoption・参加者メモを削除または上書きしない。
@@ -30,7 +30,9 @@ release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 - 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体76ファイル382件、結合4ファイル44件、重点8件、production build、依存監査（既知脆弱性0件）、readiness（欠損ファイル0件）は成功した。全E2Eは45件成功・8件skip・既存manual表示1件が一時失敗し、該当mobile manual 4件を直列再実行して全件成功した。既存プロセスが3100番を使用していたため、Playwrightのポートを環境変数で変更可能にして3101番で実行した。
 - 全体`format:check`はWindows改行差により既存ファイルを含む472件で失敗したが、変更ファイルは個別Prettierと`git diff --check`で確認する。
 - PR #23を`release/2026-08-08-readiness`向けに作成した。初回GitHub Actionsはコード実行前の`Set up job`でGitHub側の`Service Unavailable`により失敗し、公式StatusでもActions Partial Outageを確認した。ローカル検証結果とは分離し、復旧後に同一HEADを再実行する。
-- 利用者承認後、stagingが0015までだったため、論理バックアップを取得して未適用migration 0016〜0021を順番に適用した。適用後はmigration 22/22、public table 70、接続先一致、backup readiness issue 0、lifecycle不整合0、複数公開scope 0を確認した。詳細は`MIGRATION_0016_0021_STAGING_RECORD_20260807.md`。production migration、release/mainへのマージ、staging/productionデプロイ、本番イベントでの公開、本番データ操作、LINE通知は実施していない。次はPR #23のCI再実行と、アプリケーション配備後の合成データ管理画面UATである。
+- 利用者承認後、stagingが0015までだったため、論理バックアップを取得して未適用migration 0016〜0021を順番に適用した。適用後はmigration 22/22、public table 70、接続先一致、backup readiness issue 0、lifecycle不整合0、複数公開scope 0を確認した。詳細は`MIGRATION_0016_0021_STAGING_RECORD_20260807.md`。
+- 同じ承認範囲でPR版をVercel `shime-staging`へ配備した。deployment `dpl_54tq57UaTwpBvapZWmRQMjLK4mYL`はReady、alias health 200、管理ログイン200、staging警告を確認した。`[検証専用] SHIME RH-C`で下書きversion 1作成・公開、version 2作成・公開、旧版自動停止、新版停止を実行し、終了時の公開版0件を確認した。未認証APIは401。詳細は`INTERACTION_MEMO_STAGING_UAT_20260807.md`。
+- UAT所見として、存在しないevent IDの一覧APIは漏えいなしの空200を返した。404へ統一するかは独立レビュー対象。既存受付ロール検証アカウントのパスワード不一致により実セッション403と、認証済み320px画面操作は未実施。production migration/deploy、release/mainへのマージ、本番イベント設定、本番データ操作、LINE通知は実施していない。次はGitHub Actions復旧後の最新HEAD再確認と上記所見のレビューである。
 - マッチ成立後チャット（双方同意、結果公開済み、72時間、block/report、rate limit、監査、期限後非表示）と、会話メモの匿名集計・運営ダッシュボードは未実装。安全境界が異なるため、それぞれ独立PRとして進める。
 
 ### スタッフ個別権限選択（2026-08-06、実装・検証済み、未適用・未デプロイ）

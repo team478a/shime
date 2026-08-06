@@ -52,10 +52,10 @@ stagingの`DATABASE_MIGRATION_URL`を明示したプロセスで`pnpm db:migrate
 - 複数公開scope: 0件
 - 既存会話メモsnapshot: 0件（backfill対象なし）
 
-## 安全状態
+## 適用直後の安全状態
 
 - production migrationは実施していない。
-- staging / productionへのアプリケーションデプロイは実施していない。
-- 会話メモ設定の作成・公開・停止は実施していない。
+- このmigration記録作成時点ではstaging / productionへのアプリケーションデプロイを実施していなかった。その後、利用者の別承認によりstagingだけへ配備した。
+- このmigration記録作成時点では会話メモ設定の作成・公開・停止を実施していなかった。その後、合成イベントでUATを行い、終了時に公開版0件へ戻した。
 - 実参加者データ、LINE通知、本番設定は使用・変更していない。
-- 次はPR #23のGitHub Actions復旧後の再実行と、アプリケーション配備後の合成データ管理画面UATである。
+- 後続の配備・UAT結果は`INTERACTION_MEMO_STAGING_UAT_20260807.md`を参照する。
