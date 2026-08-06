@@ -57,6 +57,7 @@ const eventItemTemplates: readonly AdminNavigationGroup[] = [
       { key: "form-fields", label: "申込フォーム項目", href: "form-fields", permission: "event:write" },
       { key: "dream", label: "Dream設定", href: "dream", permission: "event:write" },
       { key: "questionnaire", label: "席案内5問", href: "questionnaire", permission: "event:write" },
+      { key: "interaction-memo", label: "会話メモ設定", href: "interaction-memo", permission: "event:write" },
       { key: "concierge-event", label: "診断テンプレート適用", href: "concierge", permission: "concierge:manage" },
     ],
   },

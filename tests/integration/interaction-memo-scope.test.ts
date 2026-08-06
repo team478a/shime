@@ -32,7 +32,7 @@ function seedScope(scope: number) {
       (participantId, index) =>
         `insert into participants(id, tenant_id, event_id, application_id, participant_number, status, dream_state) values ('${participantId}','${tenantId}','${eventId}','${applicationIds[index]}','A0${index + 1}','confirmed','skipped')`,
     ),
-    `insert into event_interaction_note_snapshots(id, tenant_id, event_id, service_type, version, enabled, target_source, editable_until, created_by) values ('${snapshotId}','${tenantId}','${eventId}','marriage',1,true,'interaction_slot',now() + interval '1 day','${staffUserId}')`,
+    `insert into event_interaction_note_snapshots(id, tenant_id, event_id, service_type, version, enabled, status, target_source, editable_until, published_at, created_by) values ('${snapshotId}','${tenantId}','${eventId}','marriage',1,true,'published','interaction_slot',now() + interval '1 day',now(),'${staffUserId}')`,
     `insert into interaction_note_options(id, tenant_id, event_id, service_type, snapshot_id, code, label, display_order) values ('${optionId}','${tenantId}','${eventId}','marriage','${snapshotId}','comfortable','Comfortable',1)`,
     `insert into interaction_slots(id, tenant_id, event_id, service_type, source, source_ref, round_no) values ('${slotId}','${tenantId}','${eventId}','marriage','seating','pair-${scope}',1)`,
     ...participantIds.map(
@@ -44,6 +44,36 @@ function seedScope(scope: number) {
 }
 
 describe("interaction memo migration and scope constraints", () => {
+  it("enforces draft, published and stopped lifecycle while allowing only one published version", async () => {
+    client = new PGlite();
+    await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
+    const first = seedScope(1);
+    const second = seedScope(2);
+    await client.exec(`${first.sql};\n${second.sql};`);
+    const draftId = id(1, 32);
+
+    await expect(
+      client.exec(
+        `insert into event_interaction_note_snapshots(id,tenant_id,event_id,service_type,version,enabled,status,target_source,created_by) values ('${draftId}','${first.tenantId}','${first.eventId}','marriage',2,false,'draft','self_reported','${first.staffUserId}')`,
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      client.exec(
+        `update event_interaction_note_snapshots set enabled=true,status='published',published_at=now() where id='${draftId}'`,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      client.exec(
+        `update event_interaction_note_snapshots set enabled=false,status='stopped',published_at=now(),stopped_at=now() where id='${draftId}'`,
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      client.exec(
+        `insert into event_interaction_note_snapshots(tenant_id,event_id,service_type,version,enabled,status,target_source,created_by) values ('${first.tenantId}','${second.eventId}','marriage',3,false,'draft','self_reported','${first.staffUserId}')`,
+      ),
+    ).rejects.toThrow();
+  }, 30_000);
+
   it("stores only the fixed allowlist and limits the private memo to 120 characters and 3 lines", async () => {
     client = new PGlite();
     await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
@@ -109,7 +139,8 @@ describe("interaction memo migration and scope constraints", () => {
     await expect(
       client.exec(
         [
-          `insert into event_interaction_note_snapshots(id, tenant_id, event_id, service_type, version, enabled, target_source, editable_until, created_by) values ('${nextSnapshotId}','${first.tenantId}','${first.eventId}','marriage',2,true,'interaction_slot',now() + interval '1 day','${first.staffUserId}')`,
+          `update event_interaction_note_snapshots set enabled=false,status='stopped',stopped_at=now() where id='${first.snapshotId}'`,
+          `insert into event_interaction_note_snapshots(id, tenant_id, event_id, service_type, version, enabled, status, target_source, editable_until, published_at, created_by) values ('${nextSnapshotId}','${first.tenantId}','${first.eventId}','marriage',2,true,'published','interaction_slot',now() + interval '1 day',now(),'${first.staffUserId}')`,
           `insert into interaction_note_options(id, tenant_id, event_id, service_type, snapshot_id, code, label, display_order) values ('${nextOptionId}','${first.tenantId}','${first.eventId}','marriage','${nextSnapshotId}','comfortable','Comfortable v2',1)`,
           `insert into interaction_notes(tenant_id,event_id,service_type,snapshot_id,actor_participant_id,target_participant_id,interaction_slot_id,feeling_code,favorite) values ('${first.tenantId}','${first.eventId}','marriage','${nextSnapshotId}','${first.participantIds[0]}','${first.participantIds[1]}','${first.slotId}','comfortable',false)`,
         ].join(";\n"),

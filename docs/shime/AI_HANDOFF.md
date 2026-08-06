@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-06（Asia/Tokyo、Codex。スタッフ個別権限選択を実装）
-作業ブランチ: `codex/staff-permission-checkboxes`
+最終更新: 2026-08-06（Asia/Tokyo、Codex。会話メモ設定・版管理を実装）
+作業ブランチ: `codex/interaction-memo-admin-settings`
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -14,9 +14,21 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 PR #13 merge commit: `d53df09274dd0a27e4b1aac24681a85bf9c9a50d`
 PR #14 merge commit: `9c98cf54ccd589af04417ae5f74c2ad3e9d0093d`
 PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
-release HEAD（本作業開始時）: `a292d1b1016591c014f9167568307fea37f50180`
+release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### 会話メモ設定・版管理（2026-08-06、実装・検証中、未適用・未デプロイ）
+
+- イベント管理画面に「会話メモ設定」を追加した。参加者番号による本人選択、運営作成枠、運営取込枠の登録方式、入力終了日時、公開プロフィールallowlist、最大8件の主タグ選択肢を新しい下書きとして作成できる。
+- 公開中の設定を直接編集せず、下書き作成→権限者による公開→停止の専用フローと全版履歴を実装した。新版公開時は同一tenant/event/serviceの旧公開版を自動停止し、過去のoption・参加者メモを削除または上書きしない。
+- migration `0021_rapid_falcon.sql`でsnapshotへ`draft | published | stopped`状態と公開・停止日時を追加した。同一tenant/event/serviceで公開中を1件に限定する部分UNIQUE、状態・enabled・日時の整合性CHECK、既存有効版のbackfillを追加した。cross-tenant/eventは従来の複合FKで引き続き拒否する。
+- 管理APIはstaff event handler、UseCase、Repository、Drizzle実装の順で分離した。作成・公開・停止は監査ログへ版番号と件数だけを記録し、参加者、相手、感情、本人専用メモを複製しない。作成・閲覧は`event:write`、公開・停止は既存の強い`concierge:publish`権限で保護する。
+- 参加者導線は有効な公開snapshotが存在する場合だけ従来どおり表示される。migration適用だけではfeatureはONにならず、管理者が明示的に公開するまで参加者画面は変わらない。
+- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体76ファイル382件、結合4ファイル44件、重点8件、production build、依存監査（既知脆弱性0件）、readiness（欠損ファイル0件）は成功した。全E2Eは45件成功・8件skip・既存manual表示1件が一時失敗し、該当mobile manual 4件を直列再実行して全件成功した。既存プロセスが3100番を使用していたため、Playwrightのポートを環境変数で変更可能にして3101番で実行した。
+- 全体`format:check`はWindows改行差により既存ファイルを含む472件で失敗したが、変更ファイルは個別Prettierと`git diff --check`で確認する。
+- `readiness:strict`は正式イベント情報14項目が未確定のため想定どおり失敗し、今回のコード不具合とは分離する。migration 0021適用、release/mainへのマージ、staging/productionデプロイ、本番イベントでの公開、本番データ操作、LINE通知は実施していない。次は独立レビューと合成データ管理画面UATである。
+- マッチ成立後チャット（双方同意、結果公開済み、72時間、block/report、rate limit、監査、期限後非表示）と、会話メモの匿名集計・運営ダッシュボードは未実装。安全境界が異なるため、それぞれ独立PRとして進める。
 
 ### スタッフ個別権限選択（2026-08-06、実装・検証済み、未適用・未デプロイ）
 
