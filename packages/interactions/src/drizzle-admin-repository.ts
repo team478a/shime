@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
 import { auditLogs, eventInteractionNoteSnapshots, events, getDatabase, interactionNoteOptions } from "@shime/db";
 import type { InteractionMemoAdminRepository, InteractionMemoLifecycleResult } from "./admin-repository";
-import type { InteractionMemoAdminScope, InteractionMemoAdminSnapshot } from "./admin-types";
+import type { InteractionMemoAdminSnapshot } from "./admin-types";
 import { interactionMemoSnapshotStatusSchema } from "./admin-types";
 import { interactionPublicProfileFieldKeysSchema, interactionTargetSourceSchema } from "./types";
 
