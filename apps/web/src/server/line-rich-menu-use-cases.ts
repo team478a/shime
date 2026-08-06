@@ -4,6 +4,7 @@ import {
   HttpLineRichMenuProvider,
   type LineRichMenuProviderFactory,
   PublishLineRichMenu,
+  SaveLineRichMenuSettings,
 } from "@shime/integrations";
 import { getLineChannelAccessToken } from "./line-provider";
 import { PngLineRichMenuImageRenderer } from "./line-rich-menu-image";
@@ -18,5 +19,6 @@ export function createLineRichMenuUseCases() {
   return {
     getState: new GetLineRichMenuAdminState(repository),
     publish: new PublishLineRichMenu(repository, providers, new PngLineRichMenuImageRenderer()),
+    saveSettings: new SaveLineRichMenuSettings(repository),
   };
 }

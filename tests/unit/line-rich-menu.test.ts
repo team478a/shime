@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  defaultLineRichMenuAppearance,
   HttpLineRichMenuProvider,
   type LineRichMenuImageRenderer,
   type LineRichMenuProvider,
   type LineRichMenuRepository,
   PublishLineRichMenu,
   PublishLineRichMenuError,
+  SaveLineRichMenuSettings,
 } from "@shime/integrations";
 import { PngLineRichMenuImageRenderer } from "../../apps/web/src/server/line-rich-menu-image";
 
@@ -23,11 +25,21 @@ function fixtures() {
     }),
     getLineSettings: vi.fn(async () => ({
       enabled: true,
-      config: { channelId: "channel", liffId: "1234567890-abcdefgh", richMenu: { current: null, history: [] } },
+      config: {
+        channelId: "channel",
+        liffId: "1234567890-abcdefgh",
+        richMenu: { current: null, history: [], draft: null },
+      },
     })),
     saveDeployment: vi.fn(async () => {
       calls.push("save");
     }),
+    saveDraft: vi.fn(async (input) => ({
+      version: 1,
+      appearance: input.appearance,
+      updatedAt: input.updatedAt,
+      updatedBy: input.actorUserId,
+    })),
   };
   const provider: LineRichMenuProvider = {
     getDefault: vi.fn(async () => ({ source: "messaging_api" as const, richMenuId: "richmenu-old" })),
@@ -70,7 +82,7 @@ function fixtures() {
 
 describe("LINE rich-menu publication", () => {
   it("publishes in the required order and records the scoped event deployment", async () => {
-    const { calls, repository, useCase } = fixtures();
+    const { calls, imageRenderer, repository, useCase } = fixtures();
     const result = await useCase.execute({ tenantId, eventId, actorUserId, requestId: "request-1" });
 
     expect(calls).toEqual(["validate", "create", "upload", "default:richmenu-new", "save"]);
@@ -79,6 +91,46 @@ describe("LINE rich-menu publication", () => {
     expect(repository.saveDeployment).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId, actorUserId, requestId: "request-1" }),
     );
+    expect(imageRenderer.render).toHaveBeenCalledWith({
+      eventName: "UATイベント",
+      appearance: defaultLineRichMenuAppearance,
+    });
+  });
+
+  it("publishes the saved appearance version and keeps the event-scoped destination", async () => {
+    const { imageRenderer, provider, repository, useCase } = fixtures();
+    const appearance = {
+      ...defaultLineRichMenuAppearance,
+      menuNameTemplate: "EVENT {eventName}",
+      chatBarText: "参加画面を開く",
+      actionLabel: "参加画面",
+      title: "LOVE",
+      accentColor: "#123456",
+    };
+    vi.mocked(repository.getLineSettings).mockResolvedValueOnce({
+      enabled: true,
+      config: {
+        channelId: "channel",
+        liffId: "1234567890-abcdefgh",
+        richMenu: {
+          current: null,
+          history: [],
+          draft: { version: 3, appearance, updatedAt: "2026-08-06T00:00:00.000Z", updatedBy: actorUserId },
+        },
+      },
+    });
+
+    const result = await useCase.execute({ tenantId, eventId, actorUserId, requestId: "request-custom" });
+
+    expect(result).toMatchObject({ settingsVersion: 3, appearance });
+    expect(provider.validate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "EVENT UATイベント",
+        chatBarText: "参加画面を開く",
+        areas: [expect.objectContaining({ action: expect.objectContaining({ label: "参加画面" }) })],
+      }),
+    );
+    expect(imageRenderer.render).toHaveBeenCalledWith({ eventName: "UATイベント", appearance });
   });
 
   it("rejects an event outside the tenant before contacting LINE", async () => {
@@ -135,6 +187,42 @@ describe("LINE rich-menu publication", () => {
   });
 });
 
+describe("LINE rich-menu settings", () => {
+  it("saves a validated version without contacting LINE", async () => {
+    const { provider, repository } = fixtures();
+    const useCase = new SaveLineRichMenuSettings(repository, () => new Date("2026-08-06T01:00:00Z"));
+    const appearance = { ...defaultLineRichMenuAppearance, title: "LOVE", accentColor: "#123456" };
+
+    const result = await useCase.execute({
+      tenantId,
+      actorUserId,
+      requestId: "settings-1",
+      appearance,
+    });
+
+    expect(result).toMatchObject({ version: 1, appearance });
+    expect(repository.saveDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId, actorUserId, requestId: "settings-1", appearance }),
+    );
+    expect(provider.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported image text before saving", async () => {
+    const { repository } = fixtures();
+    const useCase = new SaveLineRichMenuSettings(repository);
+
+    await expect(
+      useCase.execute({
+        tenantId,
+        actorUserId,
+        requestId: "settings-invalid",
+        appearance: { ...defaultLineRichMenuAppearance, title: "SHIME婚活" },
+      }),
+    ).rejects.toThrow();
+    expect(repository.saveDraft).not.toHaveBeenCalled();
+  });
+});
+
 describe("HTTP LINE rich-menu provider", () => {
   it("uses the API-data host for PNG upload and authenticates every request", async () => {
     const fetcher = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }));
@@ -156,7 +244,10 @@ describe("HTTP LINE rich-menu provider", () => {
 
 describe("LINE rich-menu image", () => {
   it("renders a valid LINE-compatible PNG below one megabyte", async () => {
-    const image = await new PngLineRichMenuImageRenderer().render({ eventName: "UAT <確認> & test" });
+    const image = await new PngLineRichMenuImageRenderer().render({
+      eventName: "UAT <確認> & test",
+      appearance: { ...defaultLineRichMenuAppearance, title: "LOVE 2026", accentColor: "#123456" },
+    });
     expect([...image.bytes.slice(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
     expect(readPngSize(image.bytes)).toEqual({ width: 2500, height: 843 });
     expect(image.bytes.byteLength).toBeLessThanOrEqual(1_000_000);

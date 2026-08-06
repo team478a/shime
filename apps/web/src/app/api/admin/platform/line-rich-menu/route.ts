@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PublishLineRichMenuError } from "@shime/integrations";
+import { lineRichMenuAppearanceSchema, PublishLineRichMenuError } from "@shime/integrations";
 import { NextResponse } from "next/server";
 import { AppError, BusinessRuleError } from "@shime/web/server/api/errors";
 import { parseJsonBody, staffHandler } from "@shime/web/server/api/staff-handler";
@@ -9,6 +9,8 @@ const publishInput = z.object({
   eventId: z.string().uuid(),
   confirmation: z.literal("APPLY_DEFAULT_RICH_MENU"),
 });
+
+const settingsInput = z.object({ appearance: lineRichMenuAppearanceSchema });
 
 const useCases = createLineRichMenuUseCases();
 
@@ -32,5 +34,21 @@ export const POST = staffHandler({ permission: "staff:manage" }, async ({ reques
       throw new BusinessRuleError(error.code);
     }
     throw new AppError(error.code, 502);
+  }
+});
+
+export const PUT = staffHandler({ permission: "staff:manage" }, async ({ requestId, session }, request: Request) => {
+  const input = await parseJsonBody(request, settingsInput);
+  try {
+    const draft = await useCases.saveSettings.execute({
+      tenantId: session.tenantId,
+      actorUserId: session.userId,
+      requestId,
+      appearance: input.appearance,
+    });
+    return NextResponse.json({ data: draft });
+  } catch (error) {
+    if (!(error instanceof PublishLineRichMenuError)) throw error;
+    throw new BusinessRuleError(error.code);
   }
 });

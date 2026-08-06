@@ -61,7 +61,7 @@ export function createDrizzleLineRichMenuRepository(): LineRichMenuRepository {
         await tx
           .update(tenantServiceSettings)
           .set({
-            config: { ...config, richMenu: { current: input.deployment, history } },
+            config: { ...config, richMenu: { ...config.richMenu, current: input.deployment, history } },
             updatedBy: input.actorUserId,
             updatedAt: new Date(input.deployment.appliedAt),
           })
@@ -79,6 +79,50 @@ export function createDrizzleLineRichMenuRepository(): LineRichMenuRepository {
           after: { richMenuId: input.deployment.richMenuId, eventId: input.deployment.eventId },
           requestId: input.requestId,
         });
+      });
+    },
+
+    async saveDraft(input) {
+      const db = getDatabase();
+      return db.transaction(async (tx) => {
+        const row = (
+          await tx
+            .select({ config: tenantServiceSettings.config })
+            .from(tenantServiceSettings)
+            .where(
+              and(eq(tenantServiceSettings.tenantId, input.tenantId), eq(tenantServiceSettings.serviceKey, "line")),
+            )
+            .limit(1)
+        )[0];
+        if (!row) throw new Error("LINE_SETTINGS_NOT_FOUND");
+        const config = lineServiceConfigSchema.parse(row.config);
+        const draft = {
+          version: (config.richMenu.draft?.version ?? 0) + 1,
+          appearance: input.appearance,
+          updatedAt: input.updatedAt,
+          updatedBy: input.actorUserId,
+        };
+        await tx
+          .update(tenantServiceSettings)
+          .set({
+            config: { ...config, richMenu: { ...config.richMenu, draft } },
+            updatedBy: input.actorUserId,
+            updatedAt: new Date(input.updatedAt),
+          })
+          .where(and(eq(tenantServiceSettings.tenantId, input.tenantId), eq(tenantServiceSettings.serviceKey, "line")));
+        await tx.insert(auditLogs).values({
+          tenantId: input.tenantId,
+          actorUserId: input.actorUserId,
+          action: "platform.line.rich_menu.settings.update",
+          targetType: "tenant_service_setting",
+          targetId: input.tenantId,
+          before: config.richMenu.draft
+            ? { version: config.richMenu.draft.version, appearance: config.richMenu.draft.appearance }
+            : null,
+          after: { version: draft.version, appearance: draft.appearance },
+          requestId: input.requestId,
+        });
+        return draft;
       });
     },
   };
