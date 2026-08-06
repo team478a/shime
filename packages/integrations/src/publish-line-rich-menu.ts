@@ -2,7 +2,12 @@ import { buildLiffEventEntryLink } from "@shime/core";
 import type { LineRichMenuProviderFactory } from "./line-rich-menu-provider";
 import { LineRichMenuProviderError } from "./line-rich-menu-provider";
 import type { LineRichMenuImageRenderer, LineRichMenuRepository } from "./line-rich-menu-repository";
-import type { LineRichMenuDefinition } from "./line-rich-menu-types";
+import {
+  defaultLineRichMenuAppearance,
+  type LineRichMenuAppearance,
+  lineRichMenuAppearanceSchema,
+  type LineRichMenuDefinition,
+} from "./line-rich-menu-types";
 
 export class PublishLineRichMenuError extends Error {
   constructor(readonly code: string) {
@@ -25,7 +30,33 @@ export class GetLineRichMenuAdminState {
       liffConfigured: Boolean(line?.config.liffId),
       current: line?.config.richMenu.current ?? null,
       history: line?.config.richMenu.history ?? [],
+      draft: line?.config.richMenu.draft ?? null,
+      appearance: line?.config.richMenu.draft?.appearance ?? defaultLineRichMenuAppearance,
     };
+  }
+}
+
+export class SaveLineRichMenuSettings {
+  constructor(
+    private readonly repository: LineRichMenuRepository,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
+
+  async execute(input: {
+    tenantId: string;
+    actorUserId: string;
+    requestId: string;
+    appearance: LineRichMenuAppearance;
+  }) {
+    const line = await this.repository.getLineSettings(input.tenantId);
+    if (!line) throw new PublishLineRichMenuError("LINE_NOT_CONFIGURED");
+    return this.repository.saveDraft({
+      tenantId: input.tenantId,
+      actorUserId: input.actorUserId,
+      requestId: input.requestId,
+      appearance: lineRichMenuAppearanceSchema.parse(input.appearance),
+      updatedAt: this.now().toISOString(),
+    });
   }
 }
 
@@ -50,8 +81,10 @@ export class PublishLineRichMenu {
     const provider = await this.providers.get(input.tenantId).catch(() => {
       throw new PublishLineRichMenuError("LINE_NOT_CONFIGURED");
     });
-    const definition = this.definition(event.name, eventEntryUrl);
-    const image = await this.imageRenderer.render({ eventName: event.name }).catch(() => {
+    const draft = line.config.richMenu.draft;
+    const appearance = draft?.appearance ?? defaultLineRichMenuAppearance;
+    const definition = this.definition(event.name, eventEntryUrl, appearance);
+    const image = await this.imageRenderer.render({ eventName: event.name, appearance }).catch(() => {
       throw new PublishLineRichMenuError("LINE_RICH_MENU_IMAGE_FAILED");
     });
     const previousDefault = await provider.getDefault().catch((error) => this.providerFailure(error));
@@ -71,6 +104,8 @@ export class PublishLineRichMenu {
         eventEntryUrl,
         appliedAt: this.now().toISOString(),
         appliedBy: input.actorUserId,
+        settingsVersion: draft?.version,
+        appearance,
       };
       await this.repository.saveDeployment({
         tenantId: input.tenantId,
@@ -87,16 +122,20 @@ export class PublishLineRichMenu {
     }
   }
 
-  private definition(eventName: string, eventEntryUrl: string): LineRichMenuDefinition {
+  private definition(
+    eventName: string,
+    eventEntryUrl: string,
+    appearance: LineRichMenuAppearance,
+  ): LineRichMenuDefinition {
     return {
       size: { width: 2500, height: 843 },
       selected: true,
-      name: `SHIME ${eventName}`.slice(0, 300),
-      chatBarText: "SHIMEを開く",
+      name: appearance.menuNameTemplate.replaceAll("{eventName}", eventName).slice(0, 300),
+      chatBarText: appearance.chatBarText,
       areas: [
         {
           bounds: { x: 0, y: 0, width: 2500, height: 843 },
-          action: { type: "uri", uri: eventEntryUrl, label: "SHIMEを開く" },
+          action: { type: "uri", uri: eventEntryUrl, label: appearance.actionLabel },
         },
       ],
     };

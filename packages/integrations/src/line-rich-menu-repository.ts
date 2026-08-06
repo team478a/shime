@@ -1,4 +1,10 @@
-import type { LineRichMenuAdminEvent, LineRichMenuDeployment, LineServiceConfig } from "./line-rich-menu-types";
+import type {
+  LineRichMenuAdminEvent,
+  LineRichMenuAppearance,
+  LineRichMenuDeployment,
+  LineRichMenuDraft,
+  LineServiceConfig,
+} from "./line-rich-menu-types";
 
 export interface LineRichMenuRepository {
   listEvents(tenantId: string): Promise<LineRichMenuAdminEvent[]>;
@@ -10,8 +16,18 @@ export interface LineRichMenuRepository {
     requestId: string;
     deployment: LineRichMenuDeployment;
   }): Promise<void>;
+  saveDraft(input: {
+    tenantId: string;
+    actorUserId: string;
+    requestId: string;
+    appearance: LineRichMenuAppearance;
+    updatedAt: string;
+  }): Promise<LineRichMenuDraft>;
 }
 
 export interface LineRichMenuImageRenderer {
-  render(input: { eventName: string }): Promise<import("./line-rich-menu-types").LineRichMenuImage>;
+  render(input: {
+    eventName: string;
+    appearance: LineRichMenuAppearance;
+  }): Promise<import("./line-rich-menu-types").LineRichMenuImage>;
 }

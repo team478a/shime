@@ -6,11 +6,11 @@ import {
   auditLogs,
   getDatabase,
   jobSchedules,
-  notificationTemplates,
   notifications,
+  notificationTemplates,
   tenantOperationalSettings,
-  tenantServiceSettings,
   tenants,
+  tenantServiceSettings,
 } from "@shime/db";
 import { requireStaffSession } from "../../../../server/auth";
 import { decryptSecrets, encryptSecrets } from "../../../../server/secret-store";
@@ -169,7 +169,9 @@ export async function PUT(request: Request) {
       const previousSecrets = current?.encryptedSecrets ? decryptSecrets(current.encryptedSecrets) : {};
       const encrypted = Object.keys(supplied).length ? encryptSecrets({ ...previousSecrets, ...supplied }) : null;
       const config =
-        data.section === "line" ? { channelId: data.channelId, liffId: data.liffId } : { model: data.model };
+        data.section === "line"
+          ? { ...(current?.config ?? {}), channelId: data.channelId, liffId: data.liffId }
+          : { ...(current?.config ?? {}), model: data.model };
       await tx
         .insert(tenantServiceSettings)
         .values({

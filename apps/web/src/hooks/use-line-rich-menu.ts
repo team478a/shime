@@ -8,6 +8,20 @@ export type LineRichMenuDeployment = {
   eventName: string;
   eventEntryUrl: string;
   appliedAt: string;
+  settingsVersion?: number;
+};
+
+export type LineRichMenuAppearance = {
+  menuNameTemplate: string;
+  chatBarText: string;
+  actionLabel: string;
+  title: string;
+  headline: string;
+  buttonText: string;
+  backgroundColor: string;
+  panelColor: string;
+  accentColor: string;
+  textColor: string;
 };
 
 export type LineRichMenuState = {
@@ -16,6 +30,8 @@ export type LineRichMenuState = {
   liffConfigured: boolean;
   current: LineRichMenuDeployment | null;
   history: LineRichMenuDeployment[];
+  appearance: LineRichMenuAppearance;
+  draft: { version: number; updatedAt: string; appearance: LineRichMenuAppearance } | null;
 };
 
 const errors: Record<string, string> = {
@@ -86,5 +102,34 @@ export function useLineRichMenu() {
     [busy, load],
   );
 
-  return { state, busy, message, publish };
+  const saveSettings = useCallback(
+    async (appearance: LineRichMenuAppearance) => {
+      if (busy) return false;
+      setBusy(true);
+      setMessage("リッチメニュー設定を保存しています…");
+      try {
+        const response = await fetch("/api/admin/platform/line-rich-menu", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ appearance }),
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          setMessage(errors[body.code] ?? `保存失敗: ${body.code ?? "UNKNOWN_ERROR"}`);
+          return false;
+        }
+        setMessage("リッチメニュー設定を新しい版として保存しました。LINEにはまだ反映していません。");
+        await load();
+        return true;
+      } catch {
+        setMessage("管理APIへ接続できませんでした。画面を再読み込みしてください。");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, load],
+  );
+
+  return { state, busy, message, publish, saveSettings };
 }

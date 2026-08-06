@@ -2,9 +2,9 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-05（Asia/Tokyo、Codex。ワンタップメモN0〜N2をreleaseへマージ、未適用・未デプロイ）
-作業ブランチ: `codex/interaction-memo-merge-record`
-deployment source HEAD: `7a616a9`（PR #7 merge commit）
+最終更新: 2026-08-06（Asia/Tokyo、Codex。リッチメニュー管理画面設定を実装、未デプロイ）
+作業ブランチ: `codex/rich-menu-admin-settings`
+deployment source HEAD: `e66407984e9229f4605999a427cd0cb019d1bd9e`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
@@ -13,9 +13,21 @@ PR #7 merge commit: `7a616a9`
 PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まない）
 PR #13 merge commit: `d53df09274dd0a27e4b1aac24681a85bf9c9a50d`
 PR #14 merge commit: `9c98cf54ccd589af04417ae5f74c2ad3e9d0093d`
-PR #15 merge commit / release HEAD: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
+PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
+release HEAD: `e66407984e9229f4605999a427cd0cb019d1bd9e`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### LINEリッチメニュー管理画面設定（2026-08-06、実装済み・未デプロイ）
+
+- 表示文言と配色を管理画面で設定できる。対象はLINE管理上のメニュー名、メニューバー文言、タップ操作名、画像内3文言、背景・パネル・アクセント・文字の4色。
+- タップ先は従来どおり選択イベントのvent付きLIFF URLに限定し、自由URLは許可しない。
+- 設定保存とLINEへの反映を分離した。保存ごとに版番号と実行者・時刻・監査ログを記録し、保存だけではLINE公式アカウントを変更しない。未保存変更中は反映できない。
+- 反映履歴に設定版と設定スナップショットを保存する。既存履歴は後方互換で読み込む。LINE接続情報の再保存でリッチメニュー履歴を消さないよう既存configを保持する。
+- DB migrationは不要。tenant別LINE service config JSONのZod schemaで検証し、tenant境界と管理権限を維持する。
+- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体358件・結合40件成功、production build成功、E2E 45件成功・7件skip、依存脆弱性0件。変更ファイルPrettierと`git diff --check`は成功。全体`format:check`は既知のWindows改行差で失敗。
+- `readiness:strict`は正式イベント情報14項目が未確定のため`productionReady: false`。今回のコード不具合とは分離する。
+- LINE実反映、production deploy、本番イベント変更、通知送信は実施していない。次はPRレビュー後、隔離UATで設定保存のみを確認する。
 
 ### ワンタップメモ N2参加者UI（2026-08-05、実装済み・未適用・未デプロイ）
 
