@@ -32,18 +32,6 @@ function toSnapshot(
   };
 }
 
-async function eventExists(scope: InteractionMemoAdminScope) {
-  return Boolean(
-    (
-      await getDatabase()
-        .select({ id: events.id })
-        .from(events)
-        .where(and(eq(events.tenantId, scope.tenantId), eq(events.id, scope.eventId)))
-        .limit(1)
-    )[0],
-  );
-}
-
 export function createDrizzleInteractionMemoAdminRepository(): InteractionMemoAdminRepository {
   const listSnapshots: InteractionMemoAdminRepository["listSnapshots"] = async (scope) => {
     const rows = await getDatabase()
@@ -83,8 +71,16 @@ export function createDrizzleInteractionMemoAdminRepository(): InteractionMemoAd
   return {
     listSnapshots,
     async createDraft(scope, input): Promise<InteractionMemoLifecycleResult> {
-      if (!(await eventExists(scope))) return { status: "event_not_found" };
       const snapshotId = await getDatabase().transaction(async (tx) => {
+        const event = (
+          await tx
+            .select({ id: events.id })
+            .from(events)
+            .where(and(eq(events.tenantId, scope.tenantId), eq(events.id, scope.eventId)))
+            .limit(1)
+            .for("update")
+        )[0];
+        if (!event) return null;
         const current = (
           await tx
             .select({ value: max(eventInteractionNoteSnapshots.version) })
@@ -140,6 +136,7 @@ export function createDrizzleInteractionMemoAdminRepository(): InteractionMemoAd
         });
         return snapshot.id;
       });
+      if (!snapshotId) return { status: "event_not_found" };
       const snapshot = (await listSnapshots(scope)).find((item) => item.id === snapshotId);
       return snapshot ? { status: "updated", snapshot } : { status: "snapshot_not_found" };
     },
@@ -158,6 +155,7 @@ export function createDrizzleInteractionMemoAdminRepository(): InteractionMemoAd
               ),
             )
             .limit(1)
+            .for("update")
         )[0];
         if (!target) return "snapshot_not_found" as const;
         if (target.status !== "draft" || (target.editableUntil && target.editableUntil <= now)) {
@@ -195,11 +193,25 @@ export function createDrizzleInteractionMemoAdminRepository(): InteractionMemoAd
       return snapshot ? { status: "updated", snapshot } : { status: "snapshot_not_found" };
     },
     async stop(scope, snapshotId, now): Promise<InteractionMemoLifecycleResult> {
-      const target = (await listSnapshots(scope)).find((item) => item.id === snapshotId);
-      if (!target) return { status: "snapshot_not_found" };
-      if (target.status !== "published") return { status: "invalid_state" };
-      await getDatabase().transaction(async (tx) => {
-        await tx
+      const result = await getDatabase().transaction(async (tx) => {
+        const target = (
+          await tx
+            .select({ version: eventInteractionNoteSnapshots.version, status: eventInteractionNoteSnapshots.status })
+            .from(eventInteractionNoteSnapshots)
+            .where(
+              and(
+                eq(eventInteractionNoteSnapshots.tenantId, scope.tenantId),
+                eq(eventInteractionNoteSnapshots.eventId, scope.eventId),
+                eq(eventInteractionNoteSnapshots.serviceType, scope.serviceType),
+                eq(eventInteractionNoteSnapshots.id, snapshotId),
+              ),
+            )
+            .limit(1)
+            .for("update")
+        )[0];
+        if (!target) return "snapshot_not_found" as const;
+        if (target.status !== "published") return "invalid_state" as const;
+        const updated = await tx
           .update(eventInteractionNoteSnapshots)
           .set({ enabled: false, status: "stopped", stoppedAt: now, updatedAt: now })
           .where(
@@ -210,7 +222,9 @@ export function createDrizzleInteractionMemoAdminRepository(): InteractionMemoAd
               eq(eventInteractionNoteSnapshots.id, snapshotId),
               eq(eventInteractionNoteSnapshots.status, "published"),
             ),
-          );
+          )
+          .returning({ id: eventInteractionNoteSnapshots.id });
+        if (!updated[0]) return "invalid_state" as const;
         await tx.insert(auditLogs).values({
           tenantId: scope.tenantId,
           actorUserId: scope.actorUserId,
@@ -222,7 +236,9 @@ export function createDrizzleInteractionMemoAdminRepository(): InteractionMemoAd
           after: { version: target.version, status: "stopped" },
           requestId: scope.requestId,
         });
+        return "updated" as const;
       });
+      if (result !== "updated") return { status: result };
       const stopped = (await listSnapshots(scope)).find((item) => item.id === snapshotId);
       return stopped ? { status: "updated", snapshot: stopped } : { status: "snapshot_not_found" };
     },
