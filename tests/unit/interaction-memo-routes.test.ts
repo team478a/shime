@@ -8,6 +8,7 @@ vi.mock("../../apps/web/src/server/interaction-memo-use-cases", () => ({
   cancelSelfReportedInteractionSlot: { execute: vi.fn() },
   createSelfReportedInteractionSlot: { execute: vi.fn() },
   getInteractionMemoWorkspace: { execute: vi.fn() },
+  getInteractionPublicProfile: { execute: vi.fn() },
   saveInteractionMemo: { execute: vi.fn() },
   searchSelfReportedInteractionTargets: { execute: vi.fn() },
 }));
@@ -15,6 +16,8 @@ vi.mock("../../apps/web/src/server/interaction-memo-use-cases", () => ({
 const { requireParticipantForEvent } = await import("../../apps/web/src/server/participant-auth");
 const useCases = await import("../../apps/web/src/server/interaction-memo-use-cases");
 const { GET } = await import("../../apps/web/src/app/api/liff/events/[eventId]/interaction-memo/route");
+const { GET: GET_PROFILE } =
+  await import("../../apps/web/src/app/api/liff/events/[eventId]/interactions/[targetParticipantId]/profile/route");
 const { PUT } =
   await import("../../apps/web/src/app/api/liff/events/[eventId]/interaction-memo/[slotId]/[targetParticipantId]/route");
 const { GET: GET_CANDIDATES } =
@@ -40,11 +43,16 @@ function noteContext() {
   return { params: Promise.resolve({ eventId, slotId, targetParticipantId }) };
 }
 
+function profileContext() {
+  return { params: Promise.resolve({ eventId, targetParticipantId }) };
+}
+
 beforeEach(() => {
   vi.mocked(requireParticipantForEvent)
     .mockReset()
     .mockResolvedValue(participantAuth as never);
   vi.mocked(useCases.getInteractionMemoWorkspace.execute).mockReset();
+  vi.mocked(useCases.getInteractionPublicProfile.execute).mockReset();
   vi.mocked(useCases.saveInteractionMemo.execute).mockReset();
   vi.mocked(useCases.searchSelfReportedInteractionTargets.execute).mockReset();
   vi.mocked(useCases.createSelfReportedInteractionSlot.execute).mockReset();
@@ -74,7 +82,7 @@ describe("participant interaction memo API contract", () => {
     await expect(response.json()).resolves.toEqual({ data: { enabled: false, options: [], targets: [] } });
   });
 
-  it("binds note ownership to the session and never accepts an actor id from the body", async () => {
+  it("rejects an actor id from the body and always binds ownership to the session", async () => {
     vi.mocked(useCases.saveInteractionMemo.execute).mockResolvedValue({
       ok: true,
       data: {
@@ -101,6 +109,40 @@ describe("participant interaction memo API contract", () => {
       noteContext(),
     );
 
+    expect(response.status).toBe(400);
+    expect(useCases.saveInteractionMemo.execute).not.toHaveBeenCalled();
+  });
+
+  it("saves the private memo and reversible interest flag under the authenticated actor", async () => {
+    vi.mocked(useCases.saveInteractionMemo.execute).mockResolvedValue({
+      ok: true,
+      data: {
+        id: "note-1",
+        interactionSlotId: slotId,
+        targetParticipantId,
+        feelingCode: "comfortable",
+        favorite: true,
+        privateNoteText: "笑顔が印象的",
+        wantsToTalkMore: true,
+        revision: 1,
+        savedAt: new Date("2026-08-08T06:00:00.000Z"),
+      },
+    });
+    const response = await PUT(
+      new Request(`https://example.test/api/liff/events/${eventId}/interaction-memo/${slotId}/${targetParticipantId}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          feelingCode: "comfortable",
+          favorite: true,
+          privateNoteText: "笑顔が印象的",
+          wantsToTalkMore: true,
+          expectedRevision: 0,
+        }),
+      }),
+      noteContext(),
+    );
+
     expect(response.status).toBe(200);
     expect(useCases.saveInteractionMemo.execute).toHaveBeenCalledWith(
       expect.objectContaining({ participantId: "participant-1", actorUserId: "user-1" }),
@@ -109,9 +151,69 @@ describe("participant interaction memo API contract", () => {
         targetParticipantId,
         feelingCode: "comfortable",
         favorite: true,
+        privateNoteText: "笑顔が印象的",
+        wantsToTalkMore: true,
         expectedRevision: 0,
       },
     );
+  });
+
+  it("returns only the server-built allowlisted public profile with no-store", async () => {
+    vi.mocked(useCases.getInteractionPublicProfile.execute).mockResolvedValue({
+      ok: true,
+      data: {
+        participantNumber: "B03",
+        fields: [
+          { key: "nickname", label: "ニックネーム", value: "はな" },
+          { key: "age_or_band", label: "年代", value: "30代" },
+        ],
+      },
+    });
+
+    const response = await GET_PROFILE(
+      new Request(`https://example.test/api/liff/events/${eventId}/interactions/${targetParticipantId}/profile`),
+      profileContext(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toEqual({
+      data: {
+        participantNumber: "B03",
+        fields: [
+          { key: "nickname", label: "ニックネーム", value: "はな" },
+          { key: "age_or_band", label: "年代", value: "30代" },
+        ],
+      },
+    });
+    expect(useCases.getInteractionPublicProfile.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ participantId: "participant-1", eventId, tenantId: "tenant-1" }),
+      targetParticipantId,
+    );
+  });
+
+  it("rejects private memo text over 120 characters or 3 lines before the use case", async () => {
+    for (const privateNoteText of ["x".repeat(121), "1\n2\n3\n4"]) {
+      const response = await PUT(
+        new Request(
+          `https://example.test/api/liff/events/${eventId}/interaction-memo/${slotId}/${targetParticipantId}`,
+          {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              feelingCode: "comfortable",
+              favorite: false,
+              privateNoteText,
+              wantsToTalkMore: true,
+              expectedRevision: 0,
+            }),
+          },
+        ),
+        noteContext(),
+      );
+      expect(response.status).toBe(400);
+    }
+    expect(useCases.saveInteractionMemo.execute).not.toHaveBeenCalled();
   });
 
   it("returns a request id for revision conflicts without exposing private note values", async () => {

@@ -11,6 +11,8 @@ export type InteractionMemoNoteDto = {
   targetParticipantId: string;
   feelingCode: string;
   favorite: boolean;
+  privateNoteText?: string;
+  wantsToTalkMore?: boolean;
   revision: number;
   savedAt: string;
 };
@@ -26,6 +28,15 @@ export type InteractionMemoTargetDto = {
 export type InteractionMemoTargetCandidateDto = {
   targetParticipantId: string;
   participantNumber: string;
+};
+
+export type InteractionPublicProfileDto = {
+  participantNumber: string;
+  fields: Array<{
+    key: string;
+    label: string;
+    value: string;
+  }>;
 };
 
 export type InteractionMemoWorkspaceDto = {

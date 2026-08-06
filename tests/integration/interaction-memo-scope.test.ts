@@ -44,7 +44,7 @@ function seedScope(scope: number) {
 }
 
 describe("interaction memo migration and scope constraints", () => {
-  it("stores only an array allowlist and limits the private memo to 120 characters", async () => {
+  it("stores only the fixed allowlist and limits the private memo to 120 characters and 3 lines", async () => {
     client = new PGlite();
     await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
     const scope = seedScope(4);
@@ -52,7 +52,7 @@ describe("interaction memo migration and scope constraints", () => {
 
     await expect(
       client.exec(
-        `update event_interaction_note_snapshots set public_profile_field_keys_json = '["nickname","hobbies"]'::jsonb where id = '${scope.snapshotId}'`,
+        `update event_interaction_note_snapshots set public_profile_field_keys_json = '["nickname","hobbies","holiday_style","support_wanted","support_offered"]'::jsonb where id = '${scope.snapshotId}'`,
       ),
     ).resolves.toBeDefined();
     await expect(
@@ -73,6 +73,20 @@ describe("interaction memo migration and scope constraints", () => {
     await expect(
       client.exec(
         `update interaction_notes set private_note_text = '${"a".repeat(121)}' where actor_participant_id = '${scope.participantIds[0]}'`,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      client.exec(
+        `update interaction_notes set private_note_text = E'1\\n2\\n3', wants_to_talk_more = true where actor_participant_id = '${scope.participantIds[0]}'`,
+      ),
+    ).resolves.toBeDefined();
+    const saved = await client.query<{ private_note_text: string; wants_to_talk_more: boolean }>(
+      `select private_note_text, wants_to_talk_more from interaction_notes where actor_participant_id = '${scope.participantIds[0]}'`,
+    );
+    expect(saved.rows).toEqual([{ private_note_text: "1\n2\n3", wants_to_talk_more: true }]);
+    await expect(
+      client.exec(
+        `update interaction_notes set private_note_text = E'1\\n2\\n3\\n4' where actor_participant_id = '${scope.participantIds[0]}'`,
       ),
     ).rejects.toThrow();
   }, 30_000);

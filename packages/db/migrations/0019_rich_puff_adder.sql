@@ -1,0 +1,4 @@
+ALTER TABLE "event_interaction_note_snapshots" DROP CONSTRAINT "event_interaction_note_snapshots_public_profile_fields_allowlist_check";--> statement-breakpoint
+ALTER TABLE "interaction_notes" ADD COLUMN "wants_to_talk_more" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "event_interaction_note_snapshots" ADD CONSTRAINT "event_interaction_note_snapshots_public_profile_fields_allowlist_check" CHECK ("event_interaction_note_snapshots"."public_profile_field_keys_json" <@ '["nickname","age_or_band","residence_municipality","occupation","hobbies","holiday_style","support_wanted","support_offered","public_dream"]'::jsonb);--> statement-breakpoint
+ALTER TABLE "interaction_notes" ADD CONSTRAINT "interaction_notes_private_note_lines_check" CHECK ("interaction_notes"."private_note_text" is null or char_length("interaction_notes"."private_note_text") - char_length(replace("interaction_notes"."private_note_text", chr(10), '')) <= 2);

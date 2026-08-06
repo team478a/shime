@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-06（Asia/Tokyo、Codex。優先プロフィール・メモ・マッチ後チャット PR A実装）
-作業ブランチ: `codex/standing-interaction-self-report`
+最終更新: 2026-08-06（Asia/Tokyo、Codex。優先プロフィール・非公開メモ PR B実装）
+作業ブランチ: `codex/interaction-profile-memo-cta`
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -17,6 +17,19 @@ PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
 release HEAD（本作業開始時）: `5adb423cc5863adbd2915303924708f73a902a40`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### 優先プロフィール・非公開メモ PR B（2026-08-06、実装・検証済み、未適用・未デプロイ）
+
+- PR A（PR #19）はGitHubレビュー承認済み・CI成功だが、まだreleaseへマージしていない。PR BはPR AのHEAD `5798dc5`を基点とする積み上げ変更である。
+- 会話メモ画面で参加者番号をタップすると、現在の有効snapshotで許可した項目だけを公開プロフィールとして表示する。許可候補はニックネーム、年代、市区町村、職業、趣味、休日の過ごし方、応援してほしいこと、応援できること、公開Dream。初期allowlistは空のため、設定なしでは自動公開しない。
+- 公開プロフィールAPIは本人と同一tenant/eventの来場済み会話相手だけを対象とし、現在のslotまたは本人申告slot、参加状態、採番、回避対象を再検証する。`Cache-Control: no-store`。本名、生年月日、電話、メール、LINE ID、詳細住所、管理メモ、申込の非公開回答、希望順位、相手別メモ、被選択数はDTOへ含めない。Dreamは公開設定の値だけを返す。
+- 既存の主タグ・お気に入りを維持し、本人専用メモ（最大120文字・3行）と、独立して取消可能な「もう少し話したい」booleanを追加した。後者は相手通知、自動マッチ、スタッフ通常画面表示、AI処理を一切起こさない。既存の主タグ`talk_again`を置換せず、主タグとCTAを独立保存できる設計にした。
+- 保存は従来のrevision競合検出・対象別直列化・同値再送の冪等性を維持する。監査ログにはメモ本文やCTA値を記録せず、revisionだけを記録する。
+- migration `0019_rich_puff_adder.sql`で`interaction_notes.wants_to_talk_more`と3行以内のDB CHECKを追加し、公開プロフィールallowlistを9項目へ拡張した。0018・0019は全環境未適用。Drizzle schema、migration SQL、metadataは一致し、再生成でschema差分なしを確認した。
+- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体75ファイル373件、結合4ファイル42件、production build成功、全E2E 46件成功・8件skip、依存脆弱性0件。プロフィール・保存・DB制約のfocusedテスト34件と320pxモバイルE2E 3件も成功した。
+- 全体`format:check`は既知のWindows改行差436ファイルで失敗。今回変更ファイルは個別Prettierと`git diff --check`で確認する。`readiness`は欠損ファイル0件、`readiness:strict`は正式イベント情報14項目が未確定のため失敗し、コード不具合とは分離する。
+- migration適用、release/mainへのマージ、staging/productionデプロイ、feature有効化、本番データ使用、LINE通知は実施していない。次はPR Bの独立レビューであり、PR Aを先にreleaseへマージしてからPR Bを取り込む。
+- マッチ後チャットはPR Cとして未実装。当事者限定、結果公開済み、双方同意、72時間、block/report、rate limit、監査、終了後非表示が揃うまで公開しない。
 
 ### 優先プロフィール・メモ・マッチ後チャット PR A（2026-08-06、実装済み・未適用・未デプロイ）
 

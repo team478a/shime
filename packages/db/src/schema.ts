@@ -1137,7 +1137,7 @@ export const eventInteractionNoteSnapshots = pgTable(
     ),
     check(
       "event_interaction_note_snapshots_public_profile_fields_allowlist_check",
-      sql`${table.publicProfileFieldKeys} <@ '["nickname","age_or_band","residence_municipality","occupation","hobbies","public_dream"]'::jsonb`,
+      sql`${table.publicProfileFieldKeys} <@ '["nickname","age_or_band","residence_municipality","occupation","hobbies","holiday_style","support_wanted","support_offered","public_dream"]'::jsonb`,
     ),
     foreignKey({
       columns: [table.tenantId, table.eventId],
@@ -1312,6 +1312,7 @@ export const interactionNotes = pgTable(
     feelingCode: varchar("feeling_code", { length: 80 }).notNull(),
     favorite: boolean("favorite").default(false).notNull(),
     privateNoteText: varchar("private_note_text", { length: 120 }),
+    wantsToTalkMore: boolean("wants_to_talk_more").default(false).notNull(),
     revision: integer("revision").default(1).notNull(),
     recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow().notNull(),
     ...timestamps,
@@ -1384,6 +1385,10 @@ export const interactionNotes = pgTable(
     check(
       "interaction_notes_private_note_length_check",
       sql`${table.privateNoteText} is null or char_length(${table.privateNoteText}) <= 120`,
+    ),
+    check(
+      "interaction_notes_private_note_lines_check",
+      sql`${table.privateNoteText} is null or char_length(${table.privateNoteText}) - char_length(replace(${table.privateNoteText}, chr(10), '')) <= 2`,
     ),
   ],
 );

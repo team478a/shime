@@ -12,6 +12,7 @@ import {
 import type { InteractionMemoRepository } from "./repository";
 import { interactionPublicProfileFieldKeysSchema, interactionTargetSourceSchema } from "./types";
 import { saveOwnNoteWithDrizzle } from "./drizzle-save";
+import { getTargetPublicProfileSourceWithDrizzle } from "./drizzle-profile";
 import {
   cancelSelfReportedSlotWithDrizzle,
   createSelfReportedSlotWithDrizzle,
@@ -75,7 +76,7 @@ export function createDrizzleInteractionMemoRepository(): InteractionMemoReposit
     },
 
     async listOptions(scope, snapshotId) {
-      return getDatabase()
+      const rows = await getDatabase()
         .select({
           code: interactionNoteOptions.code,
           label: interactionNoteOptions.label,
@@ -93,6 +94,7 @@ export function createDrizzleInteractionMemoRepository(): InteractionMemoReposit
           ),
         )
         .orderBy(asc(interactionNoteOptions.displayOrder));
+      return rows;
     },
 
     async listTargets(scope) {
@@ -176,13 +178,15 @@ export function createDrizzleInteractionMemoRepository(): InteractionMemoReposit
     },
 
     async listOwnNotes(scope, snapshotId) {
-      return getDatabase()
+      const rows = await getDatabase()
         .select({
           id: interactionNotes.id,
           interactionSlotId: interactionNotes.interactionSlotId,
           targetParticipantId: interactionNotes.targetParticipantId,
           feelingCode: interactionNotes.feelingCode,
           favorite: interactionNotes.favorite,
+          privateNoteText: interactionNotes.privateNoteText,
+          wantsToTalkMore: interactionNotes.wantsToTalkMore,
           revision: interactionNotes.revision,
           savedAt: interactionNotes.recordedAt,
         })
@@ -196,6 +200,11 @@ export function createDrizzleInteractionMemoRepository(): InteractionMemoReposit
             eq(interactionNotes.actorParticipantId, scope.participantId),
           ),
         );
+      return rows.map((row) => ({ ...row, privateNoteText: row.privateNoteText ?? "" }));
+    },
+
+    async getTargetPublicProfileSource(scope, targetParticipantId) {
+      return getTargetPublicProfileSourceWithDrizzle(scope, targetParticipantId);
     },
 
     async saveOwnNote(scope, snapshot, input, now) {

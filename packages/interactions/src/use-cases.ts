@@ -6,8 +6,10 @@ import type {
   InteractionMemoTarget,
   InteractionMemoTargetCandidate,
   InteractionMemoWorkspace,
+  InteractionPublicProfile,
   SaveInteractionMemoInput,
 } from "./types";
+import { buildInteractionPublicProfile } from "./public-profile";
 
 export class GetInteractionMemoWorkspace {
   constructor(
@@ -74,6 +76,31 @@ export class SearchSelfReportedInteractionTargets {
       ok: true,
       data: candidates.filter((candidate) => !registered.has(candidate.targetParticipantId)).slice(0, 10),
     };
+  }
+}
+
+export class GetInteractionPublicProfile {
+  constructor(
+    private readonly repository: InteractionMemoRepository,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
+
+  async execute(
+    scope: InteractionMemoScope,
+    targetParticipantId: string,
+  ): Promise<InteractionMemoResult<InteractionPublicProfile>> {
+    if (!(await this.repository.isParticipantEligible(scope)))
+      return { ok: false, code: "PARTICIPATION_NOT_CONFIRMED", status: 409 };
+    if (scope.participantId === targetParticipantId)
+      return { ok: false, code: "INTERACTION_TARGET_NOT_ALLOWED", status: 404 };
+    const snapshot = await this.repository.findActiveSnapshot(scope, this.now());
+    if (!snapshot) return { ok: false, code: "INTERACTION_MEMO_DISABLED", status: 409 };
+    const targets = await this.repository.listTargets(scope);
+    if (!targets.some((target) => target.targetParticipantId === targetParticipantId))
+      return { ok: false, code: "INTERACTION_TARGET_NOT_ALLOWED", status: 404 };
+    const source = await this.repository.getTargetPublicProfileSource(scope, targetParticipantId);
+    if (!source) return { ok: false, code: "INTERACTION_TARGET_NOT_ALLOWED", status: 404 };
+    return { ok: true, data: buildInteractionPublicProfile(source, snapshot.publicProfileFieldKeys, this.now()) };
   }
 }
 

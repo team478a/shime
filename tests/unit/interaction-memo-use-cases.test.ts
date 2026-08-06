@@ -50,6 +50,7 @@ function repository(overrides: Partial<InteractionMemoRepository> = {}): Interac
     listOptions: async () => [option],
     listTargets: async () => [target],
     listOwnNotes: async () => [],
+    getTargetPublicProfileSource: async () => null,
     searchSelfReportedCandidates: async () => [],
     createSelfReportedSlot: async () => ({ status: "created", target }),
     cancelSelfReportedSlot: async () => ({ status: "cancelled" }),
@@ -60,11 +61,18 @@ function repository(overrides: Partial<InteractionMemoRepository> = {}): Interac
 
 describe("interaction memo use cases", () => {
   it("accepts only the fixed public profile allowlist without duplicates", () => {
-    expect(interactionPublicProfileFieldKeysSchema.parse(["nickname", "age_or_band", "public_dream"])).toEqual([
+    const keys = [
       "nickname",
       "age_or_band",
+      "residence_municipality",
+      "occupation",
+      "hobbies",
+      "holiday_style",
+      "support_wanted",
+      "support_offered",
       "public_dream",
-    ]);
+    ];
+    expect(interactionPublicProfileFieldKeysSchema.parse(keys)).toEqual(keys);
     expect(() => interactionPublicProfileFieldKeysSchema.parse(["full_name"])).toThrow();
     expect(() => interactionPublicProfileFieldKeysSchema.parse(["nickname", "nickname"])).toThrow();
   });
