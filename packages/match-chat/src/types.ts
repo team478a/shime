@@ -63,6 +63,8 @@ export type MatchChatAccessContext = {
 export type MatchChatRoomSetup = {
   room: MatchChatRoom;
   termsVersion: string;
+  maxMessageLength: number;
+  participantConsented: boolean;
 };
 
 export type EncryptedMatchChatMessage = {

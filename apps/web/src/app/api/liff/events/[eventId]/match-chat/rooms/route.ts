@@ -13,6 +13,13 @@ export const POST = participantHandler(resolveEventId, async (handlerContext, re
     return matchChatError({ ok: false, code: "MATCH_CHAT_INVALID_REQUEST", status: 400 }, handlerContext.requestId);
   const result = await ensureMatchChatRoom.execute(matchChatScope(handlerContext), input.data.matchCandidateId);
   return result.ok
-    ? matchChatJson({ data: { ...roomData(result.data.room), termsVersion: result.data.termsVersion } })
+    ? matchChatJson({
+        data: {
+          ...roomData(result.data.room),
+          termsVersion: result.data.termsVersion,
+          maxMessageLength: result.data.maxMessageLength,
+          participantConsented: result.data.participantConsented,
+        },
+      })
     : matchChatError(result, handlerContext.requestId);
 });

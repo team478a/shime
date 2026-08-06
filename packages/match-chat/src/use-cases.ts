@@ -57,17 +57,36 @@ export class EnsureMatchChatRoom {
     const existing = await this.repository.findRoom(scope, eligibility.matchCandidateId);
     if (existing) {
       const access = validateAccess({ config: configResult.data, room: existing, eligibilityActive: true }, scope, now);
-      return access.ok
-        ? { ok: true, data: { room: access.data.room, termsVersion: configResult.data.termsVersion! } }
-        : access;
+      if (!access.ok) return access;
+      const consented = await this.repository.listActiveConsentParticipantIds(scope, existing.id);
+      return {
+        ok: true,
+        data: {
+          room: access.data.room,
+          termsVersion: configResult.data.termsVersion!,
+          maxMessageLength: configResult.data.maxMessageLength,
+          participantConsented: consented.includes(scope.participantId),
+        },
+      };
     }
     return {
       ok: true,
       data: {
         room: await this.repository.createRoom(scope, eligibility, closesAt, now),
         termsVersion: configResult.data.termsVersion!,
+        maxMessageLength: configResult.data.maxMessageLength,
+        participantConsented: false,
       },
     };
+  }
+}
+
+export class GetMatchChatAvailability {
+  constructor(private readonly repository: MatchChatSafetyRepository) {}
+
+  async execute(scope: MatchChatScope): Promise<{ enabled: boolean }> {
+    const parsed = matchChatConfigSchema.safeParse(await this.repository.findConfig(scope));
+    return { enabled: parsed.success && parsed.data.enabled };
   }
 }
 

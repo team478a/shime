@@ -2,7 +2,7 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャットPhase 4Bメッセージ基盤実装・検証完了）
+最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャットPhase 4C参加者UI実装・検証完了）
 作業ブランチ: `codex/match-chat-messaging`（Phase 4Aブランチを積み上げ基点として含む）
 会話メモ設定PR: `#23`（release向け、最新HEAD `81e22d4`、GitHub Actions最新結果の再確認待ち）
 マッチ後チャット安全基盤PR: `#24`（PR #23向け積み上げ、最新実装HEAD `ef45b20`）
@@ -19,6 +19,16 @@ PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
 release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### マッチ成立後チャット Phase 4C 参加者UI（2026-08-07、実装・検証済み、未公開）
+
+- 結果画面に、チャット設定が有効な場合だけ、承認済み成立ペアごとの「チャットを開く」導線を追加した。クライアントにはopaqueなmatch candidate IDだけを渡し、チャットroom ID、参加者同定、tenant/event境界は引き続きサーバー側で確定する。結果APIも`private, no-store`とした。
+- 320px前提の`/liff/chat`を追加し、利用期限表示、規約版確認、双方同意待ちの自動更新、メッセージ一覧・送信、文字数上限、ブロック、通報、結果画面への復帰を実装した。送信は端末側UUIDで冊a等、サーバー設定の文字数上限をUIにも反映する。
+- 本人の同意済み状態はroom setupの安全なbooleanとして返し、再読込み後も二重操作を求めない。相手の同意有無や時刻、participant IDは返さない。ブロック・通報は明示確認後に即時停止し、メッセージを画面から破棄する。
+- コンポーネントのAPI直接呼び出しを増やさないよう`useMatchChat`と`useEventResult`へ分離し、結果表示用の機能有効判定もUseCase経由にした。architecture debtはDB直接route `61/62`、client fetch `23/24`でいずれもbaseline以下。
+- 検証: lintエラー0（既存warningのみ）、architecture成功、typecheck成功、単体79ファイル400件、結合5ファイル47件、production build成功、依存監査は既知脆弱性0件。新規mobile E2Eで結果→同意→送受信→ブロックと横はみ出しなしを確認した。全E2Eは46件成功・9件skip・既存manual表示1件が並列実行で一時失敗し、該当mobile manual 4件の直列再実行は全件成功した。
+- 全体`format:check`はWindows CRLF差による既存473ファイルで失敗。今回変更ファイルの個別Prettierと`git diff --check`は成功した。
+- migration 0022/0023適用、staging/productionデプロイ、機能ON、実参加者データ、通知は未実施。次は運営通報対応画面、期限切れ本文の物理削除job、管理画面のチャット設定、正式規約本文と運営フロー確定、合成データstaging UATである。それらが完了するまで機能をONにしない。
 
 ### マッチ成立後チャット Phase 4B メッセージ基盤（2026-08-07、実装・検証済み、未公開）
 

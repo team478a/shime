@@ -64,6 +64,8 @@ describe("participant match chat API contract", () => {
       ok: true,
       data: {
         termsVersion: "chat-v1",
+        maxMessageLength: 500,
+        participantConsented: false,
         room: {
           id: roomId,
           matchCandidateId,
@@ -91,6 +93,11 @@ describe("participant match chat API contract", () => {
     const body = await accepted.json();
     expect(body.data).not.toHaveProperty("participantAId");
     expect(body.data).not.toHaveProperty("participantBId");
+    expect(body.data).toMatchObject({
+      termsVersion: "chat-v1",
+      maxMessageLength: 500,
+      participantConsented: false,
+    });
   });
 
   it("sends an allowlisted message payload and never accepts a sender id from the client", async () => {

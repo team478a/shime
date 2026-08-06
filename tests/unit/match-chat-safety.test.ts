@@ -4,6 +4,7 @@ import {
   BlockMatchChatRoom,
   type EncryptedMatchChatMessage,
   EnsureMatchChatRoom,
+  GetMatchChatAvailability,
   ListMatchChatMessages,
   type MatchChatAccessContext,
   type MatchChatConfig,
@@ -146,10 +147,25 @@ describe("match chat safety foundation", () => {
     ).toBe(true);
   });
 
+  it("exposes only a safe enabled flag to result presentation", async () => {
+    const repository = new FakeRepository();
+    expect(await new GetMatchChatAvailability(repository).execute(scope)).toEqual({ enabled: true });
+    repository.config = { ...config, enabled: false, termsVersion: null, retentionDays: null };
+    expect(await new GetMatchChatAvailability(repository).execute(scope)).toEqual({ enabled: false });
+  });
+
   it("creates a 72-hour room only for an active approved result", async () => {
     const repository = new FakeRepository();
     const result = await new EnsureMatchChatRoom(repository, () => now).execute(scope, "match-1");
-    expect(result).toMatchObject({ ok: true, data: { room: { status: "pending_consent" } } });
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        room: { status: "pending_consent" },
+        termsVersion: "chat-terms-v1",
+        maxMessageLength: 500,
+        participantConsented: false,
+      },
+    });
     if (result.ok) expect(result.data.room.closesAt.toISOString()).toBe("2026-08-11T07:00:00.000Z");
 
     repository.eligibility = { ...eligibility, resultConfirmationActive: false };
@@ -166,6 +182,10 @@ describe("match chat safety foundation", () => {
     const accept = new AcceptMatchChatConsent(repository, () => now);
     const first = await accept.execute(scope, "room-1", "chat-terms-v1");
     expect(first).toMatchObject({ ok: true, data: { status: "pending_consent" } });
+    expect(await new EnsureMatchChatRoom(repository, () => now).execute(scope, "match-1")).toMatchObject({
+      ok: true,
+      data: { participantConsented: true },
+    });
     expect(await accept.execute({ ...scope, participantId: "participant-b" }, "room-1", "old-terms")).toEqual({
       ok: false,
       code: "MATCH_CHAT_TERMS_CHANGED",
