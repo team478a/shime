@@ -214,6 +214,8 @@ importers:
 
   packages/notifications: {}
 
+  packages/operations-analytics: {}
+
   packages/questionnaire: {}
 
   packages/seating: {}

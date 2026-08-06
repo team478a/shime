@@ -57,7 +57,7 @@ describe("admin navigation", () => {
 
   it("does not expose settings or private results to operators", () => {
     const keys = eventKeys("operator");
-    expect(keys).toEqual(["imports", "analytics", "checkin", "seating", "exports"]);
+    expect(keys).toEqual(["imports", "analytics", "communication-analytics", "checkin", "seating", "exports"]);
     expect(keys).not.toContain("settings");
     expect(keys).not.toContain("results");
   });
