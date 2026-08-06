@@ -260,9 +260,16 @@ export const staffRoles = pgTable(
       .references(() => users.id),
     eventId: uuid("event_id").references(() => events.id),
     role: staffRole("role").notNull(),
+    permissions: jsonb("permissions_json").$type<string[]>(),
     ...timestamps,
   },
-  (table) => [uniqueIndex("staff_roles_scope_uidx").on(table.tenantId, table.userId, table.eventId, table.role)],
+  (table) => [
+    uniqueIndex("staff_roles_scope_uidx").on(table.tenantId, table.userId, table.eventId, table.role),
+    check(
+      "staff_roles_permissions_json_check",
+      sql`${table.permissions} is null or (jsonb_typeof(${table.permissions}) = 'array' and ${table.permissions} <@ '["checkin:write","participant:read","operations:read","application:import","application:duplicates","notification:write","event:write","event:delete","seating:write","seating:publish","preference:read","result:confirm","result:revoke","backup:export","backup:sensitive","staff:manage","concierge:manage","concierge:publish","concierge:private-read"]'::jsonb)`,
+    ),
+  ],
 );
 
 export const eventFormFields = pgTable(

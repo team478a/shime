@@ -10,7 +10,10 @@ export default async function EventConciergePage({ params }: { params: Promise<{
   const { eventId } = await params;
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "concierge:manage") || (session.eventId && session.eventId !== eventId))
+  if (
+    !hasPermission(session.role, "concierge:manage", session.permissions) ||
+    (session.eventId && session.eventId !== eventId)
+  )
     redirect("/admin");
   const db = getDatabase();
   const event = (

@@ -10,7 +10,11 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 
   return (
     <AppShell variant="admin">
-      {session && <AdminPrimaryNavigation items={getAdminPrimaryNavigation(session.role, Boolean(session.eventId))} />}
+      {session && (
+        <AdminPrimaryNavigation
+          items={getAdminPrimaryNavigation(session.role, Boolean(session.eventId), session.permissions)}
+        />
+      )}
       {children}
     </AppShell>
   );

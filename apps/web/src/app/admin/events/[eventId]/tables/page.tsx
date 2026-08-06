@@ -17,7 +17,7 @@ const codeCollator = new Intl.Collator("ja", { numeric: true, sensitivity: "base
 export default async function TablesPage({ params }: { params: Promise<{ eventId: string }> }) {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "event:write")) redirect("/admin");
+  if (!hasPermission(session.role, "event:write", session.permissions)) redirect("/admin");
   const { eventId } = await params;
   if (session.eventId && session.eventId !== eventId) notFound();
 

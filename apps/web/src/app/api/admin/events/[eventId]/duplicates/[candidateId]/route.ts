@@ -15,7 +15,7 @@ export async function PATCH(request: Request, context: Context) {
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   try {
-    requirePermission(session.role, "application:duplicates");
+    requirePermission(session.role, "application:duplicates", session.permissions);
   } catch {
     return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
   }

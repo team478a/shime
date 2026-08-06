@@ -44,7 +44,7 @@ export function createStaffHandler(dependencies: StaffHandlerDependencies = defa
           { status: 401 },
         );
       }
-      if (!hasPermission(session.role, options.permission)) {
+      if (!hasPermission(session.role, options.permission, session.permissions)) {
         return NextResponse.json(
           { code: "FORBIDDEN", ...(includeRequestId ? { request_id: requestId } : {}) },
           { status: 403 },

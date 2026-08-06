@@ -14,6 +14,6 @@ export async function AdminPermissionGate({
 }>) {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, permission)) redirect("/admin");
+  if (!hasPermission(session.role, permission, session.permissions)) redirect("/admin");
   return children;
 }

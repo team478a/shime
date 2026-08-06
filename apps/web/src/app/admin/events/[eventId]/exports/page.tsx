@@ -11,7 +11,7 @@ const exports = [
 export default async function ExportsPage({ params }: { params: Promise<{ eventId: string }> }) {
   const session = await requireStaffSession().catch(() => null);
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "backup:export")) redirect("/admin");
+  if (!hasPermission(session.role, "backup:export", session.permissions)) redirect("/admin");
   const { eventId } = await params;
   return (
     <main>
@@ -26,7 +26,7 @@ export default async function ExportsPage({ params }: { params: Promise<{ eventI
             </a>
           ))}
         </div>
-        {hasPermission(session.role, "backup:sensitive") && (
+        {hasPermission(session.role, "backup:sensitive", session.permissions) && (
           <section>
             <h2>責任者限定</h2>
             <p>一方希望、順位、非公開メモを含みます。取扱いに注意してください。</p>

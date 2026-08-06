@@ -53,6 +53,30 @@ describe("database migrations", () => {
     );
     expect(result.rows[0]?.additional_answers).toEqual({ occupation: "company", support_wanted: "hobby" });
   }, 20_000);
+  it("stores only allowlisted per-staff permissions", async () => {
+    client = new PGlite();
+    await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
+    await client.exec(`
+      insert into tenants(id, code, name, status, timezone)
+      values ('30000000-0000-0000-0000-000000000001','staff-scope','Staff Scope','active','Asia/Tokyo');
+      insert into users(id, tenant_id, user_type, status, display_name)
+      values ('30000000-0000-0000-0000-000000000002','30000000-0000-0000-0000-000000000001','staff','active','Synthetic Staff');
+      insert into staff_roles(tenant_id, user_id, role, permissions_json)
+      values (
+        '30000000-0000-0000-0000-000000000001',
+        '30000000-0000-0000-0000-000000000002',
+        'reception',
+        '["checkin:write","participant:read"]'::jsonb
+      );
+    `);
+    await expect(
+      client.exec(`
+        update staff_roles
+        set permissions_json = '["checkin:write","unknown:permission"]'::jsonb
+        where user_id = '30000000-0000-0000-0000-000000000002'
+      `),
+    ).rejects.toThrow();
+  }, 20_000);
   it("prevents duplicate check-in records for one event participant", async () => {
     client = new PGlite();
     const db = drizzle(client);

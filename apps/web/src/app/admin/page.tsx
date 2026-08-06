@@ -13,13 +13,13 @@ export default async function AdminPage() {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
   const eventRows = await getDatabase().select().from(events).where(eq(events.tenantId, session.tenantId));
-  const canWriteEvent = hasPermission(session.role, "event:write");
+  const canWriteEvent = hasPermission(session.role, "event:write", session.permissions);
   const eventItems = await Promise.all(
     eventRows.map(async (event) => {
       const navigationOptions = { seatingMode: getEventSeatingMode(event.settings) };
-      const navigation = getEventAdminNavigation(session.role, event.id, navigationOptions);
+      const navigation = getEventAdminNavigation(session.role, event.id, navigationOptions, session.permissions);
       const items = navigation.flatMap((group) => group.items);
-      const quickActions = getEventAdminQuickActions(session.role, event.id, navigationOptions);
+      const quickActions = getEventAdminQuickActions(session.role, event.id, navigationOptions, session.permissions);
       return {
         event,
         configuration: await getEventConfigurationReadiness(session.tenantId, event.id, event),

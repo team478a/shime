@@ -31,7 +31,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   try {
-    requirePermission(session.role, type.data === "preferences" ? "backup:sensitive" : "backup:export");
+    const permission = type.data === "preferences" ? "backup:sensitive" : "backup:export";
+    requirePermission(session.role, permission, session.permissions);
   } catch {
     return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
   }

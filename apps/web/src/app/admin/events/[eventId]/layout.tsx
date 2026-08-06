@@ -41,9 +41,14 @@ export default async function EventAdminLayout({
           <dd>{STAFF_ROLE_LABELS[session.role]}</dd>
         </dl>
         <AdminEventNavigation
-          groups={getEventAdminNavigation(session.role, eventId, {
-            seatingMode: getEventSeatingMode(event.settings),
-          })}
+          groups={getEventAdminNavigation(
+            session.role,
+            eventId,
+            {
+              seatingMode: getEventSeatingMode(event.settings),
+            },
+            session.permissions,
+          )}
         />
       </aside>
       <div className="admin-event-content">{children}</div>

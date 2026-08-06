@@ -38,6 +38,19 @@ describe("admin navigation", () => {
     ]);
   });
 
+  it("builds navigation from an exact per-staff permission selection", () => {
+    expect(getAdminPrimaryNavigation("reception", false, ["staff:manage"]).map((item) => item.key)).toEqual([
+      "dashboard",
+      "manual",
+      "staff",
+    ]);
+    expect(
+      getEventAdminNavigation("system_admin", "event-1", {}, ["checkin:write"])
+        .flatMap((group) => group.items)
+        .map((item) => item.key),
+    ).toEqual(["checkin"]);
+  });
+
   it("limits reception staff to event-day check-in", () => {
     expect(eventKeys("reception")).toEqual(["checkin"]);
   });

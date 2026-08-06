@@ -141,6 +141,13 @@
       "when": 1786017432870,
       "tag": "0019_rich_puff_adder",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1786023910862,
+      "tag": "0020_smooth_chronomancer",
+      "breakpoints": true
     }
   ]
 }
