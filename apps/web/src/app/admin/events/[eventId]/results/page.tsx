@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { hasPermission } from "@shime/core";
 import { requireStaffSession } from "@shime/web/server/auth";
 import { ResultsConsole } from "./results-console";
 export default async function ResultsPage({ params }: { params: Promise<{ eventId: string }> }) {
@@ -12,8 +13,8 @@ export default async function ResultsPage({ params }: { params: Promise<{ eventI
         <h1>希望・結果確定</h1>
         <ResultsConsole
           eventId={eventId}
-          canDecide={session.role === "manager" || session.role === "system_admin"}
-          canRevoke={session.role === "system_admin"}
+          canDecide={hasPermission(session.role, "result:confirm", session.permissions)}
+          canRevoke={hasPermission(session.role, "result:revoke", session.permissions)}
         />
       </section>
     </main>

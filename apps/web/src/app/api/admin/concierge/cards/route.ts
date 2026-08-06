@@ -24,7 +24,7 @@ export async function GET() {
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   try {
-    requirePermission(session.role, "concierge:manage");
+    requirePermission(session.role, "concierge:manage", session.permissions);
   } catch {
     return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
   }
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED", request_id: requestId }, { status: 401 });
   try {
-    requirePermission(session.role, "concierge:manage");
+    requirePermission(session.role, "concierge:manage", session.permissions);
   } catch {
     return NextResponse.json({ code: "FORBIDDEN", request_id: requestId }, { status: 403 });
   }

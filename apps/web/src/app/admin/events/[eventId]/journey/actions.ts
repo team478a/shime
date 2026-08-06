@@ -11,7 +11,11 @@ import { publishParticipantJourneyDraft, saveParticipantJourneyDraft } from "@sh
 
 async function getAuthorizedSession(eventId: string) {
   const session = await getStaffSession();
-  if (!session || !hasPermission(session.role, "event:write") || (session.eventId && session.eventId !== eventId)) {
+  if (
+    !session ||
+    !hasPermission(session.role, "event:write", session.permissions) ||
+    (session.eventId && session.eventId !== eventId)
+  ) {
     return null;
   }
   return session;

@@ -10,7 +10,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ ve
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   try {
-    requirePermission(session.role, "concierge:publish");
+    requirePermission(session.role, "concierge:publish", session.permissions);
   } catch {
     return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
   }

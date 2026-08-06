@@ -1,24 +1,20 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
+import { type StaffRole } from "@shime/core/events/transitions";
+import { type Permission, permissionsForRole } from "@shime/core/permissions/authorize";
+import { StaffPermissionFields } from "./staff-permission-fields";
 
-type Role = "reception" | "operator" | "manager" | "system_admin";
 type Status = "active" | "locked" | "disabled";
 type Staff = {
   id: string;
   loginId: string;
   displayName: string;
-  role: Role;
+  role: StaffRole;
+  permissions: Permission[];
   status: Status;
   lastLoginAt: string | null;
 };
-const roleLabels: Record<Role, string> = {
-  reception: "受付担当",
-  operator: "運営担当",
-  manager: "責任者",
-  system_admin: "システム管理者",
-};
-
 export function StaffConsole({ initial }: { initial: Staff[] }) {
   const [staff, setStaff] = useState(initial);
   const [message, setMessage] = useState("");
@@ -36,7 +32,7 @@ export function StaffConsole({ initial }: { initial: Staff[] }) {
     const response = await fetch("/api/admin/staff", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(Object.fromEntries(form)),
+      body: JSON.stringify({ ...Object.fromEntries(form), permissions: form.getAll("permissions") }),
     });
     const body = await response.json();
     setBusy(false);
@@ -54,6 +50,7 @@ export function StaffConsole({ initial }: { initial: Staff[] }) {
     const body = {
       displayName: values.get("displayName"),
       role: values.get("role"),
+      permissions: values.getAll("permissions"),
       status: values.get("status"),
       ...(password ? { password } : {}),
     };
@@ -83,16 +80,7 @@ export function StaffConsole({ initial }: { initial: Staff[] }) {
             表示名
             <input name="displayName" required />
           </label>
-          <label>
-            権限
-            <select name="role" defaultValue="operator">
-              {Object.entries(roleLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <StaffPermissionFields initialRole="operator" initialPermissions={permissionsForRole("operator")} />
           <label>
             初期パスワード
             <input name="password" type="password" minLength={12} required autoComplete="new-password" />
@@ -118,16 +106,6 @@ export function StaffConsole({ initial }: { initial: Staff[] }) {
             </label>
             <div className="settings-grid">
               <label>
-                権限
-                <select name="role" defaultValue={item.role}>
-                  {Object.entries(roleLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
                 状態
                 <select name="status" defaultValue={item.status}>
                   <option value="active">有効</option>
@@ -136,6 +114,7 @@ export function StaffConsole({ initial }: { initial: Staff[] }) {
                 </select>
               </label>
             </div>
+            <StaffPermissionFields initialRole={item.role} initialPermissions={item.permissions} />
             <label>
               新しいパスワード（変更時のみ）
               <input name="password" type="password" minLength={12} autoComplete="new-password" />

@@ -20,7 +20,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ even
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   try {
-    requirePermission(session.role, "concierge:manage");
+    requirePermission(session.role, "concierge:manage", session.permissions);
   } catch {
     return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
   }

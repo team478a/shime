@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventDeletionBlocker, staffAccessChangeBlocker } from "@shime/core";
+import { eventDeletionBlocker, staffAccessChangeBlocker, staffPermissionSelectionBlocker } from "@shime/core";
 
 describe("event deletion safety", () => {
   it("allows only an empty confirmed draft", () =>
@@ -30,6 +30,22 @@ describe("event deletion safety", () => {
 });
 
 describe("staff access safety", () => {
+  it("prevents a delegated staff manager from granting permissions they do not hold", () => {
+    expect(
+      staffPermissionSelectionBlocker({
+        actorRole: "manager",
+        actorPermissions: ["staff:manage", "checkin:write"],
+        nextPermissions: ["staff:manage", "event:delete"],
+      }),
+    ).toBe("CANNOT_GRANT_PERMISSION");
+    expect(
+      staffPermissionSelectionBlocker({
+        actorRole: "manager",
+        actorPermissions: ["staff:manage", "checkin:write"],
+        nextPermissions: ["checkin:write"],
+      }),
+    ).toBeNull();
+  });
   it("blocks removing the actor's own system administrator access", () =>
     expect(
       staffAccessChangeBlocker({
@@ -63,4 +79,17 @@ describe("staff access safety", () => {
         activeSystemAdminCount: 2,
       }),
     ).toBeNull());
+  it("blocks removing the actor's own explicit staff management permission", () =>
+    expect(
+      staffAccessChangeBlocker({
+        actorUserId: "a",
+        targetUserId: "a",
+        targetRole: "manager",
+        nextRole: "manager",
+        nextStatus: "active",
+        targetPermissions: ["staff:manage"],
+        nextPermissions: ["event:write"],
+        activeSystemAdminCount: 2,
+      }),
+    ).toBe("CANNOT_REMOVE_OWN_ACCESS"));
 });

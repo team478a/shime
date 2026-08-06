@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
+import { hasPermission } from "@shime/core";
 import { events, getDatabase } from "@shime/db";
 import { requireStaffSession } from "@shime/web/server/auth";
 import { SeatingConsole } from "./seating-console";
@@ -25,7 +26,7 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
         <SeatingConsole
           eventId={eventId}
           eventName={event.name}
-          canPublish={session.role === "manager" || session.role === "system_admin"}
+          canPublish={hasPermission(session.role, "seating:publish", session.permissions)}
         />
       </section>
     </main>

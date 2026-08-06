@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-06（Asia/Tokyo、Codex。優先プロフィール・非公開メモ PR B実装）
-作業ブランチ: `codex/interaction-profile-memo-cta`
+最終更新: 2026-08-06（Asia/Tokyo、Codex。スタッフ個別権限選択を実装）
+作業ブランチ: `codex/staff-permission-checkboxes`
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -14,9 +14,19 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 PR #13 merge commit: `d53df09274dd0a27e4b1aac24681a85bf9c9a50d`
 PR #14 merge commit: `9c98cf54ccd589af04417ae5f74c2ad3e9d0093d`
 PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
-release HEAD（本作業開始時）: `5adb423cc5863adbd2915303924708f73a902a40`
+release HEAD（本作業開始時）: `a292d1b1016591c014f9167568307fea37f50180`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### スタッフ個別権限選択（2026-08-06、実装・検証済み、未適用・未デプロイ）
+
+- 管理画面のスタッフ追加・編集で、役割プリセットに加えて19権限をチェックボックスで個別選択できるようにした。プリセット選択時は推奨権限を反映し、その後に必要な権限だけ増減できる。
+- `staff_roles.permissions_json`をmigration `0020_smooth_chronomancer.sql`で追加する。`null`の既存行は従来の役割プリセットへフォールバックし、配列が保存されている行はその選択を厳密に使用する。不正値は認証境界でfail closedとなり、DB CHECKでも許可リスト外を拒否する。
+- 操作者が自分の保有しない権限を委任する操作、自己の`staff:manage`削除、最後の有効な権限管理者の無効化・権限剥奪、event限定セッションからのtenantスタッフ管理を拒否する。変更時は監査ログを残し、対象スタッフの既存セッションを失効する。
+- 全認可箇所を明示権限へ対応し、管理ナビゲーション、イベント設定、受付、席配置、結果確定、通知、バックアップ、Concierge等の表示・API認可を同一の実効権限で判定する。
+- 検証: architecture、lint、typecheck、単体75ファイル379件、結合4ファイル43件、production build、依存監査は成功。全E2Eの初回実行は44件成功・8件skip・既存モバイル表示2件が一時失敗したが、該当2ファイルを独立再実行して18件すべて成功した。全体`format:check`は既知のWindows改行差399ファイルで失敗したが、変更の中心11ファイルは個別Prettierと`git diff --check`に成功した。
+- `readiness`は欠損ファイル0件。`readiness:strict`は正式イベント情報14項目が未確定のため失敗し、コード不具合とは分離する。
+- migration 0020適用、release/mainへのマージ、staging/productionデプロイ、本番データ操作、LINE通知は実施していない。次は独立レビューと合成データでの管理画面UATである。
 
 ### 優先プロフィール・非公開メモ PR B（2026-08-06、実装・検証済み、未適用・未デプロイ）
 

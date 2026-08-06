@@ -8,7 +8,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   try {
-    requirePermission(session.role, "preference:read");
+    requirePermission(session.role, "preference:read", session.permissions);
   } catch {
     return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
   }

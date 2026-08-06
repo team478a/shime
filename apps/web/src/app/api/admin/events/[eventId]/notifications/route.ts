@@ -25,7 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   try {
-    requirePermission(session.role, "notification:write");
+    requirePermission(session.role, "notification:write", session.permissions);
   } catch {
     return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
   }

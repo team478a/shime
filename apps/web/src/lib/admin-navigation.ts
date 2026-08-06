@@ -40,7 +40,7 @@ const primaryItems: readonly AdminNavigationItem[] = [
     permission: "concierge:manage",
     tenantScopeOnly: true,
   },
-  { key: "staff", label: "管理者・権限", href: "/admin/staff", systemAdminOnly: true },
+  { key: "staff", label: "管理者・権限", href: "/admin/staff", permission: "staff:manage" },
   { key: "platform", label: "外部接続・運用設定", href: "/admin/platform", systemAdminOnly: true },
 ];
 
@@ -87,26 +87,33 @@ const eventItemTemplates: readonly AdminNavigationGroup[] = [
   },
 ];
 
-function canAccess(role: StaffRole, item: AdminNavigationItem) {
+function canAccess(role: StaffRole, item: AdminNavigationItem, explicitPermissions?: readonly Permission[] | null) {
   if (item.systemAdminOnly) return role === "system_admin";
-  return !item.permission || hasPermission(role, item.permission);
+  return !item.permission || hasPermission(role, item.permission, explicitPermissions);
 }
 
-export function getAdminPrimaryNavigation(role: StaffRole, eventScoped = false) {
-  return primaryItems.filter((item) => canAccess(role, item) && !(eventScoped && item.tenantScopeOnly));
+export function getAdminPrimaryNavigation(
+  role: StaffRole,
+  eventScoped = false,
+  explicitPermissions?: readonly Permission[] | null,
+) {
+  return primaryItems.filter(
+    (item) => canAccess(role, item, explicitPermissions) && !(eventScoped && item.tenantScopeOnly),
+  );
 }
 
 export function getEventAdminNavigation(
   role: StaffRole,
   eventId: string,
   options: { seatingMode?: "assigned" | "standing" } = {},
+  explicitPermissions?: readonly Permission[] | null,
 ) {
   const base = `/admin/events/${encodeURIComponent(eventId)}`;
   const seatingDisabledKeys =
     options.seatingMode === "standing" ? new Set(["tables", "questionnaire", "seating"]) : null;
   return eventItemTemplates.flatMap((group) => {
     const items = group.items
-      .filter((item) => canAccess(role, item) && !seatingDisabledKeys?.has(item.key))
+      .filter((item) => canAccess(role, item, explicitPermissions) && !seatingDisabledKeys?.has(item.key))
       .map((item) => ({ ...item, href: `${base}/${item.href}` }));
     return items.length ? [{ ...group, items }] : [];
   });
@@ -116,9 +123,10 @@ export function getEventAdminQuickActions(
   role: StaffRole,
   eventId: string,
   options: { seatingMode?: "assigned" | "standing" } = {},
+  explicitPermissions?: readonly Permission[] | null,
 ) {
   const quickActionKeys = new Set(["checkin", "participants", "seating"]);
-  return getEventAdminNavigation(role, eventId, options)
+  return getEventAdminNavigation(role, eventId, options, explicitPermissions)
     .flatMap((group) => group.items)
     .filter((item) => quickActionKeys.has(item.key));
 }

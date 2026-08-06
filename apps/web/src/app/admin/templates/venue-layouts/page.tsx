@@ -25,7 +25,7 @@ function formatDate(value: Date) {
 export default async function VenueLayoutTemplatesPage() {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "event:write") || session.eventId) redirect("/admin");
+  if (!hasPermission(session.role, "event:write", session.permissions) || session.eventId) redirect("/admin");
   const db = getDatabase();
   const templates = await db
     .select()
