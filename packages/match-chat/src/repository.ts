@@ -1,15 +1,17 @@
 import type {
+  EncryptedMatchChatMessage,
   MatchChatAccessContext,
   MatchChatConfig,
   MatchChatEligibility,
   MatchChatReportInput,
   MatchChatRoom,
   MatchChatScope,
+  SaveEncryptedMessageResult,
 } from "./types";
 
 export interface MatchChatSafetyRepository {
   findConfig(scope: MatchChatScope): Promise<MatchChatConfig | null>;
-  findEligibility(scope: MatchChatScope): Promise<MatchChatEligibility | null>;
+  findEligibility(scope: MatchChatScope, matchCandidateId: string): Promise<MatchChatEligibility | null>;
   findRoom(scope: MatchChatScope, matchCandidateId: string): Promise<MatchChatRoom | null>;
   createRoom(
     scope: MatchChatScope,
@@ -29,4 +31,22 @@ export interface MatchChatSafetyRepository {
     input: MatchChatReportInput,
     now: Date,
   ): Promise<void>;
+  saveEncryptedMessage(
+    scope: MatchChatScope,
+    roomId: string,
+    input: {
+      clientMessageId: string;
+      encryptedBody: string;
+      encryptionVersion: string;
+      sentAt: Date;
+      expiresAt: Date;
+      messagesPerMinute: number;
+    },
+  ): Promise<SaveEncryptedMessageResult>;
+  listEncryptedMessages(
+    scope: MatchChatScope,
+    roomId: string,
+    now: Date,
+    limit: number,
+  ): Promise<EncryptedMatchChatMessage[]>;
 }

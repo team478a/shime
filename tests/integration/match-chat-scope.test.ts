@@ -81,4 +81,37 @@ describe("match chat migration scope", () => {
       ),
     ).rejects.toThrow();
   }, 30_000);
+
+  it("stores only encrypted messages and rejects cross-event sender scope and duplicate retries", async () => {
+    client = new PGlite();
+    await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
+    const first = seed(4);
+    const second = seed(5);
+    await client.exec(`${first.sql};\n${second.sql};`);
+    const roomId = id(4, 40);
+    const messageId = id(4, 50);
+    const clientMessageId = id(4, 51);
+    await client.exec(
+      `insert into match_chat_rooms(id,tenant_id,event_id,service_type,match_candidate_id,participant_a_id,participant_b_id,status,opens_at,closes_at) values ('${roomId}','${first.tenantId}','${first.eventId}','marriage','${first.matchId}','${first.participantIds[0]}','${first.participantIds[1]}','open',now(),now()+interval '72 hours')`,
+    );
+    await expect(
+      client.exec(
+        `insert into match_chat_messages(id,tenant_id,event_id,room_id,sender_participant_id,client_message_id,encrypted_body,encryption_version,sent_at,expires_at) values ('${messageId}','${first.tenantId}','${first.eventId}','${roomId}','${first.participantIds[0]}','${clientMessageId}','ciphertext-only','v1',now(),now()+interval '30 days')`,
+      ),
+    ).resolves.toBeDefined();
+    const stored = await client.query<{ encrypted_body: string }>(
+      `select encrypted_body from match_chat_messages where id='${messageId}'`,
+    );
+    expect(stored.rows).toEqual([{ encrypted_body: "ciphertext-only" }]);
+    await expect(
+      client.exec(
+        `insert into match_chat_messages(tenant_id,event_id,room_id,sender_participant_id,client_message_id,encrypted_body,encryption_version,sent_at,expires_at) values ('${first.tenantId}','${first.eventId}','${roomId}','${first.participantIds[0]}','${clientMessageId}','changed','v1',now(),now()+interval '30 days')`,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      client.exec(
+        `insert into match_chat_messages(tenant_id,event_id,room_id,sender_participant_id,client_message_id,encrypted_body,encryption_version,sent_at,expires_at) values ('${first.tenantId}','${first.eventId}','${roomId}','${second.participantIds[0]}','${id(4, 52)}','cross-scope','v1',now(),now()+interval '30 days')`,
+      ),
+    ).rejects.toThrow();
+  }, 30_000);
 });

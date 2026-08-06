@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャット安全基盤Phase 4A実装・検証完了）
-作業ブランチ: `codex/match-chat-safety-foundation`（PR #23を積み上げ基点として含む）
+最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャットPhase 4Bメッセージ基盤実装・検証完了）
+作業ブランチ: `codex/match-chat-messaging`（Phase 4Aブランチを積み上げ基点として含む）
 会話メモ設定PR: `#23`（release向け、最新HEAD `81e22d4`、GitHub Actions最新結果の再確認待ち）
 マッチ後チャット安全基盤PR: `#24`（PR #23向け積み上げ、最新実装HEAD `ef45b20`）
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
@@ -19,6 +19,17 @@ PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
 release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### マッチ成立後チャット Phase 4B メッセージ基盤（2026-08-07、実装・検証済み、未公開）
+
+- Phase 4Aのroom・双方同意・72時間・block・report基盤の上に、当事者限定のroom作成、同意、メッセージ一覧・送信、block、report APIを追加した。すべて参加者セッションからtenant/event/participantを確定し、クライアント指定のactor/senderは受け付けない。
+- 本文は`SETTINGS_ENCRYPTION_KEY`から用途分離して導出した鍵によるAES-256-GCMで暗号化する。AADへtenant、event、room、sender、client message IDを結び付け、別scopeでの復号を拒否する。API・監査ログ・DBへ平文本文を複製しない。
+- migration `0023_lumpy_wallop.sql`で`match_chat_messages`を追加した。roomとsenderをtenant/event複合FKで拘束し、端末側UUIDによる送信冪等性、暗号情報と保存期限のDB CHECK、時系列索引を追加した。
+- 送信はroom行をロックし、送信直前にもroom open、当事者、期限を再検証する。1分単位の送信上限判定と保存を同一transaction内で実施するため、並行送信で上限を回避できない。同じclient message IDの再送は本文を二重保存せず、最初のメッセージを返す。
+- 一覧・送信のたびに機能ON、成立結果の有効性、双方同意、block、72時間期限を再確認する。レスポンスは送信者を`self | match`だけで表し、相手participant ID、希望順位、非公開メモ等を返さない。期限切れ・論理削除済みの本文は一覧から除外する。
+- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体79ファイル398件、結合5ファイル47件、production build成功。重点17件で暗号化/AAD、冪等性、rate limit、同意、block、結果取消、cross-event FK、API actor注入拒否を確認した。実装中に公開された`js-yaml`の高リスクadvisoryへ対応し、pnpm overrideで4.3.1へ固定後、依存監査は既知脆弱性0件となった。
+- 全体`format:check`は既知のWindows改行差を含む既存480ファイルで失敗。変更ファイルは個別Prettier、対象eslint、`git diff --check`で確認する。
+- migration 0023適用、staging/productionデプロイ、機能ON、参加者UI、通知、期限切れ行の物理削除job、運営通報対応画面、実データ使用は未実施。次のPhase 4Cは、結果画面からの同意導線とスマートフォン向けチャットUI、通報・block操作、期限表示を独立PRで追加する。規約・保存期間・運営対応手順が確定するまで機能をONにしない。
 
 ### マッチ成立後チャット安全基盤 Phase 4A（2026-08-07、実装・検証済み、未公開）
 

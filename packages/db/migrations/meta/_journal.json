@@ -162,6 +162,13 @@
       "when": 1786041202842,
       "tag": "0022_low_typhoid_mary",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1786052748754,
+      "tag": "0023_lumpy_wallop",
+      "breakpoints": true
     }
   ]
 }
