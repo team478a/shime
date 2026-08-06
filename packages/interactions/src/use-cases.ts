@@ -3,6 +3,8 @@ import type {
   InteractionMemoAuditScope,
   InteractionMemoResult,
   InteractionMemoScope,
+  InteractionMemoTarget,
+  InteractionMemoTargetCandidate,
   InteractionMemoWorkspace,
   SaveInteractionMemoInput,
 } from "./types";
@@ -32,6 +34,7 @@ export class GetInteractionMemoWorkspace {
       data: {
         enabled: true,
         snapshotVersion: snapshot.version,
+        targetSource: snapshot.targetSource,
         editableUntil: snapshot.editableUntil?.toISOString() ?? null,
         options,
         targets: visibleTargets.map((target) => ({
@@ -40,6 +43,93 @@ export class GetInteractionMemoWorkspace {
         })),
       },
     };
+  }
+}
+
+export class SearchSelfReportedInteractionTargets {
+  constructor(
+    private readonly repository: InteractionMemoRepository,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
+
+  async execute(
+    scope: InteractionMemoScope,
+    participantNumberPrefix: string,
+  ): Promise<InteractionMemoResult<InteractionMemoTargetCandidate[]>> {
+    const query = participantNumberPrefix.trim();
+    if (query.length < 1 || query.length > 20)
+      return { ok: false, code: "INTERACTION_TARGET_QUERY_INVALID", status: 400 };
+    if (!(await this.repository.isParticipantEligible(scope)))
+      return { ok: false, code: "PARTICIPATION_NOT_CONFIRMED", status: 409 };
+    const snapshot = await this.repository.findActiveSnapshot(scope, this.now());
+    if (!snapshot || snapshot.targetSource !== "self_reported")
+      return { ok: false, code: "INTERACTION_MEMO_DISABLED", status: 409 };
+
+    const [candidates, registeredTargets] = await Promise.all([
+      this.repository.searchSelfReportedCandidates(scope, query, 50),
+      this.repository.listTargets(scope),
+    ]);
+    const registered = new Set(registeredTargets.map((target) => target.targetParticipantId));
+    return {
+      ok: true,
+      data: candidates.filter((candidate) => !registered.has(candidate.targetParticipantId)).slice(0, 10),
+    };
+  }
+}
+
+export class CreateSelfReportedInteractionSlot {
+  constructor(
+    private readonly repository: InteractionMemoRepository,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
+
+  async execute(
+    scope: InteractionMemoAuditScope,
+    targetParticipantId: string,
+  ): Promise<InteractionMemoResult<InteractionMemoTarget>> {
+    if (!(await this.repository.isParticipantEligible(scope)))
+      return { ok: false, code: "PARTICIPATION_NOT_CONFIRMED", status: 409 };
+    if (scope.participantId === targetParticipantId)
+      return { ok: false, code: "INTERACTION_TARGET_NOT_ALLOWED", status: 404 };
+    const now = this.now();
+    const snapshot = await this.repository.findActiveSnapshot(scope, now);
+    if (!snapshot || snapshot.targetSource !== "self_reported")
+      return { ok: false, code: "INTERACTION_MEMO_DISABLED", status: 409 };
+    const result = await this.repository.createSelfReportedSlot(scope, snapshot, targetParticipantId, now);
+    if (result.status === "created" || result.status === "existing") return { ok: true, data: result.target };
+    if (result.status === "closed") return { ok: false, code: "INTERACTION_MEMO_NOT_OPEN", status: 409 };
+    return { ok: false, code: "INTERACTION_TARGET_NOT_ALLOWED", status: 404 };
+  }
+}
+
+export class CancelSelfReportedInteractionSlot {
+  constructor(
+    private readonly repository: InteractionMemoRepository,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
+
+  async execute(
+    scope: InteractionMemoAuditScope,
+    interactionSlotId: string,
+    targetParticipantId: string,
+  ): Promise<InteractionMemoResult<{ interactionSlotId: string }>> {
+    if (!(await this.repository.isParticipantEligible(scope)))
+      return { ok: false, code: "PARTICIPATION_NOT_CONFIRMED", status: 409 };
+    const now = this.now();
+    const snapshot = await this.repository.findActiveSnapshot(scope, now);
+    if (!snapshot || snapshot.targetSource !== "self_reported")
+      return { ok: false, code: "INTERACTION_MEMO_DISABLED", status: 409 };
+    const result = await this.repository.cancelSelfReportedSlot(
+      scope,
+      snapshot,
+      interactionSlotId,
+      targetParticipantId,
+      now,
+    );
+    if (result.status === "cancelled") return { ok: true, data: { interactionSlotId } };
+    if (result.status === "has_notes") return { ok: false, code: "INTERACTION_TARGET_HAS_NOTE", status: 409 };
+    if (result.status === "closed") return { ok: false, code: "INTERACTION_MEMO_NOT_OPEN", status: 409 };
+    return { ok: false, code: "INTERACTION_TARGET_NOT_ALLOWED", status: 404 };
   }
 }
 

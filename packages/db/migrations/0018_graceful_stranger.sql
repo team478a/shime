@@ -1,0 +1,5 @@
+ALTER TABLE "event_interaction_note_snapshots" ADD COLUMN "public_profile_field_keys_json" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "interaction_notes" ADD COLUMN "private_note_text" varchar(120);--> statement-breakpoint
+ALTER TABLE "event_interaction_note_snapshots" ADD CONSTRAINT "event_interaction_note_snapshots_public_profile_fields_array_check" CHECK (jsonb_typeof("event_interaction_note_snapshots"."public_profile_field_keys_json") = 'array');--> statement-breakpoint
+ALTER TABLE "event_interaction_note_snapshots" ADD CONSTRAINT "event_interaction_note_snapshots_public_profile_fields_allowlist_check" CHECK ("event_interaction_note_snapshots"."public_profile_field_keys_json" <@ '["nickname","age_or_band","residence_municipality","occupation","hobbies","public_dream"]'::jsonb);--> statement-breakpoint
+ALTER TABLE "interaction_notes" ADD CONSTRAINT "interaction_notes_private_note_length_check" CHECK ("interaction_notes"."private_note_text" is null or char_length("interaction_notes"."private_note_text") <= 120);

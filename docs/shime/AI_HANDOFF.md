@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-06（Asia/Tokyo、Codex。リッチメニュー管理画面設定をproductionへデプロイ済み）
-作業ブランチ: `codex/rich-menu-production-record`（運用記録のみ）
+最終更新: 2026-08-06（Asia/Tokyo、Codex。優先プロフィール・メモ・マッチ後チャット PR A実装）
+作業ブランチ: `codex/standing-interaction-self-report`
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -14,9 +14,21 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 PR #13 merge commit: `d53df09274dd0a27e4b1aac24681a85bf9c9a50d`
 PR #14 merge commit: `9c98cf54ccd589af04417ae5f74c2ad3e9d0093d`
 PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
-release HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
+release HEAD（本作業開始時）: `5adb423cc5863adbd2915303924708f73a902a40`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### 優先プロフィール・メモ・マッチ後チャット PR A（2026-08-06、実装済み・未適用・未デプロイ）
+
+- 立食イベント向けに、参加者番号の前方一致検索、番号だけの候補表示、2段階確認、本人申告interaction slot作成、メモ入力前の誤登録取消を追加した。氏名・連絡先・他参加者のメモは返さない。
+- actor・target双方の参加確定/来場、同一tenant/event、回避対象、本人選択、対象slot所属をRepositoryとDB制約で検証する。作成・取消は監査ログを残し、同時操作でも新規作成/取消監査が重複しないよう更新結果を確認する。
+- migration `0018_graceful_stranger.sql`を追加した。`interaction_notes.private_note_text varchar(120)`と、イベントsnapshotの`public_profile_field_keys_json`を追加する。
+- 公開プロフィール項目は`nickname`、`age_or_band`、`residence_municipality`、`occupation`、`hobbies`、`public_dream`だけをZodとDB CHECKの両方で許可する。初期値は空配列であり、自動公開しない。本名・電話・メール・LINE ID・詳細住所・管理メモ・希望順位・相手別メモ・被選択数は許可対象に存在しない。
+- migration SQL、Drizzle schema、metadataを再生成照合し、追加差分なしを確認した。0018は全環境未適用。0016/0017は本作業前に利用者からproduction適用結果確認済みと共有されたが、この作業ではDBへ接続して再検証していない。
+- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体74ファイル367件、結合4ファイル42件、production build成功、依存脆弱性0件。今回関連のmobile E2E 3件成功。全E2Eの4並列実行は43件成功・8件skip・3件timeout/表示待ち失敗だったが、失敗3ファイルを直列再実行して10件すべて成功した。
+- 全体`format:check`は既知のWindows改行差440ファイルで失敗。今回変更ファイルは個別Prettierと`git diff --check`で確認した。`readiness`は欠損ファイル0件で実行成功、`readiness:strict`は正式イベント情報14項目が未確定のため失敗し、今回のコード不具合とは分離する。
+- featureは有効なself-reported snapshotがない限り既定OFF。migration適用、staging/production deploy、イベント設定変更、実データ使用、LINE通知は実施していない。
+- 次はPR Aの独立レビュー。承認後のPR Bで番号タップの公開プロフィールDTO、既存ワンタップメモ、120文字本人専用メモ、「もう少し話したい」非公開CTAを実装する。PR Cのチャットは当事者限定・結果公開済み・72時間・同意・block/report・rate limitが揃うまで公開しない。
 
 ### LINEリッチメニュー管理画面設定（2026-08-06、productionデプロイ済み・LINE未反映）
 

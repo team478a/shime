@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  CancelSelfReportedInteractionSlot,
+  CreateSelfReportedInteractionSlot,
   GetInteractionMemoWorkspace,
   type InteractionMemoNote,
   type InteractionMemoRepository,
+  interactionPublicProfileFieldKeysSchema,
   SaveInteractionMemo,
+  SearchSelfReportedInteractionTargets,
 } from "@shime/interactions";
 
 const now = new Date("2026-08-08T06:00:00.000Z");
@@ -14,7 +18,14 @@ const scope = {
   participantId: "participant-1",
 };
 const auditScope = { ...scope, actorUserId: "user-1", requestId: "request-1" };
-const snapshot = { id: "snapshot-1", version: 1, editableUntil: new Date("2026-08-08T09:00:00.000Z") };
+const snapshot = {
+  id: "snapshot-1",
+  version: 1,
+  targetSource: "interaction_slot" as const,
+  publicProfileFieldKeys: [],
+  editableUntil: new Date("2026-08-08T09:00:00.000Z"),
+};
+const selfReportedSnapshot = { ...snapshot, targetSource: "self_reported" as const };
 const option = { code: "comfortable", label: "話しやすかった", displayOrder: 1, isNegative: false };
 const target = {
   interactionSlotId: "slot-1",
@@ -39,12 +50,25 @@ function repository(overrides: Partial<InteractionMemoRepository> = {}): Interac
     listOptions: async () => [option],
     listTargets: async () => [target],
     listOwnNotes: async () => [],
+    searchSelfReportedCandidates: async () => [],
+    createSelfReportedSlot: async () => ({ status: "created", target }),
+    cancelSelfReportedSlot: async () => ({ status: "cancelled" }),
     saveOwnNote: async () => ({ status: "saved", note }),
     ...overrides,
   };
 }
 
 describe("interaction memo use cases", () => {
+  it("accepts only the fixed public profile allowlist without duplicates", () => {
+    expect(interactionPublicProfileFieldKeysSchema.parse(["nickname", "age_or_band", "public_dream"])).toEqual([
+      "nickname",
+      "age_or_band",
+      "public_dream",
+    ]);
+    expect(() => interactionPublicProfileFieldKeysSchema.parse(["full_name"])).toThrow();
+    expect(() => interactionPublicProfileFieldKeysSchema.parse(["nickname", "nickname"])).toThrow();
+  });
+
   it("rejects a cancelled or absent actor before returning private memo data", async () => {
     const listOwnNotes = vi.fn(async () => [note]);
     const useCase = new GetInteractionMemoWorkspace(
@@ -79,6 +103,7 @@ describe("interaction memo use cases", () => {
       data: {
         enabled: true,
         snapshotVersion: 1,
+        targetSource: "interaction_slot",
         editableUntil: snapshot.editableUntil?.toISOString(),
         options: [option],
         targets: [{ ...target, note }],
@@ -181,5 +206,81 @@ describe("interaction memo use cases", () => {
         expectedRevision: 1,
       }),
     ).resolves.toEqual({ ok: false, code: "REVISION_CONFLICT", status: 409 });
+  });
+
+  it("searches self-reported candidates by prefix and removes already registered targets", async () => {
+    const searchSelfReportedCandidates = vi.fn(async () => [
+      { targetParticipantId: target.targetParticipantId, participantNumber: "B01" },
+      { targetParticipantId: "participant-3", participantNumber: "B02" },
+    ]);
+    const useCase = new SearchSelfReportedInteractionTargets(
+      repository({ findActiveSnapshot: async () => selfReportedSnapshot, searchSelfReportedCandidates }),
+      () => now,
+    );
+
+    await expect(useCase.execute(scope, " B ")).resolves.toEqual({
+      ok: true,
+      data: [{ targetParticipantId: "participant-3", participantNumber: "B02" }],
+    });
+    expect(searchSelfReportedCandidates).toHaveBeenCalledWith(scope, "B", 50);
+  });
+
+  it("does not search candidates for a non-self-reported snapshot", async () => {
+    const searchSelfReportedCandidates = vi.fn(async () => []);
+    const useCase = new SearchSelfReportedInteractionTargets(repository({ searchSelfReportedCandidates }), () => now);
+
+    await expect(useCase.execute(scope, "B")).resolves.toEqual({
+      ok: false,
+      code: "INTERACTION_MEMO_DISABLED",
+      status: 409,
+    });
+    expect(searchSelfReportedCandidates).not.toHaveBeenCalled();
+  });
+
+  it("creates an idempotent self-reported slot only for an active self-reported snapshot", async () => {
+    const createSelfReportedSlot = vi.fn(async () => ({ status: "existing" as const, target }));
+    const useCase = new CreateSelfReportedInteractionSlot(
+      repository({ findActiveSnapshot: async () => selfReportedSnapshot, createSelfReportedSlot }),
+      () => now,
+    );
+
+    await expect(useCase.execute(auditScope, target.targetParticipantId)).resolves.toEqual({ ok: true, data: target });
+    expect(createSelfReportedSlot).toHaveBeenCalledWith(
+      auditScope,
+      selfReportedSnapshot,
+      target.targetParticipantId,
+      now,
+    );
+  });
+
+  it("prevents cancelling a self-reported target after either participant has entered a note", async () => {
+    const useCase = new CancelSelfReportedInteractionSlot(
+      repository({
+        findActiveSnapshot: async () => selfReportedSnapshot,
+        cancelSelfReportedSlot: async () => ({ status: "has_notes" }),
+      }),
+      () => now,
+    );
+
+    await expect(useCase.execute(auditScope, target.interactionSlotId, target.targetParticipantId)).resolves.toEqual({
+      ok: false,
+      code: "INTERACTION_TARGET_HAS_NOTE",
+      status: 409,
+    });
+  });
+
+  it("does not cancel a self-reported target for an ineligible participant", async () => {
+    const cancelSelfReportedSlot = vi.fn(async () => ({ status: "cancelled" as const }));
+    const useCase = new CancelSelfReportedInteractionSlot(
+      repository({ isParticipantEligible: async () => false, cancelSelfReportedSlot }),
+      () => now,
+    );
+
+    await expect(useCase.execute(auditScope, target.interactionSlotId, target.targetParticipantId)).resolves.toEqual({
+      ok: false,
+      code: "PARTICIPATION_NOT_CONFIRMED",
+      status: 409,
+    });
+    expect(cancelSelfReportedSlot).not.toHaveBeenCalled();
   });
 });

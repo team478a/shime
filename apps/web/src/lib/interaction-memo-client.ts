@@ -23,9 +23,15 @@ export type InteractionMemoTargetDto = {
   note: InteractionMemoNoteDto | null;
 };
 
+export type InteractionMemoTargetCandidateDto = {
+  targetParticipantId: string;
+  participantNumber: string;
+};
+
 export type InteractionMemoWorkspaceDto = {
   enabled: boolean;
   snapshotVersion?: number;
+  targetSource?: "interaction_slot" | "self_reported" | "operator_import";
   editableUntil?: string | null;
   options: InteractionMemoOptionDto[];
   targets: InteractionMemoTargetDto[];

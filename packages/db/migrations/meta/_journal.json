@@ -127,6 +127,13 @@
       "when": 1785902642730,
       "tag": "0017_previous_squadron_sinister",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786013808076,
+      "tag": "0018_graceful_stranger",
+      "breakpoints": true
     }
   ]
 }
