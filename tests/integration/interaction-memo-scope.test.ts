@@ -44,6 +44,39 @@ function seedScope(scope: number) {
 }
 
 describe("interaction memo migration and scope constraints", () => {
+  it("stores only an array allowlist and limits the private memo to 120 characters", async () => {
+    client = new PGlite();
+    await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
+    const scope = seedScope(4);
+    await client.exec(`${scope.sql};`);
+
+    await expect(
+      client.exec(
+        `update event_interaction_note_snapshots set public_profile_field_keys_json = '["nickname","hobbies"]'::jsonb where id = '${scope.snapshotId}'`,
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      client.exec(
+        `update event_interaction_note_snapshots set public_profile_field_keys_json = '{"nickname":true}'::jsonb where id = '${scope.snapshotId}'`,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      client.exec(
+        `update event_interaction_note_snapshots set public_profile_field_keys_json = '["full_name"]'::jsonb where id = '${scope.snapshotId}'`,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      client.exec(
+        `insert into interaction_notes(tenant_id,event_id,service_type,snapshot_id,actor_participant_id,target_participant_id,interaction_slot_id,feeling_code,private_note_text) values ('${scope.tenantId}','${scope.eventId}','marriage','${scope.snapshotId}','${scope.participantIds[0]}','${scope.participantIds[1]}','${scope.slotId}','comfortable','${"a".repeat(120)}')`,
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      client.exec(
+        `update interaction_notes set private_note_text = '${"a".repeat(121)}' where actor_participant_id = '${scope.participantIds[0]}'`,
+      ),
+    ).rejects.toThrow();
+  }, 30_000);
+
   it("accepts a valid note and rejects cross-scope or non-conversation writes", async () => {
     client = new PGlite();
     await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
@@ -109,6 +142,46 @@ describe("interaction memo migration and scope constraints", () => {
     await expect(
       client.exec(
         `insert into interaction_notes(tenant_id,event_id,service_type,snapshot_id,actor_participant_id,target_participant_id,interaction_slot_id,feeling_code) values ('${scope.tenantId}','${scope.eventId}','business','${scope.snapshotId}','${scope.participantIds[0]}','${scope.participantIds[1]}','${scope.slotId}','comfortable')`,
+      ),
+    ).rejects.toThrow();
+  }, 30_000);
+
+  it("keeps self-reported standing slots idempotent and rejects cross-event membership", async () => {
+    client = new PGlite();
+    await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
+    const first = seedScope(5);
+    const second = seedScope(6);
+    await client.exec(`${first.sql};\n${second.sql};`);
+    await client.exec(
+      first.participantIds
+        .map(
+          (participantId) =>
+            `insert into checkins(tenant_id,event_id,participant_id,status,method,checked_in_at) values ('${first.tenantId}','${first.eventId}','${participantId}','checked_in','manual',now())`,
+        )
+        .join(";\n"),
+    );
+    const selfReportedSlotId = id(5, 41);
+    const pairRef = `self:${[...first.participantIds].sort().join(":")}`;
+    await expect(
+      client.exec(
+        [
+          `insert into interaction_slots(id,tenant_id,event_id,service_type,source,source_ref) values ('${selfReportedSlotId}','${first.tenantId}','${first.eventId}','marriage','self_reported','${pairRef}')`,
+          ...first.participantIds.map(
+            (participantId) =>
+              `insert into interaction_slot_participants(tenant_id,event_id,service_type,interaction_slot_id,participant_id) values ('${first.tenantId}','${first.eventId}','marriage','${selfReportedSlotId}','${participantId}')`,
+          ),
+        ].join(";\n"),
+      ),
+    ).resolves.toBeDefined();
+
+    await expect(
+      client.exec(
+        `insert into interaction_slots(tenant_id,event_id,service_type,source,source_ref) values ('${first.tenantId}','${first.eventId}','marriage','self_reported','${pairRef}')`,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      client.exec(
+        `insert into interaction_slot_participants(tenant_id,event_id,service_type,interaction_slot_id,participant_id) values ('${first.tenantId}','${first.eventId}','marriage','${selfReportedSlotId}','${second.participantIds[0]}')`,
       ),
     ).rejects.toThrow();
   }, 30_000);

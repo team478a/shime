@@ -10,7 +10,13 @@ import {
   participants,
 } from "@shime/db";
 import type { InteractionMemoRepository } from "./repository";
+import { interactionPublicProfileFieldKeysSchema, interactionTargetSourceSchema } from "./types";
 import { saveOwnNoteWithDrizzle } from "./drizzle-save";
+import {
+  cancelSelfReportedSlotWithDrizzle,
+  createSelfReportedSlotWithDrizzle,
+  searchSelfReportedCandidatesWithDrizzle,
+} from "./drizzle-self-reported";
 
 export function createDrizzleInteractionMemoRepository(): InteractionMemoRepository {
   return {
@@ -39,6 +45,8 @@ export function createDrizzleInteractionMemoRepository(): InteractionMemoReposit
           .select({
             id: eventInteractionNoteSnapshots.id,
             version: eventInteractionNoteSnapshots.version,
+            targetSource: eventInteractionNoteSnapshots.targetSource,
+            publicProfileFieldKeys: eventInteractionNoteSnapshots.publicProfileFieldKeys,
             editableUntil: eventInteractionNoteSnapshots.editableUntil,
           })
           .from(eventInteractionNoteSnapshots)
@@ -57,7 +65,13 @@ export function createDrizzleInteractionMemoRepository(): InteractionMemoReposit
           .orderBy(desc(eventInteractionNoteSnapshots.version))
           .limit(1)
       )[0];
-      return row ?? null;
+      return row
+        ? {
+            ...row,
+            targetSource: interactionTargetSourceSchema.parse(row.targetSource),
+            publicProfileFieldKeys: interactionPublicProfileFieldKeysSchema.parse(row.publicProfileFieldKeys),
+          }
+        : null;
     },
 
     async listOptions(scope, snapshotId) {
@@ -186,6 +200,18 @@ export function createDrizzleInteractionMemoRepository(): InteractionMemoReposit
 
     async saveOwnNote(scope, snapshot, input, now) {
       return saveOwnNoteWithDrizzle(scope, snapshot, input, now);
+    },
+
+    async searchSelfReportedCandidates(scope, participantNumberPrefix, limit) {
+      return searchSelfReportedCandidatesWithDrizzle(scope, participantNumberPrefix, limit);
+    },
+
+    async createSelfReportedSlot(scope, snapshot, targetParticipantId, now) {
+      return createSelfReportedSlotWithDrizzle(scope, snapshot, targetParticipantId, now);
+    },
+
+    async cancelSelfReportedSlot(scope, snapshot, interactionSlotId, targetParticipantId, now) {
+      return cancelSelfReportedSlotWithDrizzle(scope, snapshot, interactionSlotId, targetParticipantId, now);
     },
   };
 }

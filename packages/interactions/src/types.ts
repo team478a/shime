@@ -12,6 +12,20 @@ export const interactionFeelingCodeSchema = z
   .min(1)
   .max(80)
   .regex(/^[a-z0-9_-]+$/);
+export const interactionTargetSourceSchema = z.enum(["interaction_slot", "self_reported", "operator_import"]);
+export const interactionPublicProfileFieldKeySchema = z.enum([
+  "nickname",
+  "age_or_band",
+  "residence_municipality",
+  "occupation",
+  "hobbies",
+  "public_dream",
+]);
+export const interactionPublicProfileFieldKeysSchema = z
+  .array(interactionPublicProfileFieldKeySchema)
+  .max(interactionPublicProfileFieldKeySchema.options.length)
+  .refine((keys) => new Set(keys).size === keys.length, "公開プロフィール項目が重複しています");
+export type InteractionPublicProfileFieldKey = z.infer<typeof interactionPublicProfileFieldKeySchema>;
 
 export type InteractionMemoScope = {
   tenantId: string;
@@ -28,6 +42,8 @@ export type InteractionMemoAuditScope = InteractionMemoScope & {
 export type InteractionMemoSnapshot = {
   id: string;
   version: number;
+  targetSource: "interaction_slot" | "self_reported" | "operator_import";
+  publicProfileFieldKeys: InteractionPublicProfileFieldKey[];
   editableUntil: Date | null;
 };
 
@@ -45,6 +61,11 @@ export type InteractionMemoTarget = {
   roundNo: number | null;
 };
 
+export type InteractionMemoTargetCandidate = {
+  targetParticipantId: string;
+  participantNumber: string;
+};
+
 export type InteractionMemoNote = {
   id: string;
   interactionSlotId: string;
@@ -58,6 +79,7 @@ export type InteractionMemoNote = {
 export type InteractionMemoWorkspace = {
   enabled: boolean;
   snapshotVersion?: number;
+  targetSource?: InteractionMemoSnapshot["targetSource"];
   editableUntil?: string | null;
   options: InteractionMemoOption[];
   targets: Array<InteractionMemoTarget & { note: InteractionMemoNote | null }>;
@@ -81,6 +103,8 @@ export type InteractionMemoResult<T> =
         | "INTERACTION_TARGET_NOT_ALLOWED"
         | "INVALID_FEELING_CODE"
         | "PARTICIPATION_NOT_CONFIRMED"
-        | "REVISION_CONFLICT";
+        | "REVISION_CONFLICT"
+        | "INTERACTION_TARGET_QUERY_INVALID"
+        | "INTERACTION_TARGET_HAS_NOTE";
       status: 400 | 404 | 409;
     };

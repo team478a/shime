@@ -2,18 +2,18 @@
 
 import { ParticipantNotice, ParticipantPageHeader } from "../../../components/participant-ui";
 import { useInteractionMemo } from "../../../hooks/use-interaction-memo";
-import {
-  formatInteractionMemoSavedAt,
-  getDisplayableInteractionMemoTargets,
-  interactionMemoTargetKey,
-} from "../../../lib/interaction-memo-client";
+import { useInteractionTargetRegistration } from "../../../hooks/use-interaction-target-registration";
+import { getDisplayableInteractionMemoTargets } from "../../../lib/interaction-memo-client";
 import { useLiffEventId } from "../../../lib/liff-location";
+import { InteractionMemoCard } from "./interaction-memo-card";
+import { InteractionTargetRegistration } from "./interaction-target-registration";
 
 export default function InteractionMemoPage() {
   const eventId = useLiffEventId();
   const memo = useInteractionMemo(eventId);
   const workspace = memo.workspace;
   const displayableTargets = getDisplayableInteractionMemoTargets(workspace);
+  const registration = useInteractionTargetRegistration(eventId, memo.refresh);
 
   return (
     <main>
@@ -54,61 +54,22 @@ export default function InteractionMemoPage() {
           </ParticipantNotice>
         )}
 
+        {workspace?.enabled && workspace.targetSource === "self_reported" && (
+          <InteractionTargetRegistration registration={registration} />
+        )}
+
         {workspace?.enabled && displayableTargets.length > 0 && (
           <div className="interaction-memo-list">
-            {displayableTargets.map((target) => {
-              const key = interactionMemoTargetKey(target);
-              const saveState = memo.saveStates[key];
-              const status = saveState?.status ?? (target.note ? "saved" : "idle");
-              return (
-                <article className="interaction-memo-card" key={key} aria-labelledby={`interaction-${key}`}>
-                  <div className="interaction-memo-card-heading">
-                    <h2 id={`interaction-${key}`}>{target.participantNumber}との会話</h2>
-                    {target.roundNo !== null && <span>会話 {target.roundNo}</span>}
-                  </div>
-                  <p>あなたが感じたことを1つ選んでください。</p>
-                  <div className="interaction-feeling-grid">
-                    {workspace.options.map((option) => (
-                      <button
-                        type="button"
-                        key={option.code}
-                        className="interaction-feeling-button"
-                        aria-pressed={target.note?.feelingCode === option.code}
-                        onClick={() => memo.selectFeeling(target, option.code)}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    className="interaction-favorite-button secondary"
-                    aria-pressed={target.note?.favorite ?? false}
-                    disabled={!target.note?.feelingCode}
-                    onClick={() => memo.toggleFavorite(target)}
-                  >
-                    {target.note?.favorite ? "★ お気に入り" : "☆ お気に入り"}
-                  </button>
-                  <div className="interaction-save-status" aria-live="polite">
-                    {status === "idle" && <span>未入力</span>}
-                    {status === "saving" && <span>保存中…</span>}
-                    {status === "saved" && (
-                      <span>
-                        保存済み{target.note?.savedAt ? ` ${formatInteractionMemoSavedAt(target.note.savedAt)}` : ""}
-                      </span>
-                    )}
-                    {(status === "error" || status === "conflict") && (
-                      <>
-                        <span role="alert">{saveState?.message}</span>
-                        <button type="button" className="secondary" onClick={() => memo.retry(target)}>
-                          {status === "conflict" ? "最新の内容を確認" : "再試行"}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
+            {displayableTargets.map((target) => (
+              <InteractionMemoCard
+                key={`${target.interactionSlotId}:${target.targetParticipantId}`}
+                memo={memo}
+                options={workspace.options}
+                registration={registration}
+                target={target}
+                targetSource={workspace.targetSource}
+              />
+            ))}
           </div>
         )}
 

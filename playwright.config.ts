@@ -12,7 +12,7 @@ export default defineConfig({
   webServer: {
     command: "pnpm --dir apps/web dev --hostname 127.0.0.1 --port 3100",
     url: "http://127.0.0.1:3100",
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "true",
     timeout: 120_000,
     env: {
       DATABASE_URL: "postgresql://e2e:e2e@127.0.0.1:59999/e2e",

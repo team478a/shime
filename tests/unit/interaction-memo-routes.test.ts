@@ -5,8 +5,11 @@ vi.mock("../../apps/web/src/server/participant-auth", () => ({
 }));
 
 vi.mock("../../apps/web/src/server/interaction-memo-use-cases", () => ({
+  cancelSelfReportedInteractionSlot: { execute: vi.fn() },
+  createSelfReportedInteractionSlot: { execute: vi.fn() },
   getInteractionMemoWorkspace: { execute: vi.fn() },
   saveInteractionMemo: { execute: vi.fn() },
+  searchSelfReportedInteractionTargets: { execute: vi.fn() },
 }));
 
 const { requireParticipantForEvent } = await import("../../apps/web/src/server/participant-auth");
@@ -14,6 +17,12 @@ const useCases = await import("../../apps/web/src/server/interaction-memo-use-ca
 const { GET } = await import("../../apps/web/src/app/api/liff/events/[eventId]/interaction-memo/route");
 const { PUT } =
   await import("../../apps/web/src/app/api/liff/events/[eventId]/interaction-memo/[slotId]/[targetParticipantId]/route");
+const { GET: GET_CANDIDATES } =
+  await import("../../apps/web/src/app/api/liff/events/[eventId]/interaction-memo/target-candidates/route");
+const { POST: POST_SLOT } =
+  await import("../../apps/web/src/app/api/liff/events/[eventId]/interaction-memo/slots/route");
+const { DELETE: DELETE_SLOT } =
+  await import("../../apps/web/src/app/api/liff/events/[eventId]/interaction-memo/slots/[slotId]/[targetParticipantId]/route");
 
 const eventId = "10000000-0000-4000-8000-000000000001";
 const slotId = "10000000-0000-4000-8000-000000000002";
@@ -37,6 +46,9 @@ beforeEach(() => {
     .mockResolvedValue(participantAuth as never);
   vi.mocked(useCases.getInteractionMemoWorkspace.execute).mockReset();
   vi.mocked(useCases.saveInteractionMemo.execute).mockReset();
+  vi.mocked(useCases.searchSelfReportedInteractionTargets.execute).mockReset();
+  vi.mocked(useCases.createSelfReportedInteractionSlot.execute).mockReset();
+  vi.mocked(useCases.cancelSelfReportedInteractionSlot.execute).mockReset();
 });
 
 describe("participant interaction memo API contract", () => {
@@ -124,5 +136,68 @@ describe("participant interaction memo API contract", () => {
       request_id: expect.any(String),
     });
     expect(body).not.toHaveProperty("note");
+  });
+
+  it("returns only opaque id and participant number for self-reported candidates", async () => {
+    vi.mocked(useCases.searchSelfReportedInteractionTargets.execute).mockResolvedValue({
+      ok: true,
+      data: [{ targetParticipantId, participantNumber: "B03" }],
+    });
+    const response = await GET_CANDIDATES(
+      new Request(`https://example.test/api/liff/events/${eventId}/interaction-memo/target-candidates?q=B`),
+      eventContext(),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: [{ targetParticipantId, participantNumber: "B03" }],
+    });
+    expect(useCases.searchSelfReportedInteractionTargets.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ participantId: "participant-1", eventId }),
+      "B",
+    );
+  });
+
+  it("creates a self-reported slot with actor ownership bound to the session", async () => {
+    vi.mocked(useCases.createSelfReportedInteractionSlot.execute).mockResolvedValue({
+      ok: true,
+      data: { interactionSlotId: slotId, targetParticipantId, participantNumber: "B03", roundNo: null },
+    });
+    const response = await POST_SLOT(
+      new Request(`https://example.test/api/liff/events/${eventId}/interaction-memo/slots`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ targetParticipantId }),
+      }),
+      eventContext(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(useCases.createSelfReportedInteractionSlot.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ participantId: "participant-1", actorUserId: "user-1", eventId }),
+      targetParticipantId,
+    );
+  });
+
+  it("does not allow cancellation once a private note exists", async () => {
+    vi.mocked(useCases.cancelSelfReportedInteractionSlot.execute).mockResolvedValue({
+      ok: false,
+      code: "INTERACTION_TARGET_HAS_NOTE",
+      status: 409,
+    });
+    const response = await DELETE_SLOT(
+      new Request(
+        `https://example.test/api/liff/events/${eventId}/interaction-memo/slots/${slotId}/${targetParticipantId}`,
+        { method: "DELETE" },
+      ),
+      noteContext(),
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      code: "INTERACTION_TARGET_HAS_NOTE",
+      message: "メモ入力後の会話相手は取り消せません。",
+      request_id: expect.any(String),
+    });
   });
 });

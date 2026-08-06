@@ -141,4 +141,72 @@ test.describe("ワンタップメモ（320px）", () => {
     await first.getByRole("button", { name: "再試行" }).click();
     await expect(first.getByText(/保存済み/)).toBeVisible();
   });
+
+  test("立食で番号前方一致から明示確認し、メモ入力前だけ誤登録を取り消せる", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    let target: Record<string, unknown> | null = null;
+    await page.route(`**/api/liff/events/${EVENT_ID}`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { name: "立食UAT", participantJourney: [] } }),
+      }),
+    );
+    await page.route(`**/api/liff/events/${EVENT_ID}/interaction-memo`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            enabled: true,
+            snapshotVersion: 1,
+            targetSource: "self_reported",
+            options,
+            targets: target ? [target] : [],
+          },
+        }),
+      }),
+    );
+    await page.route(`**/api/liff/events/${EVENT_ID}/interaction-memo/target-candidates?*`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [
+            { targetParticipantId: "40000000-0000-4000-8000-000000000001", participantNumber: "B03" },
+            { targetParticipantId: "40000000-0000-4000-8000-000000000002", participantNumber: "B04" },
+          ],
+        }),
+      }),
+    );
+    await page.route(`**/api/liff/events/${EVENT_ID}/interaction-memo/slots`, async (route) => {
+      target = {
+        interactionSlotId: "30000000-0000-4000-8000-000000000001",
+        targetParticipantId: "40000000-0000-4000-8000-000000000001",
+        participantNumber: "B03",
+        roundNo: null,
+        note: null,
+      };
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: target }) });
+    });
+    await page.route(`**/api/liff/events/${EVENT_ID}/interaction-memo/slots/*/*`, (route) => {
+      target = null;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: {} }) });
+    });
+
+    await page.goto(`/liff/interactions?eventId=${EVENT_ID}`);
+    await page.getByLabel("参加者番号").fill("B");
+    await page.getByRole("button", { name: "候補を検索" }).click();
+    await expect(page.getByRole("button", { name: "B03" })).toBeVisible();
+    await expect(page.getByText("参加者氏名")).toHaveCount(0);
+    await page.getByRole("button", { name: "B03" }).click();
+    await expect(page.getByText("B03でよいですか？")).toBeVisible();
+    await page.getByRole("button", { name: "この番号でよい" }).click();
+    await expect(page.getByRole("heading", { name: "B03との会話" })).toBeVisible();
+    await page.getByRole("button", { name: "誤登録を取り消す" }).click();
+    await expect(page.getByRole("heading", { name: "B03との会話" })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(
+      false,
+    );
+  });
 });
