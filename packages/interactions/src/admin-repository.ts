@@ -9,6 +9,7 @@ export type InteractionMemoLifecycleResult =
   | { status: "event_not_found" | "snapshot_not_found" | "invalid_state" };
 
 export interface InteractionMemoAdminRepository {
+  eventExists(scope: InteractionMemoAdminScope): Promise<boolean>;
   listSnapshots(scope: InteractionMemoAdminScope): Promise<InteractionMemoAdminSnapshot[]>;
   createDraft(
     scope: InteractionMemoAdminScope,

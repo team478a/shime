@@ -32,7 +32,7 @@ release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 - PR #23を`release/2026-08-08-readiness`向けに作成した。初回GitHub Actionsはコード実行前の`Set up job`でGitHub側の`Service Unavailable`により失敗し、公式StatusでもActions Partial Outageを確認した。ローカル検証結果とは分離し、復旧後に同一HEADを再実行する。
 - 利用者承認後、stagingが0015までだったため、論理バックアップを取得して未適用migration 0016〜0021を順番に適用した。適用後はmigration 22/22、public table 70、接続先一致、backup readiness issue 0、lifecycle不整合0、複数公開scope 0を確認した。詳細は`MIGRATION_0016_0021_STAGING_RECORD_20260807.md`。
 - 同じ承認範囲でPR版をVercel `shime-staging`へ配備した。deployment `dpl_54tq57UaTwpBvapZWmRQMjLK4mYL`はReady、alias health 200、管理ログイン200、staging警告を確認した。`[検証専用] SHIME RH-C`で下書きversion 1作成・公開、version 2作成・公開、旧版自動停止、新版停止を実行し、終了時の公開版0件を確認した。未認証APIは401。詳細は`INTERACTION_MEMO_STAGING_UAT_20260807.md`。
-- UAT所見として、存在しないevent IDの一覧APIは漏えいなしの空200を返した。404へ統一するかは独立レビュー対象。既存受付ロール検証アカウントのパスワード不一致により実セッション403と、認証済み320px画面操作は未実施。production migration/deploy、release/mainへのマージ、本番イベント設定、本番データ操作、LINE通知は実施していない。次はGitHub Actions復旧後の最新HEAD再確認と上記所見のレビューである。
+- UAT所見だった存在しないevent IDの空200は、Repositoryの同一tenantイベント存在確認とUseCaseの`EVENT_NOT_FOUND`へ修正した。snapshot検索前に拒否し、cross-tenant eventも同じ非公開エラーとなる。重点5テスト、型、architecture、lint、全テスト、production buildは成功。staging実APIの404確認は再配備待ち。既存受付ロール検証アカウントのパスワード不一致により実セッション403と、認証済み320px画面操作は未実施。production migration/deploy、release/mainへのマージ、本番イベント設定、本番データ操作、LINE通知は実施していない。次は最新CIとstaging再配備後の404確認である。
 - マッチ成立後チャット（双方同意、結果公開済み、72時間、block/report、rate limit、監査、期限後非表示）と、会話メモの匿名集計・運営ダッシュボードは未実装。安全境界が異なるため、それぞれ独立PRとして進める。
 
 ### スタッフ個別権限選択（2026-08-06、実装・検証済み、未適用・未デプロイ）

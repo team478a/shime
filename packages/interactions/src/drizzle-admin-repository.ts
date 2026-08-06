@@ -33,6 +33,17 @@ function toSnapshot(
 }
 
 export function createDrizzleInteractionMemoAdminRepository(): InteractionMemoAdminRepository {
+  const eventExists: InteractionMemoAdminRepository["eventExists"] = async (scope) =>
+    Boolean(
+      (
+        await getDatabase()
+          .select({ id: events.id })
+          .from(events)
+          .where(and(eq(events.tenantId, scope.tenantId), eq(events.id, scope.eventId)))
+          .limit(1)
+      )[0],
+    );
+
   const listSnapshots: InteractionMemoAdminRepository["listSnapshots"] = async (scope) => {
     const rows = await getDatabase()
       .select()
@@ -69,6 +80,7 @@ export function createDrizzleInteractionMemoAdminRepository(): InteractionMemoAd
   };
 
   return {
+    eventExists,
     listSnapshots,
     async createDraft(scope, input): Promise<InteractionMemoLifecycleResult> {
       const snapshotId = await getDatabase().transaction(async (tx) => {

@@ -35,6 +35,7 @@ function unwrapLifecycle(result: Awaited<ReturnType<InteractionMemoAdminReposito
 export class ListInteractionMemoSnapshots {
   constructor(private readonly repository: InteractionMemoAdminRepository) {}
   async execute(scope: InteractionMemoAdminScope): Promise<InteractionMemoAdminWorkspace> {
+    if (!(await this.repository.eventExists(scope))) throw new InteractionMemoAdminError("EVENT_NOT_FOUND");
     return { snapshots: await this.repository.listSnapshots(scope) };
   }
 }

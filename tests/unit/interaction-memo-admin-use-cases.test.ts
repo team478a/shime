@@ -3,6 +3,7 @@ import {
   CreateInteractionMemoDraft,
   InteractionMemoAdminError,
   type InteractionMemoAdminRepository,
+  ListInteractionMemoSnapshots,
   PublishInteractionMemoSnapshot,
   StopInteractionMemoSnapshot,
 } from "@shime/interactions";
@@ -30,6 +31,7 @@ const snapshot = {
 
 function repository(overrides: Partial<InteractionMemoAdminRepository> = {}): InteractionMemoAdminRepository {
   return {
+    eventExists: vi.fn(async () => true),
     listSnapshots: vi.fn(async () => [snapshot]),
     createDraft: vi.fn(async () => ({ status: "updated" as const, snapshot })),
     publish: vi.fn(async () => ({
@@ -45,6 +47,21 @@ function repository(overrides: Partial<InteractionMemoAdminRepository> = {}): In
 }
 
 describe("interaction memo admin use cases", () => {
+  it("lists snapshots only for an event in the current tenant", async () => {
+    const repo = repository();
+    await expect(new ListInteractionMemoSnapshots(repo).execute(scope)).resolves.toEqual({ snapshots: [snapshot] });
+    expect(repo.eventExists).toHaveBeenCalledWith(scope);
+    expect(repo.listSnapshots).toHaveBeenCalledWith(scope);
+  });
+
+  it("rejects an unknown or cross-tenant event before listing snapshots", async () => {
+    const repo = repository({ eventExists: vi.fn(async () => false) });
+    await expect(new ListInteractionMemoSnapshots(repo).execute(scope)).rejects.toMatchObject({
+      code: "EVENT_NOT_FOUND",
+    });
+    expect(repo.listSnapshots).not.toHaveBeenCalled();
+  });
+
   it("creates a validated immutable draft", async () => {
     const repo = repository();
     await expect(
