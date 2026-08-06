@@ -11,6 +11,7 @@ export default defineConfig({
       "@shime/event-core": path.resolve(__dirname, "packages/event-core/src"),
       "@shime/integrations": path.resolve(__dirname, "packages/integrations/src"),
       "@shime/interactions": path.resolve(__dirname, "packages/interactions/src"),
+      "@shime/match-chat": path.resolve(__dirname, "packages/match-chat/src"),
       "@shime/notifications": path.resolve(__dirname, "packages/notifications/src"),
       "@shime/questionnaire": path.resolve(__dirname, "packages/questionnaire/src"),
       "@shime/seating": path.resolve(__dirname, "packages/seating/src"),

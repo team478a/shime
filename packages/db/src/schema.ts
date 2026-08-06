@@ -101,6 +101,8 @@ export const matchCandidateStatus = pgEnum("match_candidate_status", [
 export const conciergeVersionStatus = pgEnum("concierge_version_status", ["draft", "published", "archived"]);
 export const conciergeSessionStatus = pgEnum("concierge_session_status", ["in_progress", "submitted"]);
 export const journeyVersionStatus = pgEnum("journey_version_status", ["draft", "published", "archived"]);
+export const matchChatRoomStatus = pgEnum("match_chat_room_status", ["pending_consent", "open", "blocked", "closed"]);
+export const matchChatReportStatus = pgEnum("match_chat_report_status", ["open", "reviewing", "resolved"]);
 
 export const tenants = pgTable(
   "tenants",
@@ -1584,6 +1586,13 @@ export const matchCandidates = pgTable(
       table.participantAId,
       table.participantBId,
     ),
+    unique("match_candidates_scope_pair_id_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.id,
+      table.participantAId,
+      table.participantBId,
+    ),
   ],
 );
 
@@ -1609,6 +1618,203 @@ export const resultConfirmations = pgTable(
     ...timestamps,
   },
   (table) => [index("result_confirmations_event_idx").on(table.tenantId, table.eventId, table.confirmedAt)],
+);
+
+export const eventMatchChatConfigs = pgTable(
+  "event_match_chat_configs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    enabled: boolean("enabled").default(false).notNull(),
+    windowHours: integer("window_hours").default(72).notNull(),
+    messagesPerMinute: integer("messages_per_minute").default(10).notNull(),
+    maxMessageLength: integer("max_message_length").default(500).notNull(),
+    termsVersion: varchar("terms_version", { length: 80 }),
+    retentionDays: integer("retention_days"),
+    updatedBy: uuid("updated_by").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("event_match_chat_configs_scope_uidx").on(table.tenantId, table.eventId, table.serviceType),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "event_match_chat_configs_event_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.updatedBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "event_match_chat_configs_updater_scope_fk",
+    }),
+    check("event_match_chat_configs_window_check", sql`${table.windowHours} between 1 and 168`),
+    check("event_match_chat_configs_rate_check", sql`${table.messagesPerMinute} between 1 and 60`),
+    check("event_match_chat_configs_length_check", sql`${table.maxMessageLength} between 1 and 2000`),
+    check(
+      "event_match_chat_configs_enablement_check",
+      sql`not ${table.enabled} or (coalesce(length(trim(${table.termsVersion})) > 0, false) and coalesce(${table.retentionDays} between 1 and 3650, false))`,
+    ),
+  ],
+);
+
+export const matchChatRooms = pgTable(
+  "match_chat_rooms",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    matchCandidateId: uuid("match_candidate_id").notNull(),
+    participantAId: uuid("participant_a_id").notNull(),
+    participantBId: uuid("participant_b_id").notNull(),
+    status: matchChatRoomStatus("status").default("pending_consent").notNull(),
+    opensAt: timestamp("opens_at", { withTimezone: true }),
+    closesAt: timestamp("closes_at", { withTimezone: true }).notNull(),
+    blockedAt: timestamp("blocked_at", { withTimezone: true }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("match_chat_rooms_candidate_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.matchCandidateId,
+    ),
+    unique("match_chat_rooms_scope_id_uidx").on(table.tenantId, table.eventId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "match_chat_rooms_event_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.matchCandidateId, table.participantAId, table.participantBId],
+      foreignColumns: [
+        matchCandidates.tenantId,
+        matchCandidates.eventId,
+        matchCandidates.id,
+        matchCandidates.participantAId,
+        matchCandidates.participantBId,
+      ],
+      name: "match_chat_rooms_candidate_pair_scope_fk",
+    }),
+    check("match_chat_rooms_distinct_participants_check", sql`${table.participantAId} <> ${table.participantBId}`),
+    check("match_chat_rooms_window_check", sql`${table.closesAt} > coalesce(${table.opensAt}, ${table.createdAt})`),
+  ],
+);
+
+export const matchChatConsents = pgTable(
+  "match_chat_consents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    roomId: uuid("room_id").notNull(),
+    participantId: uuid("participant_id").notNull(),
+    termsVersion: varchar("terms_version", { length: 80 }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("match_chat_consents_room_participant_uidx").on(table.roomId, table.participantId),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.roomId],
+      foreignColumns: [matchChatRooms.tenantId, matchChatRooms.eventId, matchChatRooms.id],
+      name: "match_chat_consents_room_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.participantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_consents_participant_scope_fk",
+    }),
+    check("match_chat_consents_terms_check", sql`length(trim(${table.termsVersion})) > 0`),
+  ],
+);
+
+export const matchChatBlocks = pgTable(
+  "match_chat_blocks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    roomId: uuid("room_id").notNull(),
+    blockerParticipantId: uuid("blocker_participant_id").notNull(),
+    blockedParticipantId: uuid("blocked_participant_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("match_chat_blocks_room_blocker_uidx").on(table.roomId, table.blockerParticipantId),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.roomId],
+      foreignColumns: [matchChatRooms.tenantId, matchChatRooms.eventId, matchChatRooms.id],
+      name: "match_chat_blocks_room_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.blockerParticipantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_blocks_blocker_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.blockedParticipantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_blocks_blocked_scope_fk",
+    }),
+    check(
+      "match_chat_blocks_distinct_participants_check",
+      sql`${table.blockerParticipantId} <> ${table.blockedParticipantId}`,
+    ),
+  ],
+);
+
+export const matchChatReports = pgTable(
+  "match_chat_reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    roomId: uuid("room_id").notNull(),
+    reporterParticipantId: uuid("reporter_participant_id").notNull(),
+    reportedParticipantId: uuid("reported_participant_id").notNull(),
+    category: varchar("category", { length: 40 }).notNull(),
+    detail: varchar("detail", { length: 1000 }),
+    status: matchChatReportStatus("status").default("open").notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedBy: uuid("resolved_by"),
+    ...timestamps,
+  },
+  (table) => [
+    index("match_chat_reports_queue_idx").on(table.tenantId, table.eventId, table.status, table.createdAt),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.roomId],
+      foreignColumns: [matchChatRooms.tenantId, matchChatRooms.eventId, matchChatRooms.id],
+      name: "match_chat_reports_room_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.reporterParticipantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_reports_reporter_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.reportedParticipantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_reports_reported_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.resolvedBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "match_chat_reports_resolver_scope_fk",
+    }),
+    check(
+      "match_chat_reports_distinct_participants_check",
+      sql`${table.reporterParticipantId} <> ${table.reportedParticipantId}`,
+    ),
+    check(
+      "match_chat_reports_category_check",
+      sql`${table.category} in ('harassment','spam','inappropriate','safety_concern','other')`,
+    ),
+  ],
 );
 
 export const tenantServiceSettings = pgTable(

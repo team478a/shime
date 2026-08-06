@@ -155,6 +155,13 @@
       "when": 1786027398895,
       "tag": "0021_rapid_falcon",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1786041202842,
+      "tag": "0022_low_typhoid_mary",
+      "breakpoints": true
     }
   ]
 }

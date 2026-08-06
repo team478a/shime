@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。会話メモ設定のscope・権限・モバイルUAT完了）
-作業ブランチ: `codex/interaction-memo-admin-settings`
+最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャット安全基盤Phase 4A実装・検証完了）
+作業ブランチ: `codex/match-chat-safety-foundation`（PR #23を積み上げ基点として含む）
 会話メモ設定PR: `#23`（release向け、最新記録HEAD `ed3c431`、GitHub Actions最新結果の再確認待ち）
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
@@ -18,6 +18,17 @@ PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
 release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### マッチ成立後チャット安全基盤 Phase 4A（2026-08-07、実装・検証済み、未公開）
+
+- `packages/match-chat`を新設し、RouteやUIから独立したUseCase/Repository契約を追加した。チャット設定はイベント・tenant・service単位で、初期値は必ずOFFである。
+- 有効化には規約版と保存期間が必須。DB CHECKとZodの両方で、規約・保存期間が未設定のままONにできない。既定値は結果公開から72時間、1分10件、本文500文字だが、このPhaseでは送信API・本文保存・参加者UIをまだ公開しない。
+- 結果確定が有効かつ承認済みの成立ペアだけroomを作成できる。結果公開日時から正確に72時間を計算し、期限超過、結果確定取消、当事者以外、機能OFFを非公開エラーで拒否する。
+- 双方が同じ規約版へ同意するまでroomは開かない。規約版が更新された場合は旧版同意を利用せず再確認を要求する。blockは即時、通報は記録と同時に相手をblockするUseCaseとし、通報詳細を監査ログへ複製しない設計とした。
+- migration `0022_low_typhoid_mary.sql`で設定、room、同意、block、通報の各テーブルを追加する。roomは`match_candidates`のtenant/event/candidate/participant A/B複合キーを参照し、成立ペアの差替えやcross-tenant/event roomをDBで拒否する。各同意・block・通報もroomおよびparticipantのtenant/event複合FKでscopeを固定する。
+- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体77ファイル389件、結合5ファイル46件、production build、依存監査（既知脆弱性0件）は成功した。重点の安全テストは単体5件・結合2件すべて成功した。
+- 全体`format:check`はWindows改行差を含む既存478ファイルで失敗。変更ファイルは個別Prettier、対象eslint、`git diff --check`で確認する。
+- migration 0022適用、staging/productionデプロイ、参加者向けAPI/UI、メッセージ保存・送信、送信rate limit実処理、通知、実データ使用は未実施。Phase 4BはDrizzle Repository、本文暗号化/削除方針、冪等送信、rate limit、当事者限定APIを実装し、Phase 4Cで参加者UIと運営通報画面を追加する。正式なチャット規約・保存期間・通報対応手順が確定するまで公開しない。
 
 ### 会話メモ設定・版管理（2026-08-07、実装・独立レビュー・staging migration・配備・合成UAT済み）
 
