@@ -15,6 +15,8 @@ export type InteractionMemoSaveStatus = "idle" | "saving" | "saved" | "error" | 
 type DesiredNote = {
   feelingCode: string;
   favorite: boolean;
+  privateNoteText: string;
+  wantsToTalkMore: boolean;
 };
 
 type SaveState = {
@@ -41,11 +43,18 @@ function buildDesiredNote(
   return {
     feelingCode: patch.feelingCode ?? current?.feelingCode ?? "",
     favorite: patch.favorite ?? current?.favorite ?? false,
+    privateNoteText: patch.privateNoteText ?? current?.privateNoteText ?? "",
+    wantsToTalkMore: patch.wantsToTalkMore ?? current?.wantsToTalkMore ?? false,
   };
 }
 
 function matchesDesired(current: InteractionMemoNoteDto | null | undefined, desired: DesiredNote): boolean {
-  return current?.feelingCode === desired.feelingCode && current.favorite === desired.favorite;
+  return (
+    current?.feelingCode === desired.feelingCode &&
+    current.favorite === desired.favorite &&
+    current.privateNoteText === desired.privateNoteText &&
+    current.wantsToTalkMore === desired.wantsToTalkMore
+  );
 }
 
 function buildOptimisticNote(
@@ -61,6 +70,8 @@ function buildOptimisticNote(
     targetParticipantId: target.targetParticipantId,
     feelingCode: desired.feelingCode,
     favorite: desired.favorite,
+    privateNoteText: desired.privateNoteText,
+    wantsToTalkMore: desired.wantsToTalkMore,
     revision,
     savedAt: current?.savedAt ?? new Date().toISOString(),
   };
@@ -151,7 +162,13 @@ export function useInteractionMemo(eventId: string, enabled = true) {
 
           serverNotesRef.current.set(key, body.data);
           const latest = pendingRef.current.get(key);
-          if (latest && latest.feelingCode === desired.feelingCode && latest.favorite === desired.favorite) {
+          if (
+            latest &&
+            latest.feelingCode === desired.feelingCode &&
+            latest.favorite === desired.favorite &&
+            latest.privateNoteText === desired.privateNoteText &&
+            latest.wantsToTalkMore === desired.wantsToTalkMore
+          ) {
             pendingRef.current.delete(key);
             const next = replaceInteractionMemoNote(workspaceRef.current!, key, body.data);
             workspaceRef.current = next;
@@ -218,6 +235,10 @@ export function useInteractionMemo(eventId: string, enabled = true) {
     selectFeeling: (target: InteractionMemoTargetDto, feelingCode: string) => updateTarget(target, { feelingCode }),
     toggleFavorite: (target: InteractionMemoTargetDto) =>
       updateTarget(target, { favorite: !(target.note?.favorite ?? false) }),
+    savePrivateNote: (target: InteractionMemoTargetDto, privateNoteText: string) =>
+      updateTarget(target, { privateNoteText }),
+    toggleWantsToTalkMore: (target: InteractionMemoTargetDto) =>
+      updateTarget(target, { wantsToTalkMore: !(target.note?.wantsToTalkMore ?? false) }),
     retry,
     refresh,
   };

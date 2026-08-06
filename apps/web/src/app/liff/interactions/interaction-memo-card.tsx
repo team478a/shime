@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { useInteractionMemo } from "../../../hooks/use-interaction-memo";
 import type { useInteractionTargetRegistration } from "../../../hooks/use-interaction-target-registration";
 import {
@@ -8,8 +9,10 @@ import {
   type InteractionMemoTargetDto,
   interactionMemoTargetKey,
 } from "../../../lib/interaction-memo-client";
+import { InteractionPublicProfile } from "./interaction-public-profile";
 
 type Props = {
+  eventId: string;
   memo: ReturnType<typeof useInteractionMemo>;
   options: InteractionMemoOptionDto[];
   registration: ReturnType<typeof useInteractionTargetRegistration>;
@@ -48,15 +51,17 @@ function InteractionSaveStatus({
   );
 }
 
-export function InteractionMemoCard({ memo, options, registration, target, targetSource }: Props) {
+export function InteractionMemoCard({ eventId, memo, options, registration, target, targetSource }: Props) {
   const key = interactionMemoTargetKey(target);
   const saveState = memo.saveStates[key];
+  const [privateNoteDraft, setPrivateNoteDraft] = useState(target.note?.privateNoteText ?? "");
   return (
     <article className="interaction-memo-card" aria-labelledby={`interaction-${key}`}>
       <div className="interaction-memo-card-heading">
-        <h2 id={`interaction-${key}`}>{target.participantNumber}との会話</h2>
+        <h2 id={`interaction-${key}`}>会話メモ</h2>
         {target.roundNo !== null && <span>会話 {target.roundNo}</span>}
       </div>
+      <InteractionPublicProfile eventId={eventId} target={target} />
       <p>あなたが感じたことを1つ選んでください。</p>
       <div className="interaction-feeling-grid">
         {options.map((option) => (
@@ -80,6 +85,38 @@ export function InteractionMemoCard({ memo, options, registration, target, targe
       >
         {target.note?.favorite ? "★ お気に入り" : "☆ お気に入り"}
       </button>
+      <div className="interaction-private-note">
+        <label htmlFor={`private-note-${key}`}>本人専用メモ（120文字・3行まで）</label>
+        <textarea
+          id={`private-note-${key}`}
+          value={privateNoteDraft}
+          maxLength={120}
+          rows={3}
+          onChange={(event) => setPrivateNoteDraft(event.target.value.replace(/(?:\r?\n){3,}/g, "\n\n"))}
+          placeholder="相手には表示されません"
+        />
+        <div>
+          <span>{privateNoteDraft.length}/120</span>
+          <button
+            type="button"
+            className="secondary"
+            disabled={!target.note?.feelingCode || privateNoteDraft === (target.note?.privateNoteText ?? "")}
+            onClick={() => memo.savePrivateNote(target, privateNoteDraft)}
+          >
+            メモを保存
+          </button>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="interaction-talk-more-button"
+        aria-pressed={target.note?.wantsToTalkMore ?? false}
+        disabled={!target.note?.feelingCode}
+        onClick={() => memo.toggleWantsToTalkMore(target)}
+      >
+        {target.note?.wantsToTalkMore ? "✓ もう少し話したいに保存しました" : "もう少し話したい"}
+      </button>
+      <p className="hint">この意思は本人だけの非公開情報です。相手への通知や自動マッチングは行いません。</p>
       <InteractionSaveStatus retry={() => memo.retry(target)} saveState={saveState} target={target} />
       {targetSource === "self_reported" && !target.note && (
         <button

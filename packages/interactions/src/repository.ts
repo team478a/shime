@@ -6,6 +6,7 @@ import type {
   InteractionMemoSnapshot,
   InteractionMemoTarget,
   InteractionMemoTargetCandidate,
+  InteractionPublicProfileSource,
   SaveInteractionMemoInput,
 } from "./types";
 
@@ -24,6 +25,10 @@ export interface InteractionMemoRepository {
   listOptions(scope: InteractionMemoScope, snapshotId: string): Promise<InteractionMemoOption[]>;
   listTargets(scope: InteractionMemoScope): Promise<InteractionMemoTarget[]>;
   listOwnNotes(scope: InteractionMemoScope, snapshotId: string): Promise<InteractionMemoNote[]>;
+  getTargetPublicProfileSource(
+    scope: InteractionMemoScope,
+    targetParticipantId: string,
+  ): Promise<InteractionPublicProfileSource | null>;
   searchSelfReportedCandidates(
     scope: InteractionMemoScope,
     participantNumberPrefix: string,

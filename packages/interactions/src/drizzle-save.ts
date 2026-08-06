@@ -21,6 +21,8 @@ export async function saveOwnNoteWithDrizzle(
   input: SaveInteractionMemoInput,
   now: Date,
 ): Promise<SaveInteractionMemoRepositoryResult> {
+  const privateNoteText = input.privateNoteText ?? "";
+  const wantsToTalkMore = input.wantsToTalkMore ?? false;
   try {
     return await getDatabase().transaction(async (transaction) => {
       if (!(await snapshotIsWritable(transaction, scope, snapshot.id, now))) return { status: "closed" };
@@ -29,7 +31,12 @@ export async function saveOwnNoteWithDrizzle(
 
       const existing = await findNote(transaction, scope, snapshot.id, input);
       if (existing) {
-        if (existing.feelingCode === input.feelingCode && existing.favorite === input.favorite)
+        if (
+          existing.feelingCode === input.feelingCode &&
+          existing.favorite === input.favorite &&
+          existing.privateNoteText === privateNoteText &&
+          existing.wantsToTalkMore === wantsToTalkMore
+        )
           return { status: "saved", note: existing };
         if (existing.revision !== input.expectedRevision) return { status: "revision_conflict" };
         const updated = (
@@ -38,6 +45,8 @@ export async function saveOwnNoteWithDrizzle(
             .set({
               feelingCode: input.feelingCode,
               favorite: input.favorite,
+              privateNoteText: privateNoteText || null,
+              wantsToTalkMore,
               revision: existing.revision + 1,
               recordedAt: now,
               updatedAt: now,
@@ -64,6 +73,8 @@ export async function saveOwnNoteWithDrizzle(
             interactionSlotId: input.interactionSlotId,
             feelingCode: input.feelingCode,
             favorite: input.favorite,
+            privateNoteText: privateNoteText || null,
+            wantsToTalkMore,
             recordedAt: now,
           })
           .returning()
@@ -232,6 +243,8 @@ const toNote = (row: typeof interactionNotes.$inferSelect) => ({
   targetParticipantId: row.targetParticipantId,
   feelingCode: row.feelingCode,
   favorite: row.favorite,
+  privateNoteText: row.privateNoteText ?? "",
+  wantsToTalkMore: row.wantsToTalkMore,
   revision: row.revision,
   savedAt: row.recordedAt,
 });

@@ -19,6 +19,9 @@ export const interactionPublicProfileFieldKeySchema = z.enum([
   "residence_municipality",
   "occupation",
   "hobbies",
+  "holiday_style",
+  "support_wanted",
+  "support_offered",
   "public_dream",
 ]);
 export const interactionPublicProfileFieldKeysSchema = z
@@ -66,12 +69,34 @@ export type InteractionMemoTargetCandidate = {
   participantNumber: string;
 };
 
+export type InteractionPublicProfileSource = {
+  participantNumber: string;
+  nickname: string | null;
+  birthDate: string;
+  residenceArea: string | null;
+  additionalAnswers: Record<string, string>;
+  publicDream: string | null;
+};
+
+export type InteractionPublicProfileField = {
+  key: InteractionPublicProfileFieldKey;
+  label: string;
+  value: string;
+};
+
+export type InteractionPublicProfile = {
+  participantNumber: string;
+  fields: InteractionPublicProfileField[];
+};
+
 export type InteractionMemoNote = {
   id: string;
   interactionSlotId: string;
   targetParticipantId: string;
   feelingCode: string;
   favorite: boolean;
+  privateNoteText?: string;
+  wantsToTalkMore?: boolean;
   revision: number;
   savedAt: Date;
 };
@@ -90,6 +115,8 @@ export type SaveInteractionMemoInput = {
   targetParticipantId: string;
   feelingCode: string;
   favorite: boolean;
+  privateNoteText?: string;
+  wantsToTalkMore?: boolean;
   expectedRevision: number;
 };
 

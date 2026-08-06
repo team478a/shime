@@ -5,11 +5,19 @@ import { participantHandler } from "@shime/web/server/api/participant-handler";
 import { saveInteractionMemo } from "@shime/web/server/interaction-memo-use-cases";
 
 const SERVICE_TYPE = "marriage";
-const bodySchema = z.object({
-  feelingCode: interactionFeelingCodeSchema,
-  favorite: z.boolean(),
-  expectedRevision: z.number().int().min(0),
-});
+const bodySchema = z
+  .object({
+    feelingCode: interactionFeelingCodeSchema,
+    favorite: z.boolean(),
+    privateNoteText: z
+      .string()
+      .max(120)
+      .refine((value) => value.split(/\r?\n/).length <= 3, "メモは3行以内です")
+      .default(""),
+    wantsToTalkMore: z.boolean().default(false),
+    expectedRevision: z.number().int().min(0),
+  })
+  .strict();
 const resolveEventId = async (
   _request: Request,
   context: { params: Promise<{ eventId: string; slotId: string; targetParticipantId: string }> },

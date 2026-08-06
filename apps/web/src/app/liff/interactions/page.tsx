@@ -63,6 +63,7 @@ export default function InteractionMemoPage() {
             {displayableTargets.map((target) => (
               <InteractionMemoCard
                 key={`${target.interactionSlotId}:${target.targetParticipantId}`}
+                eventId={eventId}
                 memo={memo}
                 options={workspace.options}
                 registration={registration}

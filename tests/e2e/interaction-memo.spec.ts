@@ -11,7 +11,17 @@ const options = [
 ].map(([code, label], index) => ({ code, label, displayOrder: index + 1, isNegative: code === "no_connection" }));
 
 async function mockInteractionMemo(page: Page, failFirstSave = false) {
-  const notes = new Map<string, { feelingCode: string; favorite: boolean; revision: number; savedAt: string }>();
+  const notes = new Map<
+    string,
+    {
+      feelingCode: string;
+      favorite: boolean;
+      privateNoteText: string;
+      wantsToTalkMore: boolean;
+      revision: number;
+      savedAt: string;
+    }
+  >();
   let shouldFail = failFirstSave;
   await page.route(`**/api/liff/events/${EVENT_ID}`, (route) =>
     route.fulfill({
@@ -66,6 +76,21 @@ async function mockInteractionMemo(page: Page, failFirstSave = false) {
       }),
     });
   });
+  await page.route(`**/api/liff/events/${EVENT_ID}/interactions/*/profile`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          participantNumber: "B01",
+          fields: [
+            { key: "nickname", label: "ニックネーム", value: "はな" },
+            { key: "age_or_band", label: "年代", value: "30代" },
+          ],
+        },
+      }),
+    }),
+  );
   await page.route(`**/api/liff/events/${EVENT_ID}/interaction-memo/*/*`, async (route) => {
     if (shouldFail) {
       shouldFail = false;
@@ -76,11 +101,24 @@ async function mockInteractionMemo(page: Page, failFirstSave = false) {
       });
     }
     const targetParticipantId = route.request().url().split("/").at(-1)!;
-    const body = route.request().postDataJSON() as { feelingCode: string; favorite: boolean; expectedRevision: number };
+    const body = route.request().postDataJSON() as {
+      feelingCode: string;
+      favorite: boolean;
+      privateNoteText: string;
+      wantsToTalkMore: boolean;
+      expectedRevision: number;
+    };
     const current = notes.get(targetParticipantId);
     const revision = (current?.revision ?? 0) + 1;
     const savedAt = new Date().toISOString();
-    notes.set(targetParticipantId, { feelingCode: body.feelingCode, favorite: body.favorite, revision, savedAt });
+    notes.set(targetParticipantId, {
+      feelingCode: body.feelingCode,
+      favorite: body.favorite,
+      privateNoteText: body.privateNoteText,
+      wantsToTalkMore: body.wantsToTalkMore,
+      revision,
+      savedAt,
+    });
     return route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -91,6 +129,8 @@ async function mockInteractionMemo(page: Page, failFirstSave = false) {
           targetParticipantId,
           feelingCode: body.feelingCode,
           favorite: body.favorite,
+          privateNoteText: body.privateNoteText,
+          wantsToTalkMore: body.wantsToTalkMore,
           revision,
           savedAt,
         },
@@ -110,16 +150,29 @@ test.describe("ワンタップメモ（320px）", () => {
     await page.goto(`/liff/interactions?eventId=${EVENT_ID}`);
 
     for (let index = 1; index <= 8; index += 1) {
-      const card = page.locator("article").filter({ has: page.getByRole("heading", { name: `B0${index}との会話` }) });
+      const card = page
+        .locator("article")
+        .filter({ has: page.getByRole("button", { name: new RegExp(`^B0${index}`) }) });
       await card.getByRole("button", { name: "安心した" }).click();
       await expect(card.getByText(/保存済み/)).toBeVisible();
     }
-    const first = page.locator("article").filter({ has: page.getByRole("heading", { name: "B01との会話" }) });
+    const first = page.locator("article").filter({ has: page.getByRole("button", { name: /^B01/ }) });
     await first.getByRole("button", { name: "楽しかった" }).click();
     await expect(first.getByRole("button", { name: "楽しかった" })).toHaveAttribute("aria-pressed", "true");
     await first.getByRole("button", { name: "☆ お気に入り" }).click();
     await expect(first.getByRole("button", { name: "★ お気に入り" })).toHaveAttribute("aria-pressed", "true");
     await expect(first.getByText(/保存済み/)).toBeVisible();
+    await first.getByRole("button", { name: /^B01/ }).click();
+    await expect(first.getByText("はな")).toBeVisible();
+    await expect(first.getByText("30代")).toBeVisible();
+    await first.getByLabel("本人専用メモ（120文字・3行まで）").fill("笑顔が印象的");
+    await first.getByRole("button", { name: "メモを保存" }).click();
+    await expect(first.getByText(/保存済み/)).toBeVisible();
+    await first.getByRole("button", { name: "もう少し話したい", exact: true }).click();
+    await expect(first.getByRole("button", { name: "✓ もう少し話したいに保存しました" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(
       false,
@@ -134,7 +187,7 @@ test.describe("ワンタップメモ（320px）", () => {
     await mockInteractionMemo(page, true);
     await page.goto(`/liff/interactions?eventId=${EVENT_ID}`);
 
-    const first = page.locator("article").filter({ has: page.getByRole("heading", { name: "B01との会話" }) });
+    const first = page.locator("article").filter({ has: page.getByRole("button", { name: /^B01/ }) });
     await first.getByRole("button", { name: "安心した" }).click();
     await expect(first.getByText("保存できませんでした。通信状態を確認して再試行してください。")).toBeVisible();
     await expect(first.getByRole("button", { name: "安心した" })).toHaveAttribute("aria-pressed", "true");
@@ -202,9 +255,9 @@ test.describe("ワンタップメモ（320px）", () => {
     await page.getByRole("button", { name: "B03" }).click();
     await expect(page.getByText("B03でよいですか？")).toBeVisible();
     await page.getByRole("button", { name: "この番号でよい" }).click();
-    await expect(page.getByRole("heading", { name: "B03との会話" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^B03/ })).toBeVisible();
     await page.getByRole("button", { name: "誤登録を取り消す" }).click();
-    await expect(page.getByRole("heading", { name: "B03との会話" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^B03/ })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(
       false,
     );
