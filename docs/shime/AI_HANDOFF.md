@@ -4,7 +4,7 @@
 
 最終更新: 2026-08-07（Asia/Tokyo、Codex。Phase 4Eコミュニケーション匿名集計実装・検証完了）
 作業ブランチ: `codex/match-chat-analytics`（Phase 4DのHEAD `b266b22`を積み上げ基点として含む）
-コミュニケーション匿名集計PR: 本更新後に`codex/match-chat-messaging`向け積み上げDraft PRを作成する（未マージ）
+コミュニケーション匿名集計PR: `#26`（`codex/match-chat-messaging`向け積み上げDraft PR、未マージ）
 マッチ後チャット運用管理PR: `#25`（`codex/match-chat-safety-foundation`向け積み上げDraft PR、未マージ）
 会話メモ設定PR: `#23`（release向け、最新HEAD `81e22d4`、GitHub Actions最新結果の再確認待ち）
 マッチ後チャット安全基盤PR: `#24`（PR #23向け積み上げ、最新実装HEAD `ef45b20`）
