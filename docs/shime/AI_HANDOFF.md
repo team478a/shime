@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-06（Asia/Tokyo、Codex。優先プロフィール・非公開メモ PR B実装）
-作業ブランチ: `codex/interaction-profile-memo-cta`
+最終更新: 2026-08-06（Asia/Tokyo、Codex。production migration 0018・0019適用記録）
+作業ブランチ: `codex/record-production-migrations-0018-0019`
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -14,9 +14,20 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 PR #13 merge commit: `d53df09274dd0a27e4b1aac24681a85bf9c9a50d`
 PR #14 merge commit: `9c98cf54ccd589af04417ae5f74c2ad3e9d0093d`
 PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
-release HEAD（本作業開始時）: `5adb423cc5863adbd2915303924708f73a902a40`
+release HEAD: `a292d1b1016591c014f9167568307fea37f50180`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### production migration 0018・0019（2026-08-06、適用・検証済み、アプリ未デプロイ）
+
+- PR #19とPR #20はレビュー・CI成功後、依存順に`release/2026-08-08-readiness`へマージ済み。release HEADは`a292d1b1016591c014f9167568307fea37f50180`。
+- 利用者が提示したSupabase physical backupは`2026-08-05 16:53:52 UTC`（`2026-08-06 01:53:52 JST`）。利用者の明示承認後、production project `dipcpqmbmumazyuorslv`へmigration 0018・0019を適用した。
+- preflightはpublic 70 tables、migration 18/20、runtime/DDL同一DB、daily backup、private Storageを確認。postflightはmigration 20/20、public 70 tables、runtime/DDL同一DB、backup rehearsal ready、Storage bucket privateを確認した。
+- `public_profile_field_keys_json`は`jsonb not null default []`、`private_note_text`は`varchar(120)`、`wants_to_talk_more`は`boolean not null default false`。公開項目固定allowlist、配列、120文字、3行以内のCHECK制約をproduction catalogから確認した。
+- productionの`interaction_notes`は適用時0件で、既存メモ本文やCTA値の移行対象はなかった。Storage objectは0件。migrationは既存データ削除・更新を行わない前方互換の追加変更である。
+- release HEADの検証はarchitecture、lint（エラー0、既存warningのみ）、typecheck、単体373件、結合42件、production build、依存監査0件が成功。E2Eは45件成功・8件skip・manual mobile 1件が一時失敗し、同テスト単独再実行で成功。PR #20のGitHub Actions verify・E2Eも成功済み。
+- 全体`format:check`はWindows改行差471ファイルで失敗し、GitHub Actions上では成功。`readiness:strict`は正式イベント情報14項目の`REQUIRED_INPUT`により失敗し、migration不具合とは分離する。
+- application codeのproduction deploy、イベントsnapshot有効化、実参加者データ使用、LINE通知は実施していない。次はrelease `a292d1b`のproduction deploy判断と、デプロイ後のhealth・認証・LIFF・interaction feature既定OFF確認である。
 
 ### 優先プロフィール・非公開メモ PR B（2026-08-06、実装・検証済み、未適用・未デプロイ）
 
