@@ -57,7 +57,8 @@ Vercel projectのProduction環境には必要な19変数が登録されている
 ## 確認できなかった項目と所見
 
 - 受付ロール用の既存検証アカウントは現在のローカル保存パスワードで認証できず、権限不足セッションによる403実機確認は未実施。未認証401、UseCase/routeの権限テスト、staff handlerの実装確認は済んでいる。
-- 存在しないevent IDで一覧APIを呼ぶと、404ではなく空一覧の200を返した。データ漏えいはなかった。後続修正でRepositoryへ同一tenantのイベント存在確認を追加し、UseCaseがsnapshot検索前に`EVENT_NOT_FOUND`を返すよう統一した。重点5テスト、型、architecture、lint、全テスト、buildは成功済み。修正後のstaging実API確認は再配備後に行う。
+- 存在しないevent IDで一覧APIを呼ぶと、初回配備では404ではなく空一覧の200を返した。データ漏えいはなかった。後続修正でRepositoryへ同一tenantのイベント存在確認を追加し、UseCaseがsnapshot検索前に`EVENT_NOT_FOUND`を返すよう統一した。重点5テスト、型、architecture、lint、全テスト、buildは成功した。
+- 修正版commit `57e51a7`をdeployment `dpl_HBg5HDbK58K5QPMDSq9cXRtE2wWe`としてstagingへ再配備した。health 200、既知イベント200、未知イベント`404 EVENT_NOT_FOUND`、未認証401、公開中snapshot 0件を実APIで確認した。
 - 認証済み管理画面のHTTP表示は確認したが、ブラウザにstagingログイン状態がなく、320px相当の認証済み実画面操作は未実施。関連コンポーネントテスト、production build、既存モバイルE2Eは成功済み。
 
 ## 判定
