@@ -29,6 +29,37 @@ export type MatchChatConfig = z.infer<typeof matchChatConfigSchema>;
 export type MatchChatReportInput = z.infer<typeof matchChatReportSchema>;
 export type SendMatchChatMessageInput = z.infer<typeof sendMatchChatMessageSchema>;
 
+export const matchChatReportStatusSchema = z.enum(["open", "reviewing", "resolved"]);
+export const updateMatchChatReportSchema = z.object({
+  status: z.enum(["reviewing", "resolved"]),
+});
+
+export type MatchChatAdminScope = {
+  tenantId: string;
+  eventId: string;
+  serviceType: string;
+  actorUserId: string;
+  requestId: string;
+};
+
+export type MatchChatAdminReport = {
+  id: string;
+  roomId: string;
+  reporterParticipantNumber: string | null;
+  reportedParticipantNumber: string | null;
+  category: MatchChatReportInput["category"];
+  detail: string | null;
+  status: z.infer<typeof matchChatReportStatusSchema>;
+  createdAt: string;
+  resolvedAt: string | null;
+};
+
+export type MatchChatAdminWorkspace = {
+  eventName: string;
+  config: MatchChatConfig;
+  reports: MatchChatAdminReport[];
+};
+
 export type MatchChatScope = {
   tenantId: string;
   eventId: string;

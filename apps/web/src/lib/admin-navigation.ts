@@ -83,6 +83,7 @@ const eventItemTemplates: readonly AdminNavigationGroup[] = [
     label: "結果・記録",
     items: [
       { key: "results", label: "希望・結果確定", href: "results", permission: "preference:read" },
+      { key: "match-chat", label: "マッチ後チャット", href: "match-chat", permission: "event:write" },
       { key: "exports", label: "CSVバックアップ", href: "exports", permission: "backup:export" },
     ],
   },

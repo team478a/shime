@@ -1,6 +1,8 @@
 import type {
   EncryptedMatchChatMessage,
   MatchChatAccessContext,
+  MatchChatAdminReport,
+  MatchChatAdminScope,
   MatchChatConfig,
   MatchChatEligibility,
   MatchChatReportInput,
@@ -49,4 +51,20 @@ export interface MatchChatSafetyRepository {
     now: Date,
     limit: number,
   ): Promise<EncryptedMatchChatMessage[]>;
+}
+
+export interface MatchChatAdminRepository {
+  loadWorkspace(scope: MatchChatAdminScope): Promise<{
+    eventName: string;
+    config: MatchChatConfig | null;
+    reports: MatchChatAdminReport[];
+  } | null>;
+  saveConfig(scope: MatchChatAdminScope, config: MatchChatConfig, now: Date): Promise<MatchChatConfig | null>;
+  updateReportStatus(
+    scope: MatchChatAdminScope,
+    reportId: string,
+    status: "reviewing" | "resolved",
+    now: Date,
+  ): Promise<MatchChatAdminReport | null>;
+  purgeExpiredMessages(now: Date, limit: number): Promise<number>;
 }

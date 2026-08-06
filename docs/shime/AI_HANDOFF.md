@@ -2,8 +2,9 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャットPhase 4C参加者UI実装・検証完了）
+最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャットPhase 4D運用管理実装・検証完了）
 作業ブランチ: `codex/match-chat-messaging`（Phase 4Aブランチを積み上げ基点として含む）
+マッチ後チャット運用管理PR: `#25`（`codex/match-chat-safety-foundation`向け積み上げDraft PR、未マージ）
 会話メモ設定PR: `#23`（release向け、最新HEAD `81e22d4`、GitHub Actions最新結果の再確認待ち）
 マッチ後チャット安全基盤PR: `#24`（PR #23向け積み上げ、最新実装HEAD `ef45b20`）
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
@@ -20,10 +21,21 @@ release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
 
+### マッチ成立後チャット Phase 4D 運用管理（2026-08-07、実装・検証済み、未公開）
+
+- イベント管理画面に「マッチ後チャット」を追加し、機能ON/OFF、利用時間、1分当たり送信上限、本文文字数、保存日数、規約版をイベント単位で設定できるようにした。初期状態は必ずOFFで、規約版または保存日数が未設定の状態ではONにできない。
+- 通報対応一覧では、対象者を参加者番号だけで表示し、通報区分、任意補足、状態、受付日時を確認できる。本文メッセージ、相手の希望順位、Dream、感情回答、個人連絡先は管理APIと画面へ返さない。「確認中」「対応済み」への一方向状態遷移を実装し、対応操作をtenant/event/reportで拘束した。
+- 管理APIは`staffHandler`、UseCase、Repository契約、Drizzle実装へ分離し、既存の`event:write`権限で保護した。設定変更と通報状態変更は監査ログへID・版・状態などの運用メタデータだけを記録し、通報補足やチャット本文を複製しない。
+- 期限切れまたは論理削除済みの暗号化メッセージを、tenant/event境界を維持して最大5000件ずつ物理削除する内部jobを追加した。Vercel cronは毎日00:15 UTC（09:15 JST）で、既存の`INTERNAL_JOB_SECRET`/`CRON_SECRET`認証を利用する。jobログは削除件数とrequest IDだけで、本文・参加者情報を含まない。
+- migration 0022に通報状態・担当者、0023に本文保存期限・削除日時が既に存在するため、新規migrationは不要。0022/0023は未適用のままで、staging/productionへの適用、デプロイ、機能ON、実データ操作、LINE通知は実施していない。
+- 検証: architecture成功（DB直接route `61/62`、client fetch `23/24`、巨大component `9/9`）、lintエラー0（既存warningのみ）、typecheck成功、単体81ファイル408件、結合5ファイル49件、production build成功、依存監査は既知脆弱性0件。管理UseCase・API・DB scopeの重点26件も成功した。並列E2Eではマッチ後チャット1件が一時失敗したが、全E2Eを直列再実行して47件成功・9件skipとなった。
+- 全体`format:check`はWindows CRLF差による既存471ファイルで失敗。今回変更ファイルの個別Prettier、対象ESLint、`git diff --check`は成功した。`readiness`コマンド自体は成功したが、production readyは正式イベント情報14項目未確定のためfalse。`readiness:strict`も同じ14件の`REQUIRED_INPUT`で失敗し、今回のコード不具合とは分離する。
+- 次はPR #25の独立レビュー、GitHub Actions確認、正式チャット規約・保存期間・通報対応責任者と手順の確定、合成データによるstaging UATである。匿名集計ダッシュボードと参加者通知は、本文や個人情報を集計へ混入させない別モジュール・別PRとして扱う。これらの運用準備とmigration適用判断が完了するまで機能をONにしない。
+
 ### マッチ成立後チャット Phase 4C 参加者UI（2026-08-07、実装・検証済み、未公開）
 
 - 結果画面に、チャット設定が有効な場合だけ、承認済み成立ペアごとの「チャットを開く」導線を追加した。クライアントにはopaqueなmatch candidate IDだけを渡し、チャットroom ID、参加者同定、tenant/event境界は引き続きサーバー側で確定する。結果APIも`private, no-store`とした。
-- 320px前提の`/liff/chat`を追加し、利用期限表示、規約版確認、双方同意待ちの自動更新、メッセージ一覧・送信、文字数上限、ブロック、通報、結果画面への復帰を実装した。送信は端末側UUIDで冊a等、サーバー設定の文字数上限をUIにも反映する。
+- 320px前提の`/liff/chat`を追加し、利用期限表示、規約版確認、双方同意待ちの自動更新、メッセージ一覧・送信、文字数上限、ブロック、通報、結果画面への復帰を実装した。送信は端末側UUIDで冪等化し、サーバー設定の文字数上限をUIにも反映する。
 - 本人の同意済み状態はroom setupの安全なbooleanとして返し、再読込み後も二重操作を求めない。相手の同意有無や時刻、participant IDは返さない。ブロック・通報は明示確認後に即時停止し、メッセージを画面から破棄する。
 - コンポーネントのAPI直接呼び出しを増やさないよう`useMatchChat`と`useEventResult`へ分離し、結果表示用の機能有効判定もUseCase経由にした。architecture debtはDB直接route `61/62`、client fetch `23/24`でいずれもbaseline以下。
 - 検証: lintエラー0（既存warningのみ）、architecture成功、typecheck成功、単体79ファイル400件、結合5ファイル47件、production build成功、依存監査は既知脆弱性0件。新規mobile E2Eで結果→同意→送受信→ブロックと横はみ出しなしを確認した。全E2Eは46件成功・9件skip・既存manual表示1件が並列実行で一時失敗し、該当mobile manual 4件の直列再実行は全件成功した。

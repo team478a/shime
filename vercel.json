@@ -6,6 +6,7 @@
   "outputDirectory": "apps/web/.next",
   "crons": [
     { "path": "/api/jobs/notifications", "schedule": "0 0 * * *" },
-    { "path": "/api/jobs/health-monitor", "schedule": "5 0 * * *" }
+    { "path": "/api/jobs/health-monitor", "schedule": "5 0 * * *" },
+    { "path": "/api/jobs/match-chat-retention", "schedule": "15 0 * * *" }
   ]
 }
