@@ -2,9 +2,9 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。会話メモ設定・版管理のstaging配備・合成UAT）
+最終更新: 2026-08-07（Asia/Tokyo、Codex。会話メモ設定のscope・権限・モバイルUAT完了）
 作業ブランチ: `codex/interaction-memo-admin-settings`
-会話メモ設定PR: `#23`（release向け、配備前HEAD `626cfe7`、GitHub Actions障害による最新CI再確認待ち）
+会話メモ設定PR: `#23`（release向け、最新記録HEAD `ed3c431`、GitHub Actions最新結果の再確認待ち）
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
@@ -32,7 +32,8 @@ release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 - PR #23を`release/2026-08-08-readiness`向けに作成した。初回GitHub Actionsはコード実行前の`Set up job`でGitHub側の`Service Unavailable`により失敗し、公式StatusでもActions Partial Outageを確認した。ローカル検証結果とは分離し、復旧後に同一HEADを再実行する。
 - 利用者承認後、stagingが0015までだったため、論理バックアップを取得して未適用migration 0016〜0021を順番に適用した。適用後はmigration 22/22、public table 70、接続先一致、backup readiness issue 0、lifecycle不整合0、複数公開scope 0を確認した。詳細は`MIGRATION_0016_0021_STAGING_RECORD_20260807.md`。
 - 同じ承認範囲でPR版をVercel `shime-staging`へ配備した。deployment `dpl_54tq57UaTwpBvapZWmRQMjLK4mYL`はReady、alias health 200、管理ログイン200、staging警告を確認した。`[検証専用] SHIME RH-C`で下書きversion 1作成・公開、version 2作成・公開、旧版自動停止、新版停止を実行し、終了時の公開版0件を確認した。未認証APIは401。詳細は`INTERACTION_MEMO_STAGING_UAT_20260807.md`。
-- UAT所見だった存在しないevent IDの空200は、Repositoryの同一tenantイベント存在確認とUseCaseの`EVENT_NOT_FOUND`へ修正した。snapshot検索前に拒否し、cross-tenant eventも同じ非公開エラーとなる。重点5テスト、型、architecture、lint、全テスト、production buildは成功。修正版をstaging deployment `dpl_HBg5HDbK58K5QPMDSq9cXRtE2wWe`へ再配備し、health 200、既知イベント200、未知イベント`404 EVENT_NOT_FOUND`、未認証401、公開中snapshot 0件を確認した。既存受付ロール検証アカウントのパスワード不一致により実セッション403と、認証済み320px画面操作は未実施。production migration/deploy、release/mainへのマージ、本番イベント設定、本番データ操作、LINE通知は実施していない。次は最新CIと残る権限・モバイル確認である。
+- UAT所見だった存在しないevent IDの空200は、Repositoryの同一tenantイベント存在確認とUseCaseの`EVENT_NOT_FOUND`へ修正した。snapshot検索前に拒否し、cross-tenant eventも同じ非公開エラーとなる。重点5テスト、型、architecture、lint、全テスト、production buildは成功。修正版をstaging deployment `dpl_HBg5HDbK58K5QPMDSq9cXRtE2wWe`へ再配備し、health 200、既知イベント200、未知イベント`404 EVENT_NOT_FOUND`、未認証401、公開中snapshot 0件を確認した。
+- 合成スタッフによる権限確認では、対象権限なしの認証済みセッションを`403 FORBIDDEN`で拒否した。390×844pxの認証済みスマートフォン表示では、設定フォーム、版履歴、停止済みversion 1・2、横スクロールなしを確認した。使用した合成スタッフは直後に無効化した。production migration/deploy、release/mainへのマージ、本番イベント設定、本番データ操作、LINE通知は実施していない。次は最新HEADのGitHub Actions確認とreleaseマージ判断である。
 - マッチ成立後チャット（双方同意、結果公開済み、72時間、block/report、rate limit、監査、期限後非表示）と、会話メモの匿名集計・運営ダッシュボードは未実装。安全境界が異なるため、それぞれ独立PRとして進める。
 
 ### スタッフ個別権限選択（2026-08-06、実装・検証済み、未適用・未デプロイ）
