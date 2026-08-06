@@ -4,7 +4,8 @@
 
 最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャット安全基盤Phase 4A実装・検証完了）
 作業ブランチ: `codex/match-chat-safety-foundation`（PR #23を積み上げ基点として含む）
-会話メモ設定PR: `#23`（release向け、最新記録HEAD `ed3c431`、GitHub Actions最新結果の再確認待ち）
+会話メモ設定PR: `#23`（release向け、最新HEAD `81e22d4`、GitHub Actions最新結果の再確認待ち）
+マッチ後チャット安全基盤PR: `#24`（PR #23向け積み上げ、最新実装HEAD `ef45b20`）
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
