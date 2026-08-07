@@ -74,6 +74,12 @@ const eventItemTemplates: readonly AdminNavigationGroup[] = [
     label: "当日運営",
     items: [
       { key: "analytics", label: "運営進捗", href: "analytics", permission: "operations:read" },
+      {
+        key: "communication-analytics",
+        label: "コミュニケーション匿名集計",
+        href: "communication-analytics",
+        permission: "operations:read",
+      },
       { key: "checkin", label: "受付", href: "checkin", permission: "checkin:write" },
       { key: "seating", label: "席配置", href: "seating", permission: "seating:write" },
     ],

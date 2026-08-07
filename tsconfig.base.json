@@ -34,6 +34,8 @@
       "@shime/match-chat/*": ["./packages/match-chat/src/*"],
       "@shime/notifications": ["./packages/notifications/src/index.ts"],
       "@shime/notifications/*": ["./packages/notifications/src/*"],
+      "@shime/operations-analytics": ["./packages/operations-analytics/src/index.ts"],
+      "@shime/operations-analytics/*": ["./packages/operations-analytics/src/*"],
       "@shime/questionnaire": ["./packages/questionnaire/src/index.ts"],
       "@shime/questionnaire/*": ["./packages/questionnaire/src/*"],
       "@shime/seating": ["./packages/seating/src/index.ts"],

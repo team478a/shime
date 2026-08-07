@@ -2,8 +2,9 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャットPhase 4D運用管理実装・検証完了）
-作業ブランチ: `codex/match-chat-messaging`（Phase 4Aブランチを積み上げ基点として含む）
+最終更新: 2026-08-07（Asia/Tokyo、Codex。Phase 4Eコミュニケーション匿名集計の独立レビュー・補強完了）
+作業ブランチ: `codex/match-chat-analytics`（Phase 4DのHEAD `b266b22`を積み上げ基点として含む）
+コミュニケーション匿名集計PR: `#26`（`codex/match-chat-messaging`向け積み上げDraft PR、未マージ）
 マッチ後チャット運用管理PR: `#25`（`codex/match-chat-safety-foundation`向け積み上げDraft PR、未マージ）
 会話メモ設定PR: `#23`（release向け、最新HEAD `81e22d4`、GitHub Actions最新結果の再確認待ち）
 マッチ後チャット安全基盤PR: `#24`（PR #23向け積み上げ、最新実装HEAD `ef45b20`）
@@ -20,6 +21,18 @@ PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
 release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### Phase 4E コミュニケーション匿名集計（2026-08-07、実装・検証済み、未公開）
+
+- `packages/operations-analytics`を新設し、会話メモとマッチ後チャットを1つの読み取り専用運営ダッシュボードへまとめた。管理画面は「当日運営 > コミュニケーション匿名集計」から開き、`operations:read`権限だけを要求する。
+- 集計Repositoryはtenant/event/serviceをすべてWHERE/JOIN条件へ含める。会話メモは件数・お気に入り・「もう一度話したい」・気持ちコード別件数、チャットはroom状態・本文件数・通報状態別件数だけをSQLで集計する。参加者ID、参加者番号、氏名、本人専用メモ本文、暗号化チャット本文、通報補足、希望順位、Dream、感情回答はSELECTおよびDTOへ含めない。
+- 固定の匿名化境界として、対象者5名未満のセクション全体を非表示、個別セル1〜2件を非表示とする。小セルを総件数との差から逆算できないよう、気持ちコード別に非表示セルがある場合はメモ総数、通報状態別に非表示セルがある場合は通報総数も非表示とする。0件と3件以上だけを表示する。
+- APIは`staffEventHandler`、UseCase、Repositoryの順で分離し、成功レスポンスは`{ data }`、キャッシュは`no-store`。event限定スタッフが別eventを指定した場合と権限不足を403、同一tenant内に存在しないeventを404で拒否する。画面は横表を使わずカード表示とし、スマートフォンでも縦方向だけで確認できる。
+- DB列・テーブルは追加しておらず、新規migrationは不要。既存migration 0022/0023は引き続き未適用で、staging/productionへの適用、デプロイ、チャット機能ON、実データ操作、LINE通知は実施していない。
+- 検証: architecture成功（DB直接route `61/62`、client fetch `23/24`、巨大component `9/9`）、lintエラー0（既存warningのみ）、typecheck成功、単体82ファイル414件、結合6ファイル50件、production build成功、依存監査は既知脆弱性0件。重点テストは匿名化・レスポンス非公開・API権限/scope 8件と、PGlite実DB相当のcross-tenant/event集計1件が成功した。
+- 全E2Eは46件成功・9件skip・既存manual表示1件が並列実行時に一時失敗した。該当mobile manual 4件を1 workerで再実行して全件成功し、今回の機能と無関係な並列表示揺れと判定した。`readiness`はコマンド成功だが正式イベント情報14項目未確定のためproduction readyはfalse、`readiness:strict`も同じ14件で失敗した。
+- PR #26の独立レビューでGitHub Actions `verify` / `e2e`の成功、未解決レビュースレッドなしを確認した。結合テストを「別tenant」に加え「同tenantの別event」と「同tenant/eventの別service」のノイズで補強し、3スコープがそれぞれ独立して集計から除外されることを実DB相当で再確認した。画面の匿名化閾値文言もAPIが返す設定値に追従させ、実装と表示の乖離を防止した。レビュー時点で新たなP0/P1コード不具合はない。
+- 次は積み上げPR #23→#24→#25→#26のベース関係と各CIを最終確認し、許可を得て順番にマージする。その後も、0022/0023適用、合成データによるstaging UAT、正式チャット規約・本文保存期間・通報対応責任者の確定が完了するまで、マッチ後チャットと匿名集計を本番公開しない。
 
 ### マッチ成立後チャット Phase 4D 運用管理（2026-08-07、実装・検証済み、未公開）
 
