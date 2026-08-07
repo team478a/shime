@@ -210,6 +210,8 @@ importers:
 
   packages/interactions: {}
 
+  packages/match-chat: {}
+
   packages/notifications: {}
 
   packages/questionnaire: {}

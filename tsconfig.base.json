@@ -30,6 +30,8 @@
       "@shime/integrations/*": ["./packages/integrations/src/*"],
       "@shime/interactions": ["./packages/interactions/src/index.ts"],
       "@shime/interactions/*": ["./packages/interactions/src/*"],
+      "@shime/match-chat": ["./packages/match-chat/src/index.ts"],
+      "@shime/match-chat/*": ["./packages/match-chat/src/*"],
       "@shime/notifications": ["./packages/notifications/src/index.ts"],
       "@shime/notifications/*": ["./packages/notifications/src/*"],
       "@shime/questionnaire": ["./packages/questionnaire/src/index.ts"],
