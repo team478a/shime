@@ -1111,9 +1111,12 @@ export const eventInteractionNoteSnapshots = pgTable(
     serviceType: varchar("service_type", { length: 80 }).notNull(),
     version: integer("version").notNull(),
     enabled: boolean("enabled").default(false).notNull(),
+    status: varchar("status", { length: 20 }).default("draft").notNull(),
     targetSource: varchar("target_source", { length: 40 }).notNull(),
     publicProfileFieldKeys: jsonb("public_profile_field_keys_json").$type<string[]>().default([]).notNull(),
     editableUntil: timestamp("editable_until", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    stoppedAt: timestamp("stopped_at", { withTimezone: true }),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id),
@@ -1137,6 +1140,16 @@ export const eventInteractionNoteSnapshots = pgTable(
       table.eventId,
       table.serviceType,
       table.enabled,
+    ),
+    uniqueIndex("event_interaction_note_snapshots_published_uidx")
+      .on(table.tenantId, table.eventId, table.serviceType)
+      .where(sql`${table.status} = 'published'`),
+    check("event_interaction_note_snapshots_status_check", sql`${table.status} in ('draft', 'published', 'stopped')`),
+    check(
+      "event_interaction_note_snapshots_lifecycle_check",
+      sql`(${table.status} = 'draft' and not ${table.enabled} and ${table.publishedAt} is null and ${table.stoppedAt} is null)
+        or (${table.status} = 'published' and ${table.enabled} and ${table.publishedAt} is not null and ${table.stoppedAt} is null)
+        or (${table.status} = 'stopped' and not ${table.enabled} and ${table.publishedAt} is not null and ${table.stoppedAt} is not null)`,
     ),
     check(
       "event_interaction_note_snapshots_public_profile_fields_array_check",
