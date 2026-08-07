@@ -72,19 +72,15 @@ body {
   flex: 0 0 auto;
   border-radius: 8px;
 }
-.brand-logo-crop {
+.brand-logo-frame {
   display: block;
   width: 126px;
-  height: 52px;
-  overflow: hidden;
+  aspect-ratio: 950 / 420;
 }
 .brand-logo-image {
   display: block;
-  width: 126px;
-  height: 126px;
-  max-width: none;
-  object-fit: cover;
-  object-position: center;
+  width: 100%;
+  height: auto;
 }
 .app-brand-context {
   min-width: 0;
@@ -2207,13 +2203,8 @@ legend {
   .app-header-inner {
     padding-inline: 16px;
   }
-  .brand-logo-crop {
+  .brand-logo-frame {
     width: 108px;
-    height: 46px;
-  }
-  .brand-logo-image {
-    width: 108px;
-    height: 108px;
   }
   .app-service-name {
     font-size: 12px;
