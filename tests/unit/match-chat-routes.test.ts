@@ -64,6 +64,7 @@ describe("participant match chat API contract", () => {
       ok: true,
       data: {
         termsVersion: "chat-v1",
+        termsBody: "相手を尊重し、安全に利用してください。",
         maxMessageLength: 500,
         participantConsented: false,
         room: {
@@ -95,6 +96,7 @@ describe("participant match chat API contract", () => {
     expect(body.data).not.toHaveProperty("participantBId");
     expect(body.data).toMatchObject({
       termsVersion: "chat-v1",
+      termsBody: "相手を尊重し、安全に利用してください。",
       maxMessageLength: 500,
       participantConsented: false,
     });

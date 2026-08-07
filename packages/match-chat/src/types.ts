@@ -7,11 +7,24 @@ export const matchChatConfigSchema = z
     messagesPerMinute: z.number().int().min(1).max(60),
     maxMessageLength: z.number().int().min(1).max(2000),
     termsVersion: z.string().trim().min(1).max(80).nullable(),
+    termsBody: z.string().trim().min(1).max(50_000).nullable(),
     retentionDays: z.number().int().min(1).max(3650).nullable(),
+    reportOwnerLabel: z.string().trim().min(1).max(120).nullable(),
+    uatConfirmed: z.boolean(),
   })
   .superRefine((value, context) => {
-    if (value.enabled && (!value.termsVersion || value.retentionDays === null)) {
-      context.addIssue({ code: "custom", message: "Enabled chat requires termsVersion and retentionDays" });
+    if (
+      value.enabled &&
+      (!value.termsVersion ||
+        !value.termsBody ||
+        value.retentionDays === null ||
+        !value.reportOwnerLabel ||
+        !value.uatConfirmed)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Enabled chat requires terms, retention, report owner, and completed UAT",
+      });
     }
   });
 
@@ -94,6 +107,7 @@ export type MatchChatAccessContext = {
 export type MatchChatRoomSetup = {
   room: MatchChatRoom;
   termsVersion: string;
+  termsBody: string;
   maxMessageLength: number;
   participantConsented: boolean;
 };

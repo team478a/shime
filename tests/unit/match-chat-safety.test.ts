@@ -32,7 +32,10 @@ const config: MatchChatConfig = {
   messagesPerMinute: 10,
   maxMessageLength: 500,
   termsVersion: "chat-terms-v1",
+  termsBody: "相手を尊重し、安全に利用してください。",
   retentionDays: 30,
+  reportOwnerLabel: "当日運営責任者",
+  uatConfirmed: true,
 };
 const eligibility: MatchChatEligibility = {
   matchCandidateId: "match-1",
@@ -140,17 +143,42 @@ const cipher: MatchChatMessageCipher = {
 };
 
 describe("match chat safety foundation", () => {
-  it("cannot enable chat until terms and retention are configured", () => {
-    expect(matchChatConfigSchema.safeParse({ ...config, termsVersion: null, retentionDays: null }).success).toBe(false);
+  it("cannot enable chat until every operational safety gate is configured", () => {
     expect(
-      matchChatConfigSchema.safeParse({ ...config, enabled: false, termsVersion: null, retentionDays: null }).success,
+      matchChatConfigSchema.safeParse({
+        ...config,
+        termsVersion: null,
+        termsBody: null,
+        retentionDays: null,
+        reportOwnerLabel: null,
+        uatConfirmed: false,
+      }).success,
+    ).toBe(false);
+    expect(
+      matchChatConfigSchema.safeParse({
+        ...config,
+        enabled: false,
+        termsVersion: null,
+        termsBody: null,
+        retentionDays: null,
+        reportOwnerLabel: null,
+        uatConfirmed: false,
+      }).success,
     ).toBe(true);
   });
 
   it("exposes only a safe enabled flag to result presentation", async () => {
     const repository = new FakeRepository();
     expect(await new GetMatchChatAvailability(repository).execute(scope)).toEqual({ enabled: true });
-    repository.config = { ...config, enabled: false, termsVersion: null, retentionDays: null };
+    repository.config = {
+      ...config,
+      enabled: false,
+      termsVersion: null,
+      termsBody: null,
+      retentionDays: null,
+      reportOwnerLabel: null,
+      uatConfirmed: false,
+    };
     expect(await new GetMatchChatAvailability(repository).execute(scope)).toEqual({ enabled: false });
   });
 
@@ -162,6 +190,7 @@ describe("match chat safety foundation", () => {
       data: {
         room: { status: "pending_consent" },
         termsVersion: "chat-terms-v1",
+        termsBody: "相手を尊重し、安全に利用してください。",
         maxMessageLength: 500,
         participantConsented: false,
       },

@@ -17,6 +17,7 @@ export const POST = participantHandler(resolveEventId, async (handlerContext, re
         data: {
           ...roomData(result.data.room),
           termsVersion: result.data.termsVersion,
+          termsBody: result.data.termsBody,
           maxMessageLength: result.data.maxMessageLength,
           participantConsented: result.data.participantConsented,
         },

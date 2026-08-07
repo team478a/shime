@@ -186,7 +186,37 @@ function MatchChatConfigForm({
           onChange={(event) => setConfig({ ...config, termsVersion: event.target.value || null })}
         />
       </label>
-      <p className="field-note">有効化には同意規約の版と本文保持日数が必要です。保存時に検証されます。</p>
+      <label>
+        チャット利用規約本文
+        <textarea
+          maxLength={50000}
+          rows={12}
+          placeholder="参加者が同意前に確認する正式な規約本文を入力してください"
+          value={config.termsBody ?? ""}
+          onChange={(event) => setConfig({ ...config, termsBody: event.target.value || null })}
+        />
+      </label>
+      <label>
+        通報対応責任者
+        <input
+          maxLength={120}
+          placeholder="例: 当日運営責任者"
+          value={config.reportOwnerLabel ?? ""}
+          onChange={(event) => setConfig({ ...config, reportOwnerLabel: event.target.value || null })}
+        />
+      </label>
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={config.uatConfirmed}
+          onChange={(event) => setConfig({ ...config, uatConfirmed: event.target.checked })}
+        />
+        <span>隔離UATで合成参加者2名の双方同意・送信・ブロック・通報・期限切れを確認した</span>
+      </label>
+      <p className="field-note">
+        本番イベントの有効化には正式規約の版と本文、本文保持日数、通報対応責任者、隔離UAT完了の全項目が必要です。
+        UAT確認後にこれらの設定を変更する場合は、先に機能とUAT確認をOFFにして保存し、再UATしてください。
+      </p>
       <button type="button" onClick={() => void onSave(config)} disabled={busy}>
         設定を保存
       </button>

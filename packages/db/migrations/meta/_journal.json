@@ -169,6 +169,13 @@
       "when": 1786052748754,
       "tag": "0023_lumpy_wallop",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786065355428,
+      "tag": "0024_lying_karma",
+      "breakpoints": true
     }
   ]
 }

@@ -34,7 +34,10 @@ const config = {
   messagesPerMinute: 10,
   maxMessageLength: 500,
   termsVersion: "match-chat-v1",
+  termsBody: "相手を尊重し、安全に利用してください。",
   retentionDays: 30,
+  reportOwnerLabel: "当日運営責任者",
+  uatConfirmed: true,
 };
 
 beforeEach(() => {

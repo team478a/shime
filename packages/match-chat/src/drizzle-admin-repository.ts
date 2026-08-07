@@ -9,7 +9,12 @@ import {
   participants,
 } from "@shime/db";
 import type { MatchChatAdminRepository } from "./repository";
-import { type MatchChatAdminReport, type MatchChatAdminScope, matchChatConfigSchema } from "./types";
+import {
+  type MatchChatAdminReport,
+  type MatchChatAdminScope,
+  type MatchChatConfig,
+  matchChatConfigSchema,
+} from "./types";
 
 const configSelection = {
   enabled: eventMatchChatConfigs.enabled,
@@ -17,8 +22,21 @@ const configSelection = {
   messagesPerMinute: eventMatchChatConfigs.messagesPerMinute,
   maxMessageLength: eventMatchChatConfigs.maxMessageLength,
   termsVersion: eventMatchChatConfigs.termsVersion,
+  termsBody: eventMatchChatConfigs.termsBody,
   retentionDays: eventMatchChatConfigs.retentionDays,
+  reportOwnerLabel: eventMatchChatConfigs.reportOwnerLabel,
+  uatConfirmed: eventMatchChatConfigs.uatConfirmed,
 };
+
+function configAuditValue(config: MatchChatConfig | null | undefined) {
+  if (!config) return null;
+  return {
+    ...config,
+    termsBody: config.termsBody
+      ? { configured: true, characterCount: config.termsBody.length }
+      : { configured: false, characterCount: 0 },
+  };
+}
 
 async function findEvent(scope: MatchChatAdminScope) {
   return (
@@ -137,6 +155,8 @@ export function createDrizzleMatchChatAdminRepository(): MatchChatAdminRepositor
               eventId: scope.eventId,
               serviceType: scope.serviceType,
               ...config,
+              uatConfirmedAt: config.uatConfirmed ? now : null,
+              uatConfirmedBy: config.uatConfirmed ? scope.actorUserId : null,
               updatedBy: scope.actorUserId,
               createdAt: now,
               updatedAt: now,
@@ -147,7 +167,13 @@ export function createDrizzleMatchChatAdminRepository(): MatchChatAdminRepositor
                 eventMatchChatConfigs.eventId,
                 eventMatchChatConfigs.serviceType,
               ],
-              set: { ...config, updatedBy: scope.actorUserId, updatedAt: now },
+              set: {
+                ...config,
+                uatConfirmedAt: config.uatConfirmed ? now : null,
+                uatConfirmedBy: config.uatConfirmed ? scope.actorUserId : null,
+                updatedBy: scope.actorUserId,
+                updatedAt: now,
+              },
             })
             .returning(configSelection)
         )[0];
@@ -157,8 +183,8 @@ export function createDrizzleMatchChatAdminRepository(): MatchChatAdminRepositor
           eventId: scope.eventId,
           action: "match_chat.config_updated",
           targetType: "event_match_chat_config",
-          before: before ?? null,
-          after: config,
+          before: configAuditValue(before ? matchChatConfigSchema.parse(before) : null),
+          after: configAuditValue(config),
           requestId: scope.requestId,
         });
         return row;

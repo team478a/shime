@@ -49,7 +49,10 @@ export function createDrizzleMatchChatSafetyRepository(): MatchChatSafetyReposit
             messagesPerMinute: eventMatchChatConfigs.messagesPerMinute,
             maxMessageLength: eventMatchChatConfigs.maxMessageLength,
             termsVersion: eventMatchChatConfigs.termsVersion,
+            termsBody: eventMatchChatConfigs.termsBody,
             retentionDays: eventMatchChatConfigs.retentionDays,
+            reportOwnerLabel: eventMatchChatConfigs.reportOwnerLabel,
+            uatConfirmed: eventMatchChatConfigs.uatConfirmed,
           })
           .from(eventMatchChatConfigs)
           .where(
