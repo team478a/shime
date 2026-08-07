@@ -32,7 +32,19 @@ const fieldsInput = z
       validation: z.record(z.string(), z.unknown()).default({}),
     }),
   )
-  .min(1);
+  .min(1)
+  .superRefine((fields, context) => {
+    const keys = new Set<string>();
+    const orders = new Set<number>();
+    fields.forEach((field, index) => {
+      if (keys.has(field.fieldKey))
+        context.addIssue({ code: "custom", path: [index, "fieldKey"], message: "項目キーが重複しています" });
+      if (orders.has(field.displayOrder))
+        context.addIssue({ code: "custom", path: [index, "displayOrder"], message: "表示順が重複しています" });
+      keys.add(field.fieldKey);
+      orders.add(field.displayOrder);
+    });
+  });
 const updateInput = z.union([
   fieldsInput.transform((fields) => ({ fields, sourceTemplateId: undefined as string | undefined })),
   z.object({ fields: fieldsInput, sourceTemplateId: z.string().uuid().optional() }),
@@ -144,5 +156,5 @@ export async function PUT(request: Request, context: Context) {
       requestId,
     });
   });
-  return NextResponse.json({ ok: true, request_id: requestId });
+  return NextResponse.json({ data: { fields: snapshot.fields }, request_id: requestId });
 }

@@ -15,10 +15,13 @@ export const interactionFeelingCodeSchema = z
 export const interactionTargetSourceSchema = z.enum(["interaction_slot", "self_reported", "operator_import"]);
 export const interactionPublicProfileFieldKeySchema = z.enum([
   "nickname",
+  "age",
   "age_or_band",
   "residence_municipality",
   "occupation",
   "hobbies",
+  "recent_happy_event",
+  "today_message",
   "holiday_style",
   "support_wanted",
   "support_offered",
