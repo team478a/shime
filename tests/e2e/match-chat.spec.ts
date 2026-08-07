@@ -43,6 +43,7 @@ test.describe("成立後チャット（320px）", () => {
             opensAt: null,
             closesAt: "2026-08-11T06:00:00.000Z",
             termsVersion: "chat-terms-v1",
+            termsBody: "相手を尊重し、安全に利用してください。",
             maxMessageLength: 500,
             participantConsented: false,
           },
@@ -97,6 +98,8 @@ test.describe("成立後チャット（320px）", () => {
     await page.goto(`/liff/result?eventId=${EVENT_ID}`);
     await page.getByRole("link", { name: "チャットを開く" }).click();
     await expect(page.getByRole("heading", { name: "チャット利用前の確認" })).toBeVisible();
+    await page.getByText("チャット利用規約を確認").click();
+    await expect(page.getByText("相手を尊重し、安全に利用してください。")).toBeVisible();
     await page.getByRole("button", { name: "内容に同意してチャットを開始" }).click();
     await expect(page.getByText("今日はありがとう")).toBeVisible();
     await page.getByRole("textbox", { name: "メッセージ", exact: true }).fill("こちらこそありがとう");

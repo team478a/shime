@@ -8,6 +8,7 @@ type Room = {
   opensAt: string | null;
   closesAt: string;
   termsVersion: string;
+  termsBody: string;
   maxMessageLength: number;
   participantConsented: boolean;
 };
@@ -111,7 +112,7 @@ export function useMatchChat(eventId: string, matchCandidateId: string) {
     if (!room || !roomUrl) return;
     setOperationMessage("");
     try {
-      const next = await jsonRequest<Omit<Room, "termsVersion" | "maxMessageLength"> & Partial<Room>>(
+      const next = await jsonRequest<Omit<Room, "termsVersion" | "termsBody" | "maxMessageLength"> & Partial<Room>>(
         `${roomUrl}/consent`,
         {
           method: "POST",

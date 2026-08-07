@@ -64,6 +64,7 @@ export class EnsureMatchChatRoom {
         data: {
           room: access.data.room,
           termsVersion: configResult.data.termsVersion!,
+          termsBody: configResult.data.termsBody!,
           maxMessageLength: configResult.data.maxMessageLength,
           participantConsented: consented.includes(scope.participantId),
         },
@@ -74,6 +75,7 @@ export class EnsureMatchChatRoom {
       data: {
         room: await this.repository.createRoom(scope, eligibility, closesAt, now),
         termsVersion: configResult.data.termsVersion!,
+        termsBody: configResult.data.termsBody!,
         maxMessageLength: configResult.data.maxMessageLength,
         participantConsented: false,
       },

@@ -12,7 +12,10 @@ export const defaultMatchChatConfig = {
   messagesPerMinute: 10,
   maxMessageLength: 500,
   termsVersion: null,
+  termsBody: null,
   retentionDays: null,
+  reportOwnerLabel: null,
+  uatConfirmed: false,
 } as const;
 
 export class MatchChatAdminError extends Error {

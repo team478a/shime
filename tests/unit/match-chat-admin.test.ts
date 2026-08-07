@@ -26,7 +26,10 @@ const enabledConfig: MatchChatConfig = {
   messagesPerMinute: 10,
   maxMessageLength: 500,
   termsVersion: "match-chat-v1",
+  termsBody: "相手を尊重し、安全に利用してください。",
   retentionDays: 30,
+  reportOwnerLabel: "当日運営責任者",
+  uatConfirmed: true,
 };
 
 const report: MatchChatAdminReport = {
@@ -81,13 +84,16 @@ describe("match chat admin", () => {
     expect(workspace.reports).toEqual([report]);
   });
 
-  it("rejects enablement without terms and retention before repository access", async () => {
+  it("rejects enablement until every operational safety gate is complete", async () => {
     const repository = new FakeAdminRepository();
     await expect(
       new SaveMatchChatConfig(repository).execute(scope, {
         ...enabledConfig,
         termsVersion: null,
+        termsBody: null,
         retentionDays: null,
+        reportOwnerLabel: null,
+        uatConfirmed: false,
       }),
     ).rejects.toMatchObject({ code: "INVALID_MATCH_CHAT_CONFIG" } satisfies Partial<MatchChatAdminError>);
     expect(repository.config).toBeNull();

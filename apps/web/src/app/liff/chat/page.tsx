@@ -34,6 +34,10 @@ function ConsentPanel({ chat }: Readonly<{ chat: ChatState }>) {
         <li>メッセージは暗号化保存し、設定された保存期間後に削除対象となります。</li>
         <li>利用条件：{chat.room.termsVersion}</li>
       </ul>
+      <details className="match-chat-terms">
+        <summary>チャット利用規約を確認</summary>
+        <div className="legal-body">{chat.room.termsBody}</div>
+      </details>
       <button type="button" disabled={chat.room.participantConsented} onClick={chat.acceptTerms}>
         {chat.room.participantConsented ? "同意済み・お相手の同意待ち" : "内容に同意してチャットを開始"}
       </button>

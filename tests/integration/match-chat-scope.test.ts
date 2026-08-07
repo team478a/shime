@@ -36,7 +36,7 @@ function seed(scope: number) {
 }
 
 describe("match chat migration scope", () => {
-  it("keeps chat disabled by default and requires terms and retention before enablement", async () => {
+  it("keeps chat disabled by default and requires every operational safety gate before enablement", async () => {
     client = new PGlite();
     await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
     const scope = seed(1);
@@ -53,7 +53,12 @@ describe("match chat migration scope", () => {
     ).rejects.toThrow();
     await expect(
       client.exec(
-        `update event_match_chat_configs set enabled=true,terms_version='chat-v1',retention_days=30 where tenant_id='${scope.tenantId}' and event_id='${scope.eventId}'`,
+        `update event_match_chat_configs set enabled=true,terms_version='chat-v1',terms_body='Safe terms',retention_days=30,report_owner_label='Operations manager',uat_confirmed=true where tenant_id='${scope.tenantId}' and event_id='${scope.eventId}'`,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      client.exec(
+        `update event_match_chat_configs set enabled=true,terms_version='chat-v1',terms_body='Safe terms',retention_days=30,report_owner_label='Operations manager',uat_confirmed=true,uat_confirmed_at=now(),uat_confirmed_by='${scope.userId}' where tenant_id='${scope.tenantId}' and event_id='${scope.eventId}'`,
       ),
     ).resolves.toBeDefined();
   }, 30_000);

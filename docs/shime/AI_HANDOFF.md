@@ -2,8 +2,8 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。PR #23〜#27統合、production migration 0021〜0023適用・デプロイ完了）
-作業ブランチ: `codex/production-rollout-record`
+最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャット有効化ゲートを実装・検証、未適用）
+作業ブランチ: `codex/match-chat-uat-gate`
 コミュニケーション匿名集計PR: `#26`（releaseへマージ済み）
 マッチ後チャット運用管理PR: `#25`（releaseへマージ済み）
 会話メモ設定PR: `#23`（releaseへマージ済み）
@@ -22,6 +22,17 @@ PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
 release HEAD（本番反映済み）: `9b4e42e1c82ac97819d1bda4b8b2f7cc7344e47a`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### マッチ後チャット有効化ゲート強化（2026-08-07、実装・検証済み、未適用）
+
+- production配備後の再確認で、従来は規約の版番号だけで機能ONにでき、参加者の同意画面に正式な規約本文が表示されない不足を検出した。通報対応責任者と合成データUATの完了記録も設定に存在しなかった。
+- `event_match_chat_configs`へ正式規約本文、通報対応責任者、UAT確認・確認者・確認日時を追加するmigration 0024を作成した。既存の有効行がある環境では、移行時に設定を削除せず機能だけをOFFへ戻すfail-closed方式とした。
+- 規約版、規約本文、本文保持日数、通報対応責任者、UAT確認がすべて揃わない限り、ZodとDB CHECKの両方で機能ONを拒否する。UAT確認者は認証済み操作ユーザーとtenant複合FKで拘束し、日時はサーバー側で記録する。
+- 参加者の同意画面には、サーバー設定から取得した正式規約本文を全文確認できる開閉表示を追加した。規約内容は開発側で作成・推測しない。
+- 手順と中止条件は`MATCH_CHAT_ACTIVATION_GATE_20260807.md`へ記録した。
+- 検証: architecture成功（DB直接route `61/62`、client fetch `23/24`、巨大component `9/9`）、lintエラー0（既存warningのみ）、typecheck成功、単体82ファイル414件、結合6ファイル50件、production build成功、依存監査は既知脆弱性0件。チャット重点テスト26件とmobile E2E 1件が成功した。全E2Eは46件成功・9件skipで、既存manual表示1件だけが並列実行時に一時失敗し、単独再実行で成功した。
+- `readiness`はコマンド成功だが正式イベント情報14項目が未確定のためproduction readyはfalse。`readiness:strict`は同じ14項目で失敗しており、今回のコード変更とは別の本番P0である。
+- migration 0024はどの環境にも未適用。ブランチは`codex/match-chat-uat-gate`で、production deploy、機能ON、実データ操作、LINE通知は行っていない。
 
 ### 2026-08-07 production rollout（migration 0021〜0023・release 9b4e42e）
 

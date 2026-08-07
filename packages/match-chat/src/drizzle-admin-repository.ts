@@ -17,7 +17,10 @@ const configSelection = {
   messagesPerMinute: eventMatchChatConfigs.messagesPerMinute,
   maxMessageLength: eventMatchChatConfigs.maxMessageLength,
   termsVersion: eventMatchChatConfigs.termsVersion,
+  termsBody: eventMatchChatConfigs.termsBody,
   retentionDays: eventMatchChatConfigs.retentionDays,
+  reportOwnerLabel: eventMatchChatConfigs.reportOwnerLabel,
+  uatConfirmed: eventMatchChatConfigs.uatConfirmed,
 };
 
 async function findEvent(scope: MatchChatAdminScope) {
@@ -137,6 +140,8 @@ export function createDrizzleMatchChatAdminRepository(): MatchChatAdminRepositor
               eventId: scope.eventId,
               serviceType: scope.serviceType,
               ...config,
+              uatConfirmedAt: config.uatConfirmed ? now : null,
+              uatConfirmedBy: config.uatConfirmed ? scope.actorUserId : null,
               updatedBy: scope.actorUserId,
               createdAt: now,
               updatedAt: now,
@@ -147,7 +152,13 @@ export function createDrizzleMatchChatAdminRepository(): MatchChatAdminRepositor
                 eventMatchChatConfigs.eventId,
                 eventMatchChatConfigs.serviceType,
               ],
-              set: { ...config, updatedBy: scope.actorUserId, updatedAt: now },
+              set: {
+                ...config,
+                uatConfirmedAt: config.uatConfirmed ? now : null,
+                uatConfirmedBy: config.uatConfirmed ? scope.actorUserId : null,
+                updatedBy: scope.actorUserId,
+                updatedAt: now,
+              },
             })
             .returning(configSelection)
         )[0];
