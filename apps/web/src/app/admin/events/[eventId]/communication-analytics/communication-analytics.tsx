@@ -34,6 +34,7 @@ function AnalyticsSection({
   labels,
   distributionTitle,
   distributionLabels,
+  minimumCohortSize,
 }: {
   title: string;
   description: string;
@@ -41,6 +42,7 @@ function AnalyticsSection({
   labels: Record<string, string>;
   distributionTitle: string;
   distributionLabels?: Record<string, string>;
+  minimumCohortSize: number;
 }) {
   return (
     <section className="panel settings-panel">
@@ -48,7 +50,7 @@ function AnalyticsSection({
       <p>{description}</p>
       {!section.available ? (
         <p className="operation-feedback-warning" role="status">
-          匿名性を守るため、対象者が5名以上になるまで集計を表示しません。
+          匿名性を守るため、対象者が{minimumCohortSize}名以上になるまで集計を表示しません。
         </p>
       ) : (
         <>
@@ -94,7 +96,12 @@ export function CommunicationAnalytics({ eventId }: { eventId: string }) {
         <p>
           会話メモとマッチ後チャットの利用状況を匿名で確認します。個人番号、メモ本文、チャット本文、通報補足は表示しません。
         </p>
-        <p className="field-note">5名未満の集計全体と、1〜2件の個別集計は、参加者を推測できないよう非表示にします。</p>
+        {analytics.data && (
+          <p className="field-note">
+            {analytics.data.privacy.minimumCohortSize}名未満の集計全体と、1〜
+            {analytics.data.privacy.minimumCellSize - 1}件の個別集計は、参加者を推測できないよう非表示にします。
+          </p>
+        )}
         {analytics.error && (
           <p className="operation-feedback-error" role="alert">
             集計を読み込めませんでした（{analytics.error}）。
@@ -111,6 +118,7 @@ export function CommunicationAnalytics({ eventId }: { eventId: string }) {
             section={analytics.data.interaction}
             labels={INTERACTION_METRICS}
             distributionTitle="気持ちタグ別"
+            minimumCohortSize={analytics.data.privacy.minimumCohortSize}
           />
           <AnalyticsSection
             title="マッチ後チャット"
@@ -119,6 +127,7 @@ export function CommunicationAnalytics({ eventId }: { eventId: string }) {
             labels={CHAT_METRICS}
             distributionTitle="通報対応状況"
             distributionLabels={REPORT_STATUS_LABELS}
+            minimumCohortSize={analytics.data.privacy.minimumCohortSize}
           />
         </>
       )}
