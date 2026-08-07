@@ -3,6 +3,7 @@ import {
   CancelSelfReportedInteractionSlot,
   CreateSelfReportedInteractionSlot,
   GetInteractionMemoWorkspace,
+  GetInteractionPreferenceHints,
   type InteractionMemoNote,
   type InteractionMemoRepository,
   interactionPublicProfileFieldKeysSchema,
@@ -50,6 +51,7 @@ function repository(overrides: Partial<InteractionMemoRepository> = {}): Interac
     listOptions: async () => [option],
     listTargets: async () => [target],
     listOwnNotes: async () => [],
+    listOwnWantsToTalkMoreTargetIds: async () => [],
     getTargetPublicProfileSource: async () => null,
     searchSelfReportedCandidates: async () => [],
     createSelfReportedSlot: async () => ({ status: "created", target }),
@@ -129,6 +131,37 @@ describe("interaction memo use cases", () => {
     const result = await useCase.execute(scope);
 
     expect(result.ok && result.data.targets).toEqual([{ ...target, note: null }]);
+  });
+
+  it("returns only the signed-in participant's eligible talk-more hints for final preferences", async () => {
+    const useCase = new GetInteractionPreferenceHints(
+      repository({
+        listTargets: async () => [target],
+        listOwnWantsToTalkMoreTargetIds: async () => [target.targetParticipantId, "participant-from-another-scope"],
+      }),
+    );
+
+    await expect(useCase.execute(scope)).resolves.toEqual({
+      ok: true,
+      data: {
+        targetParticipantIds: [target.targetParticipantId],
+        wantsToTalkMoreTargetIds: [target.targetParticipantId],
+      },
+    });
+  });
+
+  it("does not read preference hints for an ineligible participant", async () => {
+    const listOwnWantsToTalkMoreTargetIds = vi.fn(async () => [target.targetParticipantId]);
+    const useCase = new GetInteractionPreferenceHints(
+      repository({ isParticipantEligible: async () => false, listOwnWantsToTalkMoreTargetIds }),
+    );
+
+    await expect(useCase.execute(scope)).resolves.toEqual({
+      ok: false,
+      code: "PARTICIPATION_NOT_CONFIRMED",
+      status: 409,
+    });
+    expect(listOwnWantsToTalkMoreTargetIds).not.toHaveBeenCalled();
   });
 
   it("rejects self selection before repository mutation", async () => {

@@ -69,6 +69,11 @@ export type InteractionMemoTargetCandidate = {
   participantNumber: string;
 };
 
+export type InteractionPreferenceHints = {
+  targetParticipantIds: string[];
+  wantsToTalkMoreTargetIds: string[];
+};
+
 export type InteractionPublicProfileSource = {
   participantNumber: string;
   nickname: string | null;

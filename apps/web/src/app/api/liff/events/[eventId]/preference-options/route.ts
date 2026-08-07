@@ -1,7 +1,6 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import {
-  applications,
   checkins,
   conversationPairs,
   events,
@@ -12,6 +11,7 @@ import {
   preferences,
 } from "@shime/db";
 import { requireParticipantForEvent } from "@shime/web/server/participant-auth";
+import { getInteractionPreferenceHints } from "@shime/web/server/interaction-memo-use-cases";
 export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
   const auth = await requireParticipantForEvent(eventId).catch(() => null);
@@ -30,6 +30,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
     (event[0].preferenceClosesAt && event[0].preferenceClosesAt <= now)
   )
     return NextResponse.json({ code: "PREFERENCE_NOT_OPEN" }, { status: 409 });
+  const interactionHints = await getInteractionPreferenceHints.execute({
+    tenantId: auth.session.tenantId,
+    eventId,
+    serviceType: "marriage",
+    participantId: auth.participant.id,
+  });
+  if (!interactionHints.ok)
+    return NextResponse.json({ code: interactionHints.code }, { status: interactionHints.status });
   const pairs = await db
     .select()
     .from(conversationPairs)
@@ -62,19 +70,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
   const blocked = new Set(
     avoidances.map((a) => (a.participantId === auth.participant.id ? a.avoidedParticipantId : a.participantId)),
   );
-  const allowedIds = [...new Set(candidateIds.filter((id) => !blocked.has(id)))];
-  const candidates = allowedIds.length
+  const allowedIds = [
+    ...new Set([...candidateIds, ...interactionHints.data.targetParticipantIds].filter((id) => !blocked.has(id))),
+  ];
+  const recommendedIds = new Set(interactionHints.data.wantsToTalkMoreTargetIds);
+  const candidateRows = allowedIds.length
     ? await db
         .select({
           id: participants.id,
           participantNumber: participants.participantNumber,
-          nickname: applications.nickname,
         })
         .from(participants)
-        .innerJoin(
-          applications,
-          and(eq(applications.id, participants.applicationId), eq(applications.tenantId, participants.tenantId)),
-        )
         .innerJoin(
           checkins,
           and(
@@ -93,6 +99,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
           ),
         )
     : [];
+  const candidates = candidateRows
+    .map((candidate) => ({ ...candidate, recommended: recommendedIds.has(candidate.id) }))
+    .sort(
+      (left, right) =>
+        Number(right.recommended) - Number(left.recommended) ||
+        (left.participantNumber ?? "").localeCompare(right.participantNumber ?? "", "ja", { numeric: true }),
+    );
   const submission = await db
     .select()
     .from(preferenceSubmissions)

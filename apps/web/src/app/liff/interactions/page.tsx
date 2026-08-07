@@ -75,9 +75,14 @@ export default function InteractionMemoPage() {
         )}
 
         {eventId && (
-          <a className="button-link secondary" href={`/liff/passport?${new URLSearchParams({ eventId }).toString()}`}>
-            SHIME® PASSへ戻る
-          </a>
+          <div className="actions">
+            <a className="button-link" href={`/liff/preferences?${new URLSearchParams({ eventId }).toString()}`}>
+              イベント終了時の希望入力へ
+            </a>
+            <a className="button-link secondary" href={`/liff/passport?${new URLSearchParams({ eventId }).toString()}`}>
+              SHIME® PASSへ戻る
+            </a>
+          </div>
         )}
       </section>
     </main>

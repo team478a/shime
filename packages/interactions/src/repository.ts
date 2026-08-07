@@ -25,6 +25,7 @@ export interface InteractionMemoRepository {
   listOptions(scope: InteractionMemoScope, snapshotId: string): Promise<InteractionMemoOption[]>;
   listTargets(scope: InteractionMemoScope): Promise<InteractionMemoTarget[]>;
   listOwnNotes(scope: InteractionMemoScope, snapshotId: string): Promise<InteractionMemoNote[]>;
+  listOwnWantsToTalkMoreTargetIds(scope: InteractionMemoScope): Promise<string[]>;
   getTargetPublicProfileSource(
     scope: InteractionMemoScope,
     targetParticipantId: string,

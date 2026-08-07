@@ -3,6 +3,7 @@ import {
   createDrizzleInteractionMemoRepository,
   CreateSelfReportedInteractionSlot,
   GetInteractionMemoWorkspace,
+  GetInteractionPreferenceHints,
   GetInteractionPublicProfile,
   SaveInteractionMemo,
   SearchSelfReportedInteractionTargets,
@@ -11,6 +12,7 @@ import {
 const repository = createDrizzleInteractionMemoRepository();
 
 export const getInteractionMemoWorkspace = new GetInteractionMemoWorkspace(repository);
+export const getInteractionPreferenceHints = new GetInteractionPreferenceHints(repository);
 export const getInteractionPublicProfile = new GetInteractionPublicProfile(repository);
 export const saveInteractionMemo = new SaveInteractionMemo(repository);
 export const searchSelfReportedInteractionTargets = new SearchSelfReportedInteractionTargets(repository);
