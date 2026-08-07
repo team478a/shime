@@ -1,11 +1,19 @@
 import { and, eq, isNull, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { applications, events, getDatabase, matchCandidates, participants, resultConfirmations } from "@shime/db";
+import { getMatchChatAvailability } from "@shime/web/server/match-chat-use-cases";
 import { requireParticipantForEvent } from "@shime/web/server/participant-auth";
+
+function resultJson(body: unknown, status = 200) {
+  const response = NextResponse.json(body, { status });
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
   const auth = await requireParticipantForEvent(eventId).catch(() => null);
-  if (!auth) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  if (!auth) return resultJson({ code: "UNAUTHORIZED" }, 401);
   const db = getDatabase();
   const event = await db
     .select()
@@ -15,7 +23,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
     )
     .limit(1);
   if (!event[0] || !event[0].resultPublishAt || event[0].resultPublishAt > new Date())
-    return NextResponse.json({ data: { available: false } });
+    return resultJson({ data: { available: false } });
   const confirmation = await db
     .select()
     .from(resultConfirmations)
@@ -27,7 +35,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
       ),
     )
     .limit(1);
-  if (!confirmation[0]) return NextResponse.json({ data: { available: false } });
+  if (!confirmation[0]) return resultJson({ data: { available: false } });
+  const chatAvailability = await getMatchChatAvailability.execute({
+    tenantId: auth.session.tenantId,
+    eventId,
+    serviceType: "marriage",
+    participantId: auth.participant.id,
+  });
   const approved = await db
     .select()
     .from(matchCandidates)
@@ -61,9 +75,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
         ),
       )
       .limit(1);
-    if (rows[0]) matches.push(rows[0]);
+    if (rows[0]) matches.push({ ...rows[0], matchCandidateId: candidate.id });
   }
-  return NextResponse.json({
-    data: { available: true, matched: matches.length > 0, matches, contactExchangeMode: "operator_mediated" },
+  return resultJson({
+    data: {
+      available: true,
+      matched: matches.length > 0,
+      matches,
+      contactExchangeMode: "operator_mediated",
+      matchChatEnabled: chatAvailability.enabled,
+    },
   });
 }

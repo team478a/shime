@@ -1,31 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { ParticipantNotice, ParticipantPageHeader } from "../../../components/participant-ui";
+import { useEventResult } from "../../../hooks/use-event-result";
 import { useLiffEventId } from "../../../lib/liff-location";
-
-type Result = {
-  available: boolean;
-  matched?: boolean;
-  matches?: Array<{ participantNumber: string | null; nickname: string | null }>;
-};
 
 export default function ResultPage() {
   const eventId = useLiffEventId();
-  const [result, setResult] = useState<Result | null>(null);
-  const [loadState, setLoadState] = useState<"idle" | "loaded" | "error">("idle");
-
-  useEffect(() => {
-    if (!eventId) return;
-    fetch(`/api/liff/events/${eventId}/result`)
-      .then(async (response) => ({ response, body: await response.json() }))
-      .then(({ response, body }) => {
-        if (!response.ok || !body.data) throw new Error();
-        setResult(body.data);
-      })
-      .then(() => setLoadState("loaded"))
-      .catch(() => setLoadState("error"));
-  }, [eventId]);
+  const { result, loadState } = useEventResult(eventId);
 
   return (
     <main>
@@ -49,14 +30,28 @@ export default function ResultPage() {
         {result?.available && result.matched && (
           <div className="connection-result">
             <p className="connection-message">お互いに「またお話ししたい」という気持ちが重なりました。</p>
-            <ul>
+            <ul className="connection-match-list">
               {result.matches?.map((match) => (
-                <li key={`${match.participantNumber}-${match.nickname}`}>
-                  {match.participantNumber} {match.nickname ?? "参加者"}
+                <li key={match.matchCandidateId}>
+                  <span>
+                    {match.participantNumber} {match.nickname ?? "参加者"}
+                  </span>
+                  {result.matchChatEnabled && (
+                    <a
+                      className="button-link"
+                      href={`/liff/chat?${new URLSearchParams({ eventId, matchCandidateId: match.matchCandidateId }).toString()}`}
+                    >
+                      チャットを開く
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
-            <p>連絡先交換は運営を通じてご案内します。</p>
+            <p>
+              {result.matchChatEnabled
+                ? "チャットは双方の同意後、結果公開から72時間利用できます。"
+                : "連絡先交換は運営を通じてご案内します。"}
+            </p>
           </div>
         )}
         {result?.available && !result.matched && (

@@ -20,8 +20,45 @@ export const matchChatReportSchema = z.object({
   detail: z.string().trim().max(1000).nullable(),
 });
 
+export const sendMatchChatMessageSchema = z.object({
+  clientMessageId: z.string().uuid(),
+  body: z.string().trim().min(1).max(2000),
+});
+
 export type MatchChatConfig = z.infer<typeof matchChatConfigSchema>;
 export type MatchChatReportInput = z.infer<typeof matchChatReportSchema>;
+export type SendMatchChatMessageInput = z.infer<typeof sendMatchChatMessageSchema>;
+
+export const matchChatReportStatusSchema = z.enum(["open", "reviewing", "resolved"]);
+export const updateMatchChatReportSchema = z.object({
+  status: z.enum(["reviewing", "resolved"]),
+});
+
+export type MatchChatAdminScope = {
+  tenantId: string;
+  eventId: string;
+  serviceType: string;
+  actorUserId: string;
+  requestId: string;
+};
+
+export type MatchChatAdminReport = {
+  id: string;
+  roomId: string;
+  reporterParticipantNumber: string | null;
+  reportedParticipantNumber: string | null;
+  category: MatchChatReportInput["category"];
+  detail: string | null;
+  status: z.infer<typeof matchChatReportStatusSchema>;
+  createdAt: string;
+  resolvedAt: string | null;
+};
+
+export type MatchChatAdminWorkspace = {
+  eventName: string;
+  config: MatchChatConfig;
+  reports: MatchChatAdminReport[];
+};
 
 export type MatchChatScope = {
   tenantId: string;
@@ -54,6 +91,48 @@ export type MatchChatAccessContext = {
   eligibilityActive: boolean;
 };
 
+export type MatchChatRoomSetup = {
+  room: MatchChatRoom;
+  termsVersion: string;
+  maxMessageLength: number;
+  participantConsented: boolean;
+};
+
+export type EncryptedMatchChatMessage = {
+  id: string;
+  senderParticipantId: string;
+  clientMessageId: string;
+  encryptedBody: string;
+  encryptionVersion: string;
+  sentAt: Date;
+  expiresAt: Date;
+};
+
+export type MatchChatMessage = {
+  id: string;
+  sender: "self" | "match";
+  body: string;
+  sentAt: string;
+};
+
+export type MatchChatCipherContext = {
+  tenantId: string;
+  eventId: string;
+  roomId: string;
+  senderParticipantId: string;
+  clientMessageId: string;
+};
+
+export interface MatchChatMessageCipher {
+  encrypt(body: string, context: MatchChatCipherContext): Promise<{ ciphertext: string; version: string }>;
+  decrypt(ciphertext: string, version: string, context: MatchChatCipherContext): Promise<string>;
+}
+
+export type SaveEncryptedMessageResult =
+  | { status: "saved" | "idempotent"; message: EncryptedMatchChatMessage }
+  | { status: "rate_limited" }
+  | { status: "not_available" };
+
 export type MatchChatResult<T> =
   | { ok: true; data: T }
   | {
@@ -64,6 +143,11 @@ export type MatchChatResult<T> =
         | "MATCH_CHAT_EXPIRED"
         | "MATCH_CHAT_BLOCKED"
         | "MATCH_CHAT_TERMS_CHANGED"
-        | "MATCH_CHAT_INVALID_REPORT";
-      status: 400 | 403 | 404 | 409;
+        | "MATCH_CHAT_INVALID_REPORT"
+        | "MATCH_CHAT_INVALID_MESSAGE"
+        | "MATCH_CHAT_INVALID_REQUEST"
+        | "MATCH_CHAT_CONSENT_REQUIRED"
+        | "MATCH_CHAT_RATE_LIMITED"
+        | "MATCH_CHAT_UNAVAILABLE";
+      status: 400 | 403 | 404 | 409 | 429 | 503;
     };

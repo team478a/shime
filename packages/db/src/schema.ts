@@ -1817,6 +1817,49 @@ export const matchChatReports = pgTable(
   ],
 );
 
+export const matchChatMessages = pgTable(
+  "match_chat_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    roomId: uuid("room_id").notNull(),
+    senderParticipantId: uuid("sender_participant_id").notNull(),
+    clientMessageId: uuid("client_message_id").notNull(),
+    encryptedBody: text("encrypted_body").notNull(),
+    encryptionVersion: varchar("encryption_version", { length: 20 }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("match_chat_messages_idempotency_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.roomId,
+      table.senderParticipantId,
+      table.clientMessageId,
+    ),
+    index("match_chat_messages_timeline_idx").on(table.tenantId, table.eventId, table.roomId, table.sentAt),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.roomId],
+      foreignColumns: [matchChatRooms.tenantId, matchChatRooms.eventId, matchChatRooms.id],
+      name: "match_chat_messages_room_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.senderParticipantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_messages_sender_scope_fk",
+    }),
+    check("match_chat_messages_window_check", sql`${table.expiresAt} > ${table.sentAt}`),
+    check(
+      "match_chat_messages_encryption_check",
+      sql`length(${table.encryptedBody}) > 0 and length(${table.encryptionVersion}) > 0`,
+    ),
+  ],
+);
+
 export const tenantServiceSettings = pgTable(
   "tenant_service_settings",
   {

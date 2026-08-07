@@ -2,8 +2,9 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャット安全基盤Phase 4A実装・検証完了）
-作業ブランチ: `codex/match-chat-safety-foundation`（PR #23を積み上げ基点として含む）
+最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャットPhase 4D運用管理実装・検証完了）
+作業ブランチ: `codex/match-chat-messaging`（Phase 4Aブランチを積み上げ基点として含む）
+マッチ後チャット運用管理PR: `#25`（`codex/match-chat-safety-foundation`向け積み上げDraft PR、未マージ）
 会話メモ設定PR: `#23`（release向け、最新HEAD `81e22d4`、GitHub Actions最新結果の再確認待ち）
 マッチ後チャット安全基盤PR: `#24`（PR #23向け積み上げ、最新実装HEAD `ef45b20`）
 deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
@@ -19,6 +20,38 @@ PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
 release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### マッチ成立後チャット Phase 4D 運用管理（2026-08-07、実装・検証済み、未公開）
+
+- イベント管理画面に「マッチ後チャット」を追加し、機能ON/OFF、利用時間、1分当たり送信上限、本文文字数、保存日数、規約版をイベント単位で設定できるようにした。初期状態は必ずOFFで、規約版または保存日数が未設定の状態ではONにできない。
+- 通報対応一覧では、対象者を参加者番号だけで表示し、通報区分、任意補足、状態、受付日時を確認できる。本文メッセージ、相手の希望順位、Dream、感情回答、個人連絡先は管理APIと画面へ返さない。「確認中」「対応済み」への一方向状態遷移を実装し、対応操作をtenant/event/reportで拘束した。
+- 管理APIは`staffHandler`、UseCase、Repository契約、Drizzle実装へ分離し、既存の`event:write`権限で保護した。設定変更と通報状態変更は監査ログへID・版・状態などの運用メタデータだけを記録し、通報補足やチャット本文を複製しない。
+- 期限切れまたは論理削除済みの暗号化メッセージを、tenant/event境界を維持して最大5000件ずつ物理削除する内部jobを追加した。Vercel cronは毎日00:15 UTC（09:15 JST）で、既存の`INTERNAL_JOB_SECRET`/`CRON_SECRET`認証を利用する。jobログは削除件数とrequest IDだけで、本文・参加者情報を含まない。
+- migration 0022に通報状態・担当者、0023に本文保存期限・削除日時が既に存在するため、新規migrationは不要。0022/0023は未適用のままで、staging/productionへの適用、デプロイ、機能ON、実データ操作、LINE通知は実施していない。
+- 検証: architecture成功（DB直接route `61/62`、client fetch `23/24`、巨大component `9/9`）、lintエラー0（既存warningのみ）、typecheck成功、単体81ファイル408件、結合5ファイル49件、production build成功、依存監査は既知脆弱性0件。管理UseCase・API・DB scopeの重点26件も成功した。並列E2Eではマッチ後チャット1件が一時失敗したが、全E2Eを直列再実行して47件成功・9件skipとなった。
+- 全体`format:check`はWindows CRLF差による既存471ファイルで失敗。今回変更ファイルの個別Prettier、対象ESLint、`git diff --check`は成功した。`readiness`コマンド自体は成功したが、production readyは正式イベント情報14項目未確定のためfalse。`readiness:strict`も同じ14件の`REQUIRED_INPUT`で失敗し、今回のコード不具合とは分離する。
+- 次はPR #25の独立レビュー、GitHub Actions確認、正式チャット規約・保存期間・通報対応責任者と手順の確定、合成データによるstaging UATである。匿名集計ダッシュボードと参加者通知は、本文や個人情報を集計へ混入させない別モジュール・別PRとして扱う。これらの運用準備とmigration適用判断が完了するまで機能をONにしない。
+
+### マッチ成立後チャット Phase 4C 参加者UI（2026-08-07、実装・検証済み、未公開）
+
+- 結果画面に、チャット設定が有効な場合だけ、承認済み成立ペアごとの「チャットを開く」導線を追加した。クライアントにはopaqueなmatch candidate IDだけを渡し、チャットroom ID、参加者同定、tenant/event境界は引き続きサーバー側で確定する。結果APIも`private, no-store`とした。
+- 320px前提の`/liff/chat`を追加し、利用期限表示、規約版確認、双方同意待ちの自動更新、メッセージ一覧・送信、文字数上限、ブロック、通報、結果画面への復帰を実装した。送信は端末側UUIDで冪等化し、サーバー設定の文字数上限をUIにも反映する。
+- 本人の同意済み状態はroom setupの安全なbooleanとして返し、再読込み後も二重操作を求めない。相手の同意有無や時刻、participant IDは返さない。ブロック・通報は明示確認後に即時停止し、メッセージを画面から破棄する。
+- コンポーネントのAPI直接呼び出しを増やさないよう`useMatchChat`と`useEventResult`へ分離し、結果表示用の機能有効判定もUseCase経由にした。architecture debtはDB直接route `61/62`、client fetch `23/24`でいずれもbaseline以下。
+- 検証: lintエラー0（既存warningのみ）、architecture成功、typecheck成功、単体79ファイル400件、結合5ファイル47件、production build成功、依存監査は既知脆弱性0件。新規mobile E2Eで結果→同意→送受信→ブロックと横はみ出しなしを確認した。全E2Eは46件成功・9件skip・既存manual表示1件が並列実行で一時失敗し、該当mobile manual 4件の直列再実行は全件成功した。
+- 全体`format:check`はWindows CRLF差による既存473ファイルで失敗。今回変更ファイルの個別Prettierと`git diff --check`は成功した。
+- migration 0022/0023適用、staging/productionデプロイ、機能ON、実参加者データ、通知は未実施。次は運営通報対応画面、期限切れ本文の物理削除job、管理画面のチャット設定、正式規約本文と運営フロー確定、合成データstaging UATである。それらが完了するまで機能をONにしない。
+
+### マッチ成立後チャット Phase 4B メッセージ基盤（2026-08-07、実装・検証済み、未公開）
+
+- Phase 4Aのroom・双方同意・72時間・block・report基盤の上に、当事者限定のroom作成、同意、メッセージ一覧・送信、block、report APIを追加した。すべて参加者セッションからtenant/event/participantを確定し、クライアント指定のactor/senderは受け付けない。
+- 本文は`SETTINGS_ENCRYPTION_KEY`から用途分離して導出した鍵によるAES-256-GCMで暗号化する。AADへtenant、event、room、sender、client message IDを結び付け、別scopeでの復号を拒否する。API・監査ログ・DBへ平文本文を複製しない。
+- migration `0023_lumpy_wallop.sql`で`match_chat_messages`を追加した。roomとsenderをtenant/event複合FKで拘束し、端末側UUIDによる送信冪等性、暗号情報と保存期限のDB CHECK、時系列索引を追加した。
+- 送信はroom行をロックし、送信直前にもroom open、当事者、期限を再検証する。1分単位の送信上限判定と保存を同一transaction内で実施するため、並行送信で上限を回避できない。同じclient message IDの再送は本文を二重保存せず、最初のメッセージを返す。
+- 一覧・送信のたびに機能ON、成立結果の有効性、双方同意、block、72時間期限を再確認する。レスポンスは送信者を`self | match`だけで表し、相手participant ID、希望順位、非公開メモ等を返さない。期限切れ・論理削除済みの本文は一覧から除外する。
+- 検証: architecture成功、lintエラー0（既存warningのみ）、typecheck成功、単体79ファイル398件、結合5ファイル47件、production build成功。重点17件で暗号化/AAD、冪等性、rate limit、同意、block、結果取消、cross-event FK、API actor注入拒否を確認した。実装中に公開された`js-yaml`の高リスクadvisoryへ対応し、pnpm overrideで4.3.1へ固定後、依存監査は既知脆弱性0件となった。
+- 全体`format:check`は既知のWindows改行差を含む既存480ファイルで失敗。変更ファイルは個別Prettier、対象eslint、`git diff --check`で確認する。
+- migration 0023適用、staging/productionデプロイ、機能ON、参加者UI、通知、期限切れ行の物理削除job、運営通報対応画面、実データ使用は未実施。次のPhase 4Cは、結果画面からの同意導線とスマートフォン向けチャットUI、通報・block操作、期限表示を独立PRで追加する。規約・保存期間・運営対応手順が確定するまで機能をONにしない。
 
 ### マッチ成立後チャット安全基盤 Phase 4A（2026-08-07、実装・検証済み、未公開）
 
