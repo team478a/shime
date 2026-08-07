@@ -25,7 +25,7 @@ release HEAD（本番反映済み）: `9b4e42e1c82ac97819d1bda4b8b2f7cc7344e47a`
 
 ### マッチ後チャット有効化ゲート強化（2026-08-07、実装・検証済み、未適用）
 
-- Draft PR: `#29`（`codex/match-chat-uat-gate` → `release/2026-08-08-readiness`）。未マージ。
+- PR: `#29`（`codex/match-chat-uat-gate` → `release/2026-08-08-readiness`）。CI成功、レビュー可能、未マージ。
 - production配備後の再確認で、従来は規約の版番号だけで機能ONにでき、参加者の同意画面に正式な規約本文が表示されない不足を検出した。通報対応責任者と合成データUATの完了記録も設定に存在しなかった。
 - `event_match_chat_configs`へ正式規約本文、通報対応責任者、UAT確認・確認者・確認日時を追加するmigration 0024を作成した。既存の有効行がある環境では、移行時に設定を削除せず機能だけをOFFへ戻すfail-closed方式とした。
 - 規約版、規約本文、本文保持日数、通報対応責任者、UAT確認がすべて揃わない限り、ZodとDB CHECKの両方で機能ONを拒否する。UAT確認者は認証済み操作ユーザーとtenant複合FKで拘束し、日時はサーバー側で記録する。
