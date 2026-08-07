@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildInteractionPublicProfile,
+  calculateAge,
   GetInteractionPublicProfile,
   type InteractionMemoRepository,
 } from "@shime/interactions";
@@ -23,7 +24,13 @@ const source = {
   nickname: "はな",
   birthDate: "1991-10-20",
   residenceArea: "愛知県名古屋市中区栄3-1-1",
-  additionalAnswers: { occupation: "会社員", hobbies: "読書", email: "secret@example.com" },
+  additionalAnswers: {
+    occupation: "会社員",
+    hobbies: "読書",
+    recent_happy_event: "友人と再会した",
+    today_message: "よろしくお願いします",
+    email: "secret@example.com",
+  },
   publicDream: "小さな店を開く",
 };
 
@@ -69,6 +76,21 @@ describe("interaction public profile", () => {
     expect(JSON.stringify(profile)).not.toContain("1991-10-20");
     expect(JSON.stringify(profile)).not.toContain("secret@example.com");
     expect(JSON.stringify(profile)).not.toContain("栄3-1-1");
+  });
+
+  it("derives exact age without exposing birth date and returns the new allowlisted answers", () => {
+    const profile = buildInteractionPublicProfile(source, ["age", "recent_happy_event", "today_message"], now);
+
+    expect(calculateAge("1991-10-20", now)).toBe(34);
+    expect(profile).toEqual({
+      participantNumber: "B01",
+      fields: [
+        { key: "age", label: "年齢", value: "34歳" },
+        { key: "recent_happy_event", label: "最近あった嬉しいこと", value: "友人と再会した" },
+        { key: "today_message", label: "今日の一言", value: "よろしくお願いします" },
+      ],
+    });
+    expect(JSON.stringify(profile)).not.toContain("1991-10-20");
   });
 
   it("returns a profile only for a current eligible conversation target", async () => {

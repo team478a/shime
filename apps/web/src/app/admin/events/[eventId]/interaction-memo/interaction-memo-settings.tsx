@@ -15,10 +15,13 @@ const INITIAL_OPTIONS = [
 
 const PROFILE_FIELDS: Array<{ key: InteractionPublicProfileFieldKey; label: string }> = [
   { key: "nickname", label: "ニックネーム" },
+  { key: "age", label: "年齢（生年月日から自動計算）" },
   { key: "age_or_band", label: "年代" },
   { key: "residence_municipality", label: "市区町村" },
   { key: "occupation", label: "職業" },
   { key: "hobbies", label: "趣味" },
+  { key: "recent_happy_event", label: "最近あった嬉しいこと" },
+  { key: "today_message", label: "今日の一言" },
   { key: "holiday_style", label: "休日の過ごし方" },
   { key: "support_wanted", label: "応援してほしいこと" },
   { key: "support_offered", label: "応援できること" },

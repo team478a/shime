@@ -1,20 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { STANDARD_PROFILE_SUPPORT_FORM_FIELDS } from "@shime/core/events/config";
-
-type FieldType = "text" | "email" | "tel" | "date" | "select" | "checkbox";
-type Requirement = "required" | "optional" | "hidden";
-type Row = {
-  fieldKey: string;
-  label: string;
-  type: FieldType;
-  requirement: Requirement;
-  displayOrder: number;
-  options: string;
-};
-type Template = { id: string; name: string; version: number; rows: Row[] };
+import {
+  createMarriageDayFormFields,
+  type FormFieldRow,
+  type FormFieldTemplate,
+  normalizeFormFieldOrder,
+} from "./form-field-config";
+import { FormFieldEditor } from "./form-field-editor";
 
 export function FormFieldSettings({
   eventId,
@@ -23,18 +18,65 @@ export function FormFieldSettings({
   canManageTemplates,
 }: {
   eventId: string;
-  initial: Row[];
-  templates: Template[];
+  initial: FormFieldRow[];
+  templates: FormFieldTemplate[];
   canManageTemplates: boolean;
 }) {
-  const [rows, setRows] = useState<Row[]>(initial);
+  const [rows, setRows] = useState<FormFieldRow[]>(initial);
   const [sourceTemplateId, setSourceTemplateId] = useState("");
   const [templateName, setTemplateName] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  function update(index: number, patch: Partial<Row>) {
-    setRows((current) => current.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const draftStorageKey = `shime:application-form-draft:${eventId}`;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = window.sessionStorage.getItem(draftStorageKey);
+        if (!saved) return;
+        const parsed = JSON.parse(saved) as { rows?: FormFieldRow[] };
+        if (!Array.isArray(parsed.rows) || parsed.rows.length === 0) return;
+        setRows(normalizeFormFieldOrder(parsed.rows));
+        setHasUnsavedChanges(true);
+        setMessage("保存前の入力内容をこの端末から復元しました。");
+      } catch {
+        window.sessionStorage.removeItem(draftStorageKey);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [draftStorageKey]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    window.sessionStorage.setItem(draftStorageKey, JSON.stringify({ rows, savedAt: new Date().toISOString() }));
+  }, [draftStorageKey, hasUnsavedChanges, rows]);
+
+  function replaceRows(nextRows: FormFieldRow[]) {
+    setRows(normalizeFormFieldOrder(nextRows));
+    setHasUnsavedChanges(true);
   }
+
+  function update(index: number, patch: Partial<FormFieldRow>) {
+    setRows((current) => current.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
+    setHasUnsavedChanges(true);
+  }
+
+  function move(index: number, direction: -1 | 1) {
+    setRows((current) => {
+      const destination = index + direction;
+      if (destination < 0 || destination >= current.length) return current;
+      const next = [...current];
+      const selected = next[index];
+      const displaced = next[destination];
+      if (!selected || !displaced) return current;
+      next[index] = displaced;
+      next[destination] = selected;
+      return normalizeFormFieldOrder(next);
+    });
+    setHasUnsavedChanges(true);
+  }
+
   async function save() {
     setBusy(true);
     setMessage("");
@@ -54,14 +96,30 @@ export function FormFieldSettings({
             }
           : {},
     }));
-    const response = await fetch(`/api/admin/events/${eventId}/form-fields`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ fields: body, ...(sourceTemplateId ? { sourceTemplateId } : {}) }),
-    });
-    const result = await response.json();
-    setBusy(false);
-    setMessage(response.ok ? "申込フォーム項目を保存しました。" : `保存できません: ${result.message ?? result.code}`);
+    try {
+      const response = await fetch(`/api/admin/events/${eventId}/form-fields`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fields: body, ...(sourceTemplateId ? { sourceTemplateId } : {}) }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        code?: string;
+        message?: string;
+      };
+      if (!response.ok) {
+        setMessage(`保存できません: ${result.message ?? result.code ?? "通信エラー"}。入力内容は保持しています。`);
+        return;
+      }
+      setRows(normalizeFormFieldOrder(rows));
+      setSourceTemplateId("");
+      setHasUnsavedChanges(false);
+      window.sessionStorage.removeItem(draftStorageKey);
+      setMessage("申込フォーム項目を保存しました。再読み込み後もこの内容が表示されます。");
+    } catch {
+      setMessage("通信のため保存できませんでした。入力内容はこの端末に保持しています。もう一度お試しください。");
+    } finally {
+      setBusy(false);
+    }
   }
   async function saveAsTemplate() {
     if (!templateName.trim() || busy) return;
@@ -115,7 +173,7 @@ export function FormFieldSettings({
             onChange={(event) => {
               const selected = templates.find((template) => template.id === event.target.value);
               setSourceTemplateId(event.target.value);
-              if (selected) setRows(selected.rows);
+              if (selected) replaceRows(selected.rows);
             }}
           >
             <option value="">現在のイベント設定を編集</option>
@@ -129,7 +187,7 @@ export function FormFieldSettings({
         {canManageTemplates && (
           <div className="template-save-row">
             <label>
-              現在の内容をテンプレート保存
+              現在の内容を再利用テンプレートとして保存
               <input
                 value={templateName}
                 maxLength={160}
@@ -143,85 +201,66 @@ export function FormFieldSettings({
               disabled={busy || !templateName.trim() || rows.length === 0}
               onClick={saveAsTemplate}
             >
-              テンプレートとして保存
+              テンプレートだけを保存
             </button>
           </div>
         )}
       </section>
+      {message && <p role="status">{message}</p>}
+      <section className="resource-template-picker">
+        <h2>明日の婚活イベント用</h2>
+        <p>指定された10項目に並べ、マッチングに必要な参加区分を11番目へ残します。</p>
+        <button
+          type="button"
+          className="secondary"
+          disabled={busy}
+          onClick={() => {
+            if (
+              window.confirm(
+                "現在の画面上の項目を、婚活当日用の並びへ置き換えますか？保存するまで本番へ反映されません。",
+              )
+            ) {
+              replaceRows(createMarriageDayFormFields(rows));
+              setSourceTemplateId("");
+              setMessage("婚活当日用の並びを画面へ反映しました。内容を確認して「申込項目を保存」を押してください。");
+            }
+          }}
+        >
+          婚活当日用10項目に並べる
+        </button>
+      </section>
       {rows.map((row, index) => (
-        <fieldset key={`${row.fieldKey}-${index}`}>
-          <legend>項目 {index + 1}</legend>
-          <div className="settings-grid">
-            <label>
-              項目キー
-              <input
-                value={row.fieldKey}
-                pattern="[a-z0-9_]{2,80}"
-                onChange={(event) => update(index, { fieldKey: event.target.value })}
-              />
-            </label>
-            <label>
-              表示名
-              <input value={row.label} onChange={(event) => update(index, { label: event.target.value })} />
-            </label>
-            <label>
-              入力種類
-              <select value={row.type} onChange={(event) => update(index, { type: event.target.value as FieldType })}>
-                <option value="text">文字</option>
-                <option value="email">メール</option>
-                <option value="tel">電話</option>
-                <option value="date">日付</option>
-                <option value="select">選択</option>
-                <option value="checkbox">チェック</option>
-              </select>
-            </label>
-            <label>
-              必須設定
-              <select
-                value={row.requirement}
-                onChange={(event) => update(index, { requirement: event.target.value as Requirement })}
-              >
-                <option value="required">必須</option>
-                <option value="optional">任意</option>
-                <option value="hidden">非表示</option>
-              </select>
-            </label>
-          </div>
-          {row.type === "select" && (
-            <label>
-              選択肢（カンマ区切り）
-              <input value={row.options} onChange={(event) => update(index, { options: event.target.value })} />
-            </label>
-          )}
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => setRows((current) => current.filter((_, rowIndex) => rowIndex !== index))}
-          >
-            項目を削除
-          </button>
-        </fieldset>
+        <FormFieldEditor
+          key={`${row.fieldKey}-${index}`}
+          row={row}
+          index={index}
+          count={rows.length}
+          onUpdate={(patch) => update(index, patch)}
+          onMove={(direction) => move(index, direction)}
+          onRemove={() => replaceRows(rows.filter((_, rowIndex) => rowIndex !== index))}
+        />
       ))}
       <div className="actions">
         <button
           type="button"
           className="secondary"
-          onClick={() =>
+          onClick={() => {
             setRows((current) => {
               const existing = new Set(current.map((row) => row.fieldKey));
               const additions = STANDARD_PROFILE_SUPPORT_FORM_FIELDS.filter(
                 (field) => !existing.has(field.fieldKey),
               ).map((field) => ({ ...field, displayOrder: current.length + 1, options: "" }));
               return [...current, ...additions].map((row, index) => ({ ...row, displayOrder: index + 1 }));
-            })
-          }
+            });
+            setHasUnsavedChanges(true);
+          }}
         >
           プロフィール・応援5項目を追加
         </button>
         <button
           type="button"
           className="secondary"
-          onClick={() =>
+          onClick={() => {
             setRows((current) => [
               ...current,
               {
@@ -232,8 +271,9 @@ export function FormFieldSettings({
                 displayOrder: current.length + 1,
                 options: "",
               },
-            ])
-          }
+            ]);
+            setHasUnsavedChanges(true);
+          }}
         >
           項目を追加
         </button>
@@ -244,7 +284,9 @@ export function FormFieldSettings({
           管理トップへ
         </a>
       </div>
-      {message && <p role="status">{message}</p>}
+      {hasUnsavedChanges && (
+        <p className="hint">未保存の変更があります。画面を閉じても、この端末内で一時保持します。</p>
+      )}
     </section>
   );
 }
