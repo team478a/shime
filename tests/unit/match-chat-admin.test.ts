@@ -105,6 +105,24 @@ describe("match chat admin", () => {
     expect(workspace).toEqual({ eventName: "Event A", config: enabledConfig, reports: [report] });
   });
 
+  it("requires UAT confirmation to be cleared before changing safety settings", async () => {
+    const repository = new FakeAdminRepository();
+    repository.config = enabledConfig;
+    const save = new SaveMatchChatConfig(repository);
+
+    await expect(save.execute(scope, { ...enabledConfig, termsBody: "改訂した利用規約本文" })).rejects.toMatchObject({
+      code: "INVALID_MATCH_CHAT_CONFIG",
+    } satisfies Partial<MatchChatAdminError>);
+
+    const workspace = await save.execute(scope, {
+      ...enabledConfig,
+      enabled: false,
+      uatConfirmed: false,
+      termsBody: "改訂した利用規約本文",
+    });
+    expect(workspace.config).toMatchObject({ enabled: false, uatConfirmed: false, termsBody: "改訂した利用規約本文" });
+  });
+
   it("moves an open report through reviewing and resolved without exposing chat messages", async () => {
     const repository = new FakeAdminRepository();
     const now = new Date("2026-08-08T09:00:00.000Z");

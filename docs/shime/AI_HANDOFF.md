@@ -29,9 +29,10 @@ release HEAD（本番反映済み）: `9b4e42e1c82ac97819d1bda4b8b2f7cc7344e47a`
 - production配備後の再確認で、従来は規約の版番号だけで機能ONにでき、参加者の同意画面に正式な規約本文が表示されない不足を検出した。通報対応責任者と合成データUATの完了記録も設定に存在しなかった。
 - `event_match_chat_configs`へ正式規約本文、通報対応責任者、UAT確認・確認者・確認日時を追加するmigration 0024を作成した。既存の有効行がある環境では、移行時に設定を削除せず機能だけをOFFへ戻すfail-closed方式とした。
 - 規約版、規約本文、本文保持日数、通報対応責任者、UAT確認がすべて揃わない限り、ZodとDB CHECKの両方で機能ONを拒否する。UAT確認者は認証済み操作ユーザーとtenant複合FKで拘束し、日時はサーバー側で記録する。
+- 再レビューで、UAT確認済みのまま規約・保持期間・利用時間・送信制限・通報責任者を変更できる問題を検出し、先に機能とUAT確認をOFFにしない限り変更を拒否するよう補強した。変更後は再UATが必要となる。監査ログには規約本文そのものを複製せず、設定有無と文字数だけを残す。
 - 参加者の同意画面には、サーバー設定から取得した正式規約本文を全文確認できる開閉表示を追加した。規約内容は開発側で作成・推測しない。
 - 手順と中止条件は`MATCH_CHAT_ACTIVATION_GATE_20260807.md`へ記録した。
-- 検証: architecture成功（DB直接route `61/62`、client fetch `23/24`、巨大component `9/9`）、lintエラー0（既存warningのみ）、typecheck成功、単体82ファイル414件、結合6ファイル50件、production build成功、依存監査は既知脆弱性0件。チャット重点テスト26件とmobile E2E 1件が成功した。全E2Eは46件成功・9件skipで、既存manual表示1件だけが並列実行時に一時失敗し、単独再実行で成功した。
+- 検証: architecture成功（DB直接route `61/62`、client fetch `23/24`、巨大component `9/9`）、lintエラー0（既存warningのみ）、typecheck成功、単体82ファイル415件、結合6ファイル50件、production build成功、依存監査は既知脆弱性0件。チャット重点テスト27件とmobile E2E 1件が成功した。全E2Eは46件成功・9件skipで、既存manual表示1件だけが並列実行時に一時失敗し、単独再実行で成功した。
 - `readiness`はコマンド成功だが正式イベント情報14項目が未確定のためproduction readyはfalse。`readiness:strict`は同じ14項目で失敗しており、今回のコード変更とは別の本番P0である。
 - migration 0024はどの環境にも未適用。ブランチは`codex/match-chat-uat-gate`で、production deploy、機能ON、実データ操作、LINE通知は行っていない。
 

@@ -9,7 +9,12 @@ import {
   participants,
 } from "@shime/db";
 import type { MatchChatAdminRepository } from "./repository";
-import { type MatchChatAdminReport, type MatchChatAdminScope, matchChatConfigSchema } from "./types";
+import {
+  type MatchChatAdminReport,
+  type MatchChatAdminScope,
+  type MatchChatConfig,
+  matchChatConfigSchema,
+} from "./types";
 
 const configSelection = {
   enabled: eventMatchChatConfigs.enabled,
@@ -22,6 +27,16 @@ const configSelection = {
   reportOwnerLabel: eventMatchChatConfigs.reportOwnerLabel,
   uatConfirmed: eventMatchChatConfigs.uatConfirmed,
 };
+
+function configAuditValue(config: MatchChatConfig | null | undefined) {
+  if (!config) return null;
+  return {
+    ...config,
+    termsBody: config.termsBody
+      ? { configured: true, characterCount: config.termsBody.length }
+      : { configured: false, characterCount: 0 },
+  };
+}
 
 async function findEvent(scope: MatchChatAdminScope) {
   return (
@@ -168,8 +183,8 @@ export function createDrizzleMatchChatAdminRepository(): MatchChatAdminRepositor
           eventId: scope.eventId,
           action: "match_chat.config_updated",
           targetType: "event_match_chat_config",
-          before: before ?? null,
-          after: config,
+          before: configAuditValue(before ? matchChatConfigSchema.parse(before) : null),
+          after: configAuditValue(config),
           requestId: scope.requestId,
         });
         return row;

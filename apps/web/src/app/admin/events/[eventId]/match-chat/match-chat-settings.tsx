@@ -215,6 +215,7 @@ function MatchChatConfigForm({
       </label>
       <p className="field-note">
         本番イベントの有効化には正式規約の版と本文、本文保持日数、通報対応責任者、隔離UAT完了の全項目が必要です。
+        UAT確認後にこれらの設定を変更する場合は、先に機能とUAT確認をOFFにして保存し、再UATしてください。
       </p>
       <button type="button" onClick={() => void onSave(config)} disabled={busy}>
         設定を保存

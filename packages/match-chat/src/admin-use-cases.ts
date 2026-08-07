@@ -2,6 +2,7 @@ import type { MatchChatAdminRepository } from "./repository";
 import {
   type MatchChatAdminScope,
   type MatchChatAdminWorkspace,
+  type MatchChatConfig,
   matchChatConfigSchema,
   updateMatchChatReportSchema,
 } from "./types";
@@ -53,12 +54,33 @@ export class SaveMatchChatConfig {
   async execute(scope: MatchChatAdminScope, input: unknown): Promise<MatchChatAdminWorkspace> {
     const parsed = matchChatConfigSchema.safeParse(input);
     if (!parsed.success) throw new MatchChatAdminError("INVALID_MATCH_CHAT_CONFIG");
+    const current = await this.repository.loadWorkspace(scope);
+    if (!current) throw new MatchChatAdminError("EVENT_NOT_FOUND");
+    if (
+      current.config?.uatConfirmed &&
+      parsed.data.uatConfirmed &&
+      safetySettingsChanged(current.config, parsed.data)
+    ) {
+      throw new MatchChatAdminError("INVALID_MATCH_CHAT_CONFIG");
+    }
     const saved = await this.repository.saveConfig(scope, parsed.data, this.now());
     if (!saved) throw new MatchChatAdminError("EVENT_NOT_FOUND");
     const workspace = await this.repository.loadWorkspace(scope);
     if (!workspace) throw new MatchChatAdminError("EVENT_NOT_FOUND");
     return { eventName: workspace.eventName, config: saved, reports: workspace.reports };
   }
+}
+
+function safetySettingsChanged(current: MatchChatConfig, next: MatchChatConfig) {
+  return (
+    current.windowHours !== next.windowHours ||
+    current.messagesPerMinute !== next.messagesPerMinute ||
+    current.maxMessageLength !== next.maxMessageLength ||
+    current.termsVersion !== next.termsVersion ||
+    current.termsBody !== next.termsBody ||
+    current.retentionDays !== next.retentionDays ||
+    current.reportOwnerLabel !== next.reportOwnerLabel
+  );
 }
 
 export class UpdateMatchChatReportStatus {
