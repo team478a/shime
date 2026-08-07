@@ -2,13 +2,14 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。Phase 4Eコミュニケーション匿名集計の独立レビュー・補強完了）
-作業ブランチ: `codex/match-chat-analytics`（Phase 4DのHEAD `b266b22`を積み上げ基点として含む）
-コミュニケーション匿名集計PR: `#26`（`codex/match-chat-messaging`向け積み上げDraft PR、未マージ）
-マッチ後チャット運用管理PR: `#25`（`codex/match-chat-safety-foundation`向け積み上げDraft PR、未マージ）
-会話メモ設定PR: `#23`（release向け、最新HEAD `81e22d4`、GitHub Actions最新結果の再確認待ち）
-マッチ後チャット安全基盤PR: `#24`（PR #23向け積み上げ、最新実装HEAD `ef45b20`）
-deployment source HEAD: `b48c2123f860840cb188f270510cbfb39a3f49fb`
+最終更新: 2026-08-07（Asia/Tokyo、Codex。PR #23〜#27統合、production migration 0021〜0023適用・デプロイ完了）
+作業ブランチ: `codex/production-rollout-record`
+コミュニケーション匿名集計PR: `#26`（releaseへマージ済み）
+マッチ後チャット運用管理PR: `#25`（releaseへマージ済み）
+会話メモ設定PR: `#23`（releaseへマージ済み）
+マッチ後チャット安全基盤PR: `#24`（releaseへマージ済み）
+release install hotfix PR: `#27`（releaseへマージ済み）
+release HEAD / deployment source HEAD: `9b4e42e1c82ac97819d1bda4b8b2f7cc7344e47a`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
@@ -18,9 +19,20 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 PR #13 merge commit: `d53df09274dd0a27e4b1aac24681a85bf9c9a50d`
 PR #14 merge commit: `9c98cf54ccd589af04417ae5f74c2ad3e9d0093d`
 PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
-release HEAD（本作業開始時）: `7f65dc3fbd30625a9a23a715288b4fba9a7eee50`
+release HEAD（本番反映済み）: `9b4e42e1c82ac97819d1bda4b8b2f7cc7344e47a`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### 2026-08-07 production rollout（migration 0021〜0023・release 9b4e42e）
+
+- 積み上げPR #23、#24、#25、#26を順に`release/2026-08-08-readiness`へ通常マージした。統合後、`js-yaml` overrideがworkspace設定とlockfileで重複して依存インストール不能になる問題を事前検査で検出した。本番DB変更前に停止し、重複各1行だけを削除するPR #27を作成した。
+- PR #27はfrozen lockfile install、format、architecture、lint、typecheck、dependency audit、単体82ファイル414件、結合6ファイル50件、production buildに成功した。GitHub Actionsの`verify`と`e2e`も成功後、releaseへマージした。
+- production Supabaseは`dipcpqmbmumazyuorslv`であることを接続前に確認した。事前点検はmigration 21/24、public table 70、private import bucket有効・object 0件、backup mode `daily`だった。件数差3件は今回適用対象の0021〜0023と一致した。
+- 2026-08-07 09:52 JST、リポジトリ外の所有者限定フォルダへ最終ロジカルバックアップを取得した。`roles.sql` 370 bytes、`schema.sql` 128,858 bytes、`data.sql` 164,443 bytesで、すべて非0 byteかつSHA-256算出済み。SQL本文、資格情報、絶対保存先は共有記録へ含めない。Storage objectは0件のため追加同期対象はなかった。
+- 2026-08-07 09:54:28〜09:54:32 JST、migration `0021_rapid_falcon.sql`、`0022_low_typhoid_mary.sql`、`0023_lumpy_wallop.sql`をproductionへ適用した。適用後はmigration 24/24、public table 76、backup readiness issue 0件となった。
+- postflightで会話メモlifecycle制約、match chatの6テーブル、主要tenant/event複合FK、unique indexを確認した。`event_match_chat_configs`、`match_chat_rooms`、`match_chat_messages`はいずれも0件で、match chatはOFFの安全状態を維持している。
+- release `9b4e42e`をVercel production deployment `dpl_4BMB7jr5Moz6KoexmdmunBtGMrBT`へ配備し、`https://app.shimelife.jp`へaliasした。Vercel statusはReady、`/api/health` 200、`/liff/chat` 200、未認証`/admin` 307、未認証`/api/jobs/match-chat-retention` 401を確認した。
+- migration適用とデプロイだけを行い、match chat設定ON、会話メモ新版公開、実参加者データ操作、LINE通知送信は行っていない。正式チャット規約版、本文保存期間、通報対応責任者・運用手順、合成データUATが確定・完了するまでmatch chatをONにしない。
 
 ### Phase 4E コミュニケーション匿名集計（2026-08-07、実装・検証済み、未公開）
 
