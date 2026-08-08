@@ -32,6 +32,14 @@ export function normalizeParticipantNumber(value: string) {
   return value.normalize("NFKC").trim().toUpperCase();
 }
 
+export function resolveParticipantNumberForCategory(value: string, prefix: string, digits: number) {
+  const normalized = normalizeParticipantNumber(value);
+  if (!/^\d+$/.test(normalized)) return normalized;
+  const sequence = Number(normalized);
+  if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= 10 ** digits) return normalized;
+  return `${prefix}${String(sequence).padStart(digits, "0")}`;
+}
+
 export function isParticipantNumberForCategory(value: string, prefix: string, digits: number) {
   if (!/^[A-Z0-9]{1,4}$/.test(prefix) || digits < 2 || digits > 8) return false;
   return new RegExp(`^${prefix}\\d{${digits}}$`).test(normalizeParticipantNumber(value));

@@ -152,17 +152,17 @@ test.describe("ワンタップメモ（320px）", () => {
     for (let index = 1; index <= 8; index += 1) {
       const card = page
         .locator("article")
-        .filter({ has: page.getByRole("button", { name: new RegExp(`^B0${index}`) }) });
+        .filter({ has: page.getByRole("button", { name: new RegExp(`^${index}番`) }) });
       await card.getByRole("button", { name: "安心した" }).click();
       await expect(card.getByText(/保存済み/)).toBeVisible();
     }
-    const first = page.locator("article").filter({ has: page.getByRole("button", { name: /^B01/ }) });
+    const first = page.locator("article").filter({ has: page.getByRole("button", { name: /^1番/ }) });
     await first.getByRole("button", { name: "楽しかった" }).click();
     await expect(first.getByRole("button", { name: "楽しかった" })).toHaveAttribute("aria-pressed", "true");
     await first.getByRole("button", { name: "☆ お気に入り" }).click();
     await expect(first.getByRole("button", { name: "★ お気に入り" })).toHaveAttribute("aria-pressed", "true");
     await expect(first.getByText(/保存済み/)).toBeVisible();
-    await first.getByRole("button", { name: /^B01/ }).click();
+    await first.getByRole("button", { name: /^1番/ }).click();
     await expect(first.getByText("はな")).toBeVisible();
     await expect(first.getByText("30代")).toBeVisible();
     await first.getByLabel("本人専用メモ（120文字・3行まで）").fill("笑顔が印象的");
@@ -187,7 +187,7 @@ test.describe("ワンタップメモ（320px）", () => {
     await mockInteractionMemo(page, true);
     await page.goto(`/liff/interactions?eventId=${EVENT_ID}`);
 
-    const first = page.locator("article").filter({ has: page.getByRole("button", { name: /^B01/ }) });
+    const first = page.locator("article").filter({ has: page.getByRole("button", { name: /^1番/ }) });
     await first.getByRole("button", { name: "安心した" }).click();
     await expect(first.getByText("保存できませんでした。通信状態を確認して再試行してください。")).toBeVisible();
     await expect(first.getByRole("button", { name: "安心した" })).toHaveAttribute("aria-pressed", "true");
@@ -248,16 +248,16 @@ test.describe("ワンタップメモ（320px）", () => {
     });
 
     await page.goto(`/liff/interactions?eventId=${EVENT_ID}`);
-    await page.getByLabel("参加者番号").fill("B");
-    await page.getByRole("button", { name: "候補を検索" }).click();
-    await expect(page.getByRole("button", { name: "B03" })).toBeVisible();
+    await page.getByLabel("番号で絞り込む（任意）").fill("3");
+    await page.getByRole("button", { name: "一覧を更新" }).click();
+    await expect(page.getByRole("button", { name: "3" })).toBeVisible();
     await expect(page.getByText("参加者氏名")).toHaveCount(0);
-    await page.getByRole("button", { name: "B03" }).click();
-    await expect(page.getByText("B03でよいですか？")).toBeVisible();
+    await page.getByRole("button", { name: "3" }).click();
+    await expect(page.getByText("3番でよいですか？")).toBeVisible();
     await page.getByRole("button", { name: "この番号でよい" }).click();
-    await expect(page.getByRole("button", { name: /^B03/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^3番/ })).toBeVisible();
     await page.getByRole("button", { name: "誤登録を取り消す" }).click();
-    await expect(page.getByRole("button", { name: /^B03/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^3番/ })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(
       false,
     );

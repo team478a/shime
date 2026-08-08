@@ -46,6 +46,12 @@ function linkStatus(participant: ParticipantRow): string {
   return "無効";
 }
 
+function editableNumber(value: string | null, prefix: string): string {
+  if (!value) return "";
+  const suffix = value.startsWith(prefix) ? value.slice(prefix.length) : value;
+  return /^\d+$/.test(suffix) ? String(Number(suffix)) : suffix;
+}
+
 export function ParticipantLinkConsole({
   eventId,
   eventName,
@@ -102,7 +108,8 @@ export function ParticipantLinkConsole({
       ),
     );
     setNumberDrafts((current) => ({ ...current, [participant.id]: "" }));
-    setMessage(`${saved.participantNumber}へ${operation}しました。参加者はSHIME PASSを発行できます。`);
+    const displayNumber = editableNumber(saved.participantNumber, prefix);
+    setMessage(`表示番号 ${displayNumber}番へ${operation}しました。参加者はSHIME PASSを発行できます。`);
   }
 
   async function reissue(participant: ParticipantRow) {
@@ -223,16 +230,23 @@ export function ParticipantLinkConsole({
                 {manualNumbering && (
                   <div className="settings-grid">
                     <label>
-                      参加者番号
+                      表示番号（区分内）
                       <input
-                        value={numberDrafts[participant.id] ?? participant.participantNumber ?? ""}
+                        value={
+                          numberDrafts[participant.id] ??
+                          editableNumber(
+                            participant.participantNumber,
+                            participant.participantCategory === "group_a" ? groupAPrefix : groupBPrefix,
+                          )
+                        }
                         onChange={(event) =>
                           setNumberDrafts((current) => ({ ...current, [participant.id]: event.target.value }))
                         }
-                        placeholder={`${participant.participantCategory === "group_a" ? groupAPrefix : groupBPrefix}${String(1).padStart(numberDigits, "0")}`}
+                        placeholder="例: 1"
                         autoCapitalize="characters"
-                        inputMode="text"
+                        inputMode="numeric"
                       />
+                      <small>男女などの区分は内部で識別されます。同じ表示番号を別区分で使用できます。</small>
                     </label>
                     <button
                       type="button"
