@@ -2,7 +2,9 @@ import { randomInt } from "node:crypto";
 export function isDreamRequirementSatisfied(
   mode: "required_private_allowed" | "optional",
   state: "not_started" | "drafting" | "confirmed" | "skipped",
+  dreamEnabled = true,
 ) {
+  if (!dreamEnabled) return true;
   return state === "confirmed" || (mode === "optional" && state === "skipped");
 }
 export function createParticipantNumber(prefix: string, digits: number) {
