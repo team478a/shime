@@ -4,7 +4,7 @@ import { z } from "zod";
 import { parseJsonBody, staffEventHandler } from "@shime/web/server/api/staff-handler";
 import { assignParticipantNumber } from "@shime/web/server/checkin-use-cases";
 
-const input = z.object({ participantNumber: z.string().trim().min(2).max(40) });
+const input = z.object({ participantNumber: z.string().trim().min(1).max(40) });
 
 export const PUT = staffEventHandler(
   { permission: "event:write" },

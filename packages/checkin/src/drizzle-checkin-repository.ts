@@ -1,6 +1,6 @@
 import { and, eq, ne } from "drizzle-orm";
 
-import { isParticipantNumberForCategory } from "@shime/core/passport/rules";
+import { isParticipantNumberForCategory, resolveParticipantNumberForCategory } from "@shime/core/passport/rules";
 
 import {
   applications,
@@ -68,11 +68,17 @@ export function createDrizzleCheckinRepository(): CheckinRepository {
               : target.category === "group_b"
                 ? parsed.data.participantNumber.groupBPrefix
                 : null;
+          const participantNumber = prefix
+            ? resolveParticipantNumberForCategory(input.participantNumber, prefix, parsed.data.participantNumber.digits)
+            : input.participantNumber;
           if (
             !prefix ||
-            !isParticipantNumberForCategory(input.participantNumber, prefix, parsed.data.participantNumber.digits)
+            !isParticipantNumberForCategory(participantNumber, prefix, parsed.data.participantNumber.digits)
           )
             return { outcome: "invalid_format" as const };
+
+          if (target.participantNumber === participantNumber)
+            return { outcome: "assigned" as const, participantNumber: target.participantNumber };
 
           const [duplicate] = await tx
             .select({ id: participants.id })
@@ -81,7 +87,7 @@ export function createDrizzleCheckinRepository(): CheckinRepository {
               and(
                 eq(participants.tenantId, input.tenantId),
                 eq(participants.eventId, input.eventId),
-                eq(participants.participantNumber, input.participantNumber),
+                eq(participants.participantNumber, participantNumber),
                 ne(participants.id, input.participantId),
               ),
             )
@@ -90,7 +96,7 @@ export function createDrizzleCheckinRepository(): CheckinRepository {
 
           const [saved] = await tx
             .update(participants)
-            .set({ participantNumber: input.participantNumber, updatedAt: input.now })
+            .set({ participantNumber, updatedAt: input.now })
             .where(
               and(
                 eq(participants.id, input.participantId),
