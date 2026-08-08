@@ -85,14 +85,26 @@ export type AssignParticipantNumberInput = {
 };
 
 export type AssignParticipantNumberRepositoryResult =
-  | { outcome: "assigned"; participantNumber: string }
+  | {
+      outcome: "assigned";
+      participantNumber: string;
+      swappedParticipantId?: string;
+      swappedParticipantNumber?: string;
+    }
   | { outcome: "not_found" }
   | { outcome: "automatic_mode" }
   | { outcome: "invalid_format" }
   | { outcome: "duplicate" };
 
 export type AssignParticipantNumberResult =
-  | { ok: true; data: { participantNumber: string } }
+  | {
+      ok: true;
+      data: {
+        participantNumber: string;
+        swappedParticipantId?: string;
+        swappedParticipantNumber?: string;
+      };
+    }
   | {
       ok: false;
       code: "NOT_FOUND" | "MANUAL_NUMBERING_DISABLED" | "INVALID_PARTICIPANT_NUMBER";

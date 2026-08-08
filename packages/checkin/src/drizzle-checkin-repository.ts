@@ -81,7 +81,7 @@ export function createDrizzleCheckinRepository(): CheckinRepository {
             return { outcome: "assigned" as const, participantNumber: target.participantNumber };
 
           const [duplicate] = await tx
-            .select({ id: participants.id })
+            .select({ id: participants.id, participantNumber: participants.participantNumber })
             .from(participants)
             .where(
               and(
@@ -92,7 +92,72 @@ export function createDrizzleCheckinRepository(): CheckinRepository {
               ),
             )
             .limit(1);
-          if (duplicate) return { outcome: "duplicate" as const };
+          if (duplicate && !target.participantNumber) return { outcome: "duplicate" as const };
+
+          if (duplicate && target.participantNumber) {
+            const temporaryNumber = `SWAP${input.requestId.replaceAll("-", "").slice(0, 32)}`;
+            await tx
+              .update(participants)
+              .set({ participantNumber: temporaryNumber, updatedAt: input.now })
+              .where(
+                and(
+                  eq(participants.id, duplicate.id),
+                  eq(participants.tenantId, input.tenantId),
+                  eq(participants.eventId, input.eventId),
+                ),
+              );
+            await tx
+              .update(participants)
+              .set({ participantNumber, updatedAt: input.now })
+              .where(
+                and(
+                  eq(participants.id, input.participantId),
+                  eq(participants.tenantId, input.tenantId),
+                  eq(participants.eventId, input.eventId),
+                ),
+              );
+            await tx
+              .update(participants)
+              .set({ participantNumber: target.participantNumber, updatedAt: input.now })
+              .where(
+                and(
+                  eq(participants.id, duplicate.id),
+                  eq(participants.tenantId, input.tenantId),
+                  eq(participants.eventId, input.eventId),
+                ),
+              );
+
+            await tx.insert(auditLogs).values([
+              {
+                tenantId: input.tenantId,
+                actorUserId: input.actorUserId,
+                eventId: input.eventId,
+                action: "participant.number.change",
+                targetType: "participant",
+                targetId: input.participantId,
+                before: { participantNumber: target.participantNumber },
+                after: { participantNumber, swappedWithParticipantId: duplicate.id },
+                requestId: input.requestId,
+              },
+              {
+                tenantId: input.tenantId,
+                actorUserId: input.actorUserId,
+                eventId: input.eventId,
+                action: "participant.number.swap",
+                targetType: "participant",
+                targetId: duplicate.id,
+                before: { participantNumber: duplicate.participantNumber },
+                after: { participantNumber: target.participantNumber, swappedWithParticipantId: input.participantId },
+                requestId: input.requestId,
+              },
+            ]);
+            return {
+              outcome: "assigned" as const,
+              participantNumber,
+              swappedParticipantId: duplicate.id,
+              swappedParticipantNumber: target.participantNumber,
+            };
+          }
 
           const [saved] = await tx
             .update(participants)
