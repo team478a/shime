@@ -1,7 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import type { InteractionMemoTargetCandidateDto, InteractionMemoTargetDto } from "../lib/interaction-memo-client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  participantNumberDisplay,
+  type InteractionMemoTargetCandidateDto,
+  type InteractionMemoTargetDto,
+} from "../lib/interaction-memo-client";
 
 type Status = "idle" | "searching" | "confirming" | "saving" | "cancelling" | "error";
 
@@ -15,14 +19,10 @@ export function useInteractionTargetRegistration(eventId: string, onChanged: () 
   const [selected, setSelected] = useState<InteractionMemoTargetCandidateDto | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
+  const initialized = useRef(false);
 
   const search = useCallback(async () => {
     const normalized = query.trim();
-    if (!normalized) {
-      setMessage("参加者番号を1文字以上入力してください。");
-      setStatus("error");
-      return;
-    }
     setStatus("searching");
     setMessage("");
     setSelected(null);
@@ -43,6 +43,12 @@ export function useInteractionTargetRegistration(eventId: string, onChanged: () 
     }
   }, [eventId, query]);
 
+  useEffect(() => {
+    if (!eventId || initialized.current) return;
+    initialized.current = true;
+    void search();
+  }, [eventId, search]);
+
   const confirm = useCallback(async () => {
     if (!selected) return;
     setStatus("saving");
@@ -58,7 +64,7 @@ export function useInteractionTargetRegistration(eventId: string, onChanged: () 
       setQuery("");
       setCandidates([]);
       setSelected(null);
-      setMessage(`${selected.participantNumber}を会話相手に追加しました。`);
+      setMessage(`${participantNumberDisplay(selected.participantNumber)}番を会話相手に追加しました。`);
       setStatus("idle");
       onChanged();
     } catch {

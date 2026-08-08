@@ -1,5 +1,6 @@
 import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import {
+  applications,
   auditLogs,
   checkins,
   eventInteractionNoteSnapshots,
@@ -69,7 +70,11 @@ export async function targetParticipantNumberIfAllowed(
 ) {
   if (scope.participantId === targetParticipantId) return null;
   const rows = await transaction
-    .select({ id: participants.id, participantNumber: participants.participantNumber })
+    .select({
+      id: participants.id,
+      participantNumber: participants.participantNumber,
+      participantCategory: applications.participantCategory,
+    })
     .from(participants)
     .innerJoin(
       checkins,
@@ -78,6 +83,14 @@ export async function targetParticipantNumberIfAllowed(
         eq(checkins.eventId, participants.eventId),
         eq(checkins.participantId, participants.id),
         eq(checkins.status, "checked_in"),
+      ),
+    )
+    .innerJoin(
+      applications,
+      and(
+        eq(applications.tenantId, participants.tenantId),
+        eq(applications.eventId, participants.eventId),
+        eq(applications.id, participants.applicationId),
       ),
     )
     .where(
@@ -90,6 +103,7 @@ export async function targetParticipantNumberIfAllowed(
       ),
     );
   if (new Set(rows.map((row) => row.id)).size !== 2) return null;
+  if (new Set(rows.map((row) => row.participantCategory)).size !== 2) return null;
   const avoidance = (
     await transaction
       .select({ id: participantAvoidances.id })
