@@ -2,7 +2,11 @@
 
 import { useCallback, useState } from "react";
 
-type AssignmentResult = { participantNumber: string };
+type AssignmentResult = {
+  participantNumber: string;
+  swappedParticipantId?: string;
+  swappedParticipantNumber?: string;
+};
 type AssignmentResponse = { data: AssignmentResult | null; code: string | null };
 
 export function useParticipantNumberAdmin(eventId: string) {

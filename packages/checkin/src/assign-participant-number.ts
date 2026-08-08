@@ -12,7 +12,15 @@ export class AssignParticipantNumber {
       participantNumber: normalizeParticipantNumber(input.participantNumber),
     });
 
-    if (result.outcome === "assigned") return { ok: true, data: { participantNumber: result.participantNumber } };
+    if (result.outcome === "assigned")
+      return {
+        ok: true,
+        data: {
+          participantNumber: result.participantNumber,
+          ...(result.swappedParticipantId ? { swappedParticipantId: result.swappedParticipantId } : {}),
+          ...(result.swappedParticipantNumber ? { swappedParticipantNumber: result.swappedParticipantNumber } : {}),
+        },
+      };
     if (result.outcome === "not_found") return { ok: false, code: "NOT_FOUND", status: 404 };
     if (result.outcome === "automatic_mode") return { ok: false, code: "MANUAL_NUMBERING_DISABLED", status: 409 };
     if (result.outcome === "invalid_format") return { ok: false, code: "INVALID_PARTICIPANT_NUMBER", status: 422 };

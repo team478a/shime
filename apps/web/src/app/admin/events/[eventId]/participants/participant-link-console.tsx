@@ -104,12 +104,20 @@ export function ParticipantLinkConsole({
     const saved = assignment.data;
     setParticipants((current) =>
       current.map((item) =>
-        item.id === participant.id ? { ...item, participantNumber: saved.participantNumber } : item,
+        item.id === participant.id
+          ? { ...item, participantNumber: saved.participantNumber }
+          : item.id === saved.swappedParticipantId
+            ? { ...item, participantNumber: saved.swappedParticipantNumber ?? item.participantNumber }
+            : item,
       ),
     );
     setNumberDrafts((current) => ({ ...current, [participant.id]: "" }));
     const displayNumber = editableNumber(saved.participantNumber, prefix);
-    setMessage(`表示番号 ${displayNumber}番へ${operation}しました。参加者はSHIME PASSを発行できます。`);
+    setMessage(
+      saved.swappedParticipantId
+        ? `表示番号を入れ替え、${displayNumber}番へ変更しました。`
+        : `表示番号 ${displayNumber}番へ${operation}しました。参加者はSHIME PASSを発行できます。`,
+    );
   }
 
   async function reissue(participant: ParticipantRow) {
@@ -154,7 +162,7 @@ export function ParticipantLinkConsole({
         {manualNumbering && (
           <section className="configuration-complete">
             <h2>参加者番号を手動付与</h2>
-            <p>区分に合う参加者番号を付与・変更できます。重複番号や区分と異なる番号は保存できません。</p>
+            <p>区分に合う参加者番号を付与・変更できます。使用中の番号を指定すると、同じ区分内で番号を入れ替えます。</p>
           </section>
         )}
 

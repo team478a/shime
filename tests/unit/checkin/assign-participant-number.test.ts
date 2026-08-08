@@ -49,4 +49,24 @@ describe("AssignParticipantNumber", () => {
       new AssignParticipantNumber(repository({ outcome: "assigned", participantNumber: "A02" })).execute(input),
     ).resolves.toEqual({ ok: true, data: { participantNumber: "A02" } });
   });
+
+  it("returns the participant updated by an atomic number swap", async () => {
+    await expect(
+      new AssignParticipantNumber(
+        repository({
+          outcome: "assigned",
+          participantNumber: "A02",
+          swappedParticipantId: "participant-2",
+          swappedParticipantNumber: "A01",
+        }),
+      ).execute(input),
+    ).resolves.toEqual({
+      ok: true,
+      data: {
+        participantNumber: "A02",
+        swappedParticipantId: "participant-2",
+        swappedParticipantNumber: "A01",
+      },
+    });
+  });
 });
