@@ -3,6 +3,7 @@ import {
   formatInteractionMemoSavedAt,
   getDisplayableInteractionMemoTargets,
   interactionMemoTargetKey,
+  participantNumberDisplay,
   type InteractionMemoWorkspaceDto,
   replaceInteractionMemoNote,
 } from "../../apps/web/src/lib/interaction-memo-client";
@@ -49,6 +50,12 @@ describe("interaction memo client state", () => {
   it("formats saved time in Japan without exposing a date or locale-dependent seconds", () => {
     expect(formatInteractionMemoSavedAt("2026-08-08T05:10:00.000Z")).toBe("14:10");
     expect(formatInteractionMemoSavedAt("invalid")).toBe("");
+  });
+
+  it("shows the shared badge number while retaining the category prefix internally", () => {
+    expect(participantNumberDisplay("A01")).toBe("1");
+    expect(participantNumberDisplay("B16")).toBe("16");
+    expect(participantNumberDisplay("SPECIAL")).toBe("SPECIAL");
   });
 
   it("does not offer a target that cannot be identified by participant number", () => {

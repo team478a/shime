@@ -48,6 +48,11 @@ export type InteractionMemoWorkspaceDto = {
   targets: InteractionMemoTargetDto[];
 };
 
+export function participantNumberDisplay(value: string): string {
+  const matched = value.trim().match(/^[A-Za-z]+0*(\d+)$/);
+  return matched?.[1] ?? value;
+}
+
 export function interactionMemoTargetKey(
   target: Pick<InteractionMemoTargetDto, "interactionSlotId" | "targetParticipantId">,
 ) {

@@ -1,5 +1,6 @@
-import { and, asc, eq, ilike, inArray, isNotNull, or } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, isNotNull, ne, or } from "drizzle-orm";
 import {
+  applications,
   checkins,
   getDatabase,
   interactionSlotParticipants,
@@ -29,6 +30,28 @@ export async function searchSelfReportedCandidatesWithDrizzle(
   limit: number,
 ): Promise<InteractionMemoTargetCandidate[]> {
   if (!(await participantIsCheckedIn(scope, scope.participantId))) return [];
+  const actor = (
+    await getDatabase()
+      .select({ participantCategory: applications.participantCategory })
+      .from(participants)
+      .innerJoin(
+        applications,
+        and(
+          eq(applications.tenantId, participants.tenantId),
+          eq(applications.eventId, participants.eventId),
+          eq(applications.id, participants.applicationId),
+        ),
+      )
+      .where(
+        and(
+          eq(participants.tenantId, scope.tenantId),
+          eq(participants.eventId, scope.eventId),
+          eq(participants.id, scope.participantId),
+        ),
+      )
+      .limit(1)
+  )[0];
+  if (!actor?.participantCategory) return [];
   const [rows, avoidances] = await Promise.all([
     getDatabase()
       .select({
@@ -45,13 +68,24 @@ export async function searchSelfReportedCandidatesWithDrizzle(
           eq(checkins.status, "checked_in"),
         ),
       )
+      .innerJoin(
+        applications,
+        and(
+          eq(applications.tenantId, participants.tenantId),
+          eq(applications.eventId, participants.eventId),
+          eq(applications.id, participants.applicationId),
+        ),
+      )
       .where(
         and(
           eq(participants.tenantId, scope.tenantId),
           eq(participants.eventId, scope.eventId),
           inArray(participants.status, ["confirmed", "attended"]),
+          ne(applications.participantCategory, actor.participantCategory),
           isNotNull(participants.participantNumber),
-          ilike(participants.participantNumber, `${escapeLike(participantNumberPrefix)}%`),
+          participantNumberPrefix
+            ? ilike(participants.participantNumber, `%${escapeLike(participantNumberPrefix)}%`)
+            : undefined,
         ),
       )
       .orderBy(asc(participants.participantNumber))

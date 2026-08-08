@@ -233,6 +233,21 @@ describe("interaction memo use cases", () => {
     expect(searchSelfReportedCandidates).toHaveBeenCalledWith(scope, "B", 50);
   });
 
+  it("lists available opposite-category candidates without requiring typed input", async () => {
+    const candidates = Array.from({ length: 16 }, (_, index) => ({
+      targetParticipantId: `participant-${index + 10}`,
+      participantNumber: `B${String(index + 1).padStart(2, "0")}`,
+    }));
+    const searchSelfReportedCandidates = vi.fn(async () => candidates);
+    const useCase = new SearchSelfReportedInteractionTargets(
+      repository({ findActiveSnapshot: async () => selfReportedSnapshot, searchSelfReportedCandidates }),
+      () => now,
+    );
+
+    await expect(useCase.execute(scope, "")).resolves.toEqual({ ok: true, data: candidates });
+    expect(searchSelfReportedCandidates).toHaveBeenCalledWith(scope, "", 50);
+  });
+
   it("does not search candidates for a non-self-reported snapshot", async () => {
     const searchSelfReportedCandidates = vi.fn(async () => []);
     const useCase = new SearchSelfReportedInteractionTargets(repository({ searchSelfReportedCandidates }), () => now);

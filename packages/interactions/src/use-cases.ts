@@ -59,8 +59,7 @@ export class SearchSelfReportedInteractionTargets {
     participantNumberPrefix: string,
   ): Promise<InteractionMemoResult<InteractionMemoTargetCandidate[]>> {
     const query = participantNumberPrefix.trim();
-    if (query.length < 1 || query.length > 20)
-      return { ok: false, code: "INTERACTION_TARGET_QUERY_INVALID", status: 400 };
+    if (query.length > 20) return { ok: false, code: "INTERACTION_TARGET_QUERY_INVALID", status: 400 };
     if (!(await this.repository.isParticipantEligible(scope)))
       return { ok: false, code: "PARTICIPATION_NOT_CONFIRMED", status: 409 };
     const snapshot = await this.repository.findActiveSnapshot(scope, this.now());
@@ -74,7 +73,7 @@ export class SearchSelfReportedInteractionTargets {
     const registered = new Set(registeredTargets.map((target) => target.targetParticipantId));
     return {
       ok: true,
-      data: candidates.filter((candidate) => !registered.has(candidate.targetParticipantId)).slice(0, 10),
+      data: candidates.filter((candidate) => !registered.has(candidate.targetParticipantId)).slice(0, 50),
     };
   }
 }

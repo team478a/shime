@@ -2,6 +2,7 @@
 
 import { useInteractionPublicProfile } from "../../../hooks/use-interaction-public-profile";
 import type { InteractionMemoTargetDto } from "../../../lib/interaction-memo-client";
+import { participantNumberDisplay } from "../../../lib/interaction-memo-client";
 
 type Props = { eventId: string; target: InteractionMemoTargetDto };
 
@@ -11,7 +12,7 @@ export function InteractionPublicProfile({ eventId, target }: Props) {
   return (
     <section className="interaction-public-profile">
       <button type="button" className="interaction-participant-number" onClick={toggle} disabled={status === "loading"}>
-        {target.participantNumber}
+        {target.participantNumber ? `${participantNumberDisplay(target.participantNumber)}番` : "未採番"}
         <span>{status === "open" ? "閉じる" : status === "loading" ? "読込中…" : "プロフィールを見る"}</span>
       </button>
       {status === "open" && profile && (
