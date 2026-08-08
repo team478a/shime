@@ -17,11 +17,12 @@ type Candidate = {
   bRank: number | null;
   status: string;
 };
-type Person = { id: string; participantNumber: string | null; fullName: string };
+type Person = { id: string; participantNumber: string | null; fullName: string; checkedIn: boolean };
 type Data = {
   eventName: string;
   eventStatus: string;
   preferenceMode: string;
+  allowMultipleMatches: boolean;
   candidates: Candidate[];
   participants: Person[];
   submissionSummary: { submitted: number; total: number };
@@ -52,6 +53,9 @@ export function ResultsConsole({
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ResultStatusFilter>("all");
+  const [manualAId, setManualAId] = useState("");
+  const [manualBId, setManualBId] = useState("");
+  const [manualReason, setManualReason] = useState("スタッフが口頭希望を確認");
 
   const load = useCallback(async () => {
     const response = await fetch(`/api/admin/events/${eventId}/match-candidates`);
@@ -90,8 +94,15 @@ export function ResultsConsole({
     setMessage("");
     try {
       await action();
-    } catch {
-      setError("操作を完了できませんでした。通信状態を確認し、状態を再読み込みしてください。");
+    } catch (caught) {
+      const code = caught instanceof Error ? caught.message : "";
+      setError(
+        code === "PARTICIPANT_NOT_CHECKED_IN"
+          ? "選択した参加者が受付済みではありません。先に受付を確定してください。"
+          : code === "MULTIPLE_MATCH_CONFLICT"
+            ? "複数成立を許可しない設定のため、既に成立済みの参加者は選べません。"
+            : "操作を完了できませんでした。通信状態を確認し、状態を再読み込みしてください。",
+      );
     } finally {
       setBusy(false);
     }
@@ -121,6 +132,38 @@ export function ResultsConsole({
       const body = await response.json();
       if (!response.ok) throw new Error(body.code);
       setMessage("候補の判定を保存しました。");
+      await load();
+    });
+  }
+
+  async function createManualMatch() {
+    if (!data || !manualAId || !manualBId || manualAId === manualBId) {
+      setError("異なる参加者を2名選択してください。");
+      return;
+    }
+    const personA = people.get(manualAId);
+    const personB = people.get(manualBId);
+    if (
+      !confirm(
+        `${personA?.participantNumber ?? "未採番"} ${personA?.fullName ?? ""}\n×\n${personB?.participantNumber ?? "未採番"} ${personB?.fullName ?? ""}\n\nこの2名を手動マッチ成立として登録しますか？`,
+      )
+    )
+      return;
+    await run(async () => {
+      const response = await fetch(`/api/admin/events/${eventId}/match-candidates`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ participantAId: manualAId, participantBId: manualBId, reason: manualReason }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        if (body.code === "PARTICIPANT_NOT_CHECKED_IN") throw new Error("PARTICIPANT_NOT_CHECKED_IN");
+        if (body.code === "MULTIPLE_MATCH_CONFLICT") throw new Error("MULTIPLE_MATCH_CONFLICT");
+        throw new Error(body.code);
+      }
+      setManualAId("");
+      setManualBId("");
+      setMessage("手動マッチを承認済み候補として保存しました。結果公開までは参加者へ表示されません。");
       await load();
     });
   }
@@ -244,6 +287,56 @@ export function ResultsConsole({
               </button>
             )}
           </div>
+
+          {canDecide && data.eventStatus !== "result_confirmed" && (
+            <section className="result-manual-match">
+              <div className="result-section-heading">
+                <div>
+                  <p className="eyebrow">STAFF MANUAL MATCH</p>
+                  <h2>手動でマッチング</h2>
+                </div>
+              </div>
+              <p>本人から口頭で希望を確認した2名を選びます。保存だけでは参加者へ公開されません。</p>
+              <div className="result-filter-controls">
+                <label>
+                  参加者1
+                  <select value={manualAId} onChange={(event) => setManualAId(event.target.value)}>
+                    <option value="">選択してください</option>
+                    {data.participants
+                      .filter((person) => person.checkedIn)
+                      .map((person) => (
+                        <option key={person.id} value={person.id} disabled={person.id === manualBId}>
+                          {person.participantNumber ?? "未採番"} {person.fullName}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label>
+                  参加者2
+                  <select value={manualBId} onChange={(event) => setManualBId(event.target.value)}>
+                    <option value="">選択してください</option>
+                    {data.participants
+                      .filter((person) => person.checkedIn)
+                      .map((person) => (
+                        <option key={person.id} value={person.id} disabled={person.id === manualAId}>
+                          {person.participantNumber ?? "未採番"} {person.fullName}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              </div>
+              <label>
+                確認メモ
+                <input value={manualReason} maxLength={500} onChange={(event) => setManualReason(event.target.value)} />
+              </label>
+              <button disabled={busy || !manualAId || !manualBId} onClick={createManualMatch}>
+                この2名を手動マッチとして保存
+              </button>
+              <p className="muted">
+                両名とも先に受付済みにしてください。チャットは結果公開と双方の規約同意後に開きます。
+              </p>
+            </section>
+          )}
 
           <section>
             <div className="result-section-heading">
