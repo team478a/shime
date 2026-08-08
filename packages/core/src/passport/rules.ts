@@ -3,7 +3,7 @@ export function isDreamRequirementSatisfied(
   mode: "required_private_allowed" | "optional",
   state: "not_started" | "drafting" | "confirmed" | "skipped",
 ) {
-  return state === "confirmed" || (mode === "optional" && state === "skipped");
+  return mode === "optional" || state === "confirmed";
 }
 export function createParticipantNumber(prefix: string, digits: number) {
   if (!/^[A-Z0-9]{1,4}$/.test(prefix) || digits < 2 || digits > 8) throw new Error("Invalid participant number format");

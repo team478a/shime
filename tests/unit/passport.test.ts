@@ -14,7 +14,10 @@ describe("passport rules", () => {
     expect(isDreamRequirementSatisfied("required_private_allowed", "confirmed")).toBe(true);
     expect(isDreamRequirementSatisfied("required_private_allowed", "skipped")).toBe(false);
   });
-  it("allows optional skip", () => expect(isDreamRequirementSatisfied("optional", "skipped")).toBe(true));
+  it.each(["not_started", "drafting", "confirmed", "skipped"] as const)(
+    "does not block PASS when Dream is optional (%s)",
+    (state) => expect(isDreamRequirementSatisfied("optional", state)).toBe(true),
+  );
   it("creates non-PII participant numbers", () => expect(createParticipantNumber("A", 4)).toMatch(/^A\d{4}$/));
   it("reads both stored participant number setting formats", () => {
     expect(getParticipantNumberPrefix({ groupAPrefix: "A", groupBPrefix: "B" }, "group_a")).toBe("A");
