@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 
-import { hasPermission } from "@shime/core";
+import { getEventSeatingMode, hasPermission } from "@shime/core";
 import { DEFAULT_PARTICIPANT_JOURNEY } from "@shime/event-core";
 import { events, getDatabase } from "@shime/db";
 import { getStaffSession } from "@shime/web/server/auth";
@@ -19,11 +19,11 @@ export default async function ParticipantJourneySettingsPage({
 }) {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "event:write")) redirect("/admin");
+  if (!hasPermission(session.role, "event:write", session.permissions)) redirect("/admin");
   const { eventId } = await params;
   if (session.eventId && session.eventId !== eventId) notFound();
   const [event] = await getDatabase()
-    .select({ id: events.id, name: events.name })
+    .select({ id: events.id, name: events.name, settings: events.settings })
     .from(events)
     .where(and(eq(events.tenantId, session.tenantId), eq(events.id, eventId)))
     .limit(1);
@@ -55,6 +55,11 @@ export default async function ParticipantJourneySettingsPage({
             新しい導線バージョンを公開しました。
           </p>
         )}
+        {status === "diagnosis-unavailable" && (
+          <p className="operation-feedback error" role="alert">
+            SHIME診断を公開できません。先にイベントの診断設定をONにしてください。
+          </p>
+        )}
         <dl>
           <dt>公開中</dt>
           <dd>{settings.published ? `バージョン ${settings.published.version}` : "既定の導線"}</dd>
@@ -63,6 +68,7 @@ export default async function ParticipantJourneySettingsPage({
         </dl>
         <JourneySettingsForm
           initialSteps={initialSteps}
+          seatingMode={getEventSeatingMode(event.settings)}
           saveAction={saveJourneyAction.bind(null, eventId)}
           publishAction={publishJourneyAction.bind(null, eventId)}
         />

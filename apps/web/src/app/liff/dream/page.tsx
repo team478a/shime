@@ -176,6 +176,7 @@ export default function DreamPage() {
               <button type="button" className="secondary" onClick={skip} disabled={Boolean(busyAction)}>
                 {busyAction === "skip" ? "処理中…" : "今回は登録せず進む"}
               </button>
+              <ParticipantNextLink current="dream" eventId={eventId} />
             </div>
           )}
           {loadState === "loaded" && !completed && (

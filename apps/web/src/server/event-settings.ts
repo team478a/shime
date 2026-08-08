@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   evaluateEventConfiguration,
+  getEventSeatingMode,
   includeEventOperationalReadiness,
   includeLegalDocumentReadiness,
 } from "@shime/core";
@@ -11,6 +12,7 @@ import {
   eventQuestionnaires,
   eventSeats,
   eventTables,
+  events,
   getDatabase,
   legalDocuments,
 } from "@shime/db";
@@ -36,23 +38,27 @@ export const eventSettingsFields = {
       digits: z.number().int().min(1).max(6),
     })
     .optional(),
+  participantNumberAssignmentMode: z.enum(["automatic", "manual"]).optional(),
   conversationRounds: z.number().int().min(1).max(20).optional(),
   cardSetCode: z.string().trim().min(1).max(80).optional(),
   retentionDays: z.number().int().min(1).max(3650).optional(),
   eventTermsVersion: z.string().trim().min(1).max(80).optional(),
   privacyVersion: z.string().trim().min(1).max(80).optional(),
   contactExchangeMode: z.enum(["operator_mediated", "mutual_consent_display"]).optional(),
+  seatingMode: z.enum(["assigned", "standing"]).optional(),
 };
 
 export type EventSettingsFields = {
   participantCategories?: Array<{ code: string; label: string }> | undefined;
   participantNumber?: { groupAPrefix: string; groupBPrefix: string; digits: number } | undefined;
+  participantNumberAssignmentMode?: "automatic" | "manual" | undefined;
   conversationRounds?: number | undefined;
   cardSetCode?: string | undefined;
   retentionDays?: number | undefined;
   eventTermsVersion?: string | undefined;
   privacyVersion?: string | undefined;
   contactExchangeMode?: "operator_mediated" | "mutual_consent_display" | undefined;
+  seatingMode?: "assigned" | "standing" | undefined;
 };
 
 export function mergeEventSettings(
@@ -79,6 +85,17 @@ export function getEventConfigurationStatus(event: {
   settings: Record<string, unknown>;
 }) {
   return evaluateEventConfiguration(event);
+}
+
+export async function getEventSeatingModeForScope(tenantId: string, eventId: string) {
+  const event = (
+    await getDatabase()
+      .select({ settings: events.settings })
+      .from(events)
+      .where(and(eq(events.tenantId, tenantId), eq(events.id, eventId)))
+      .limit(1)
+  )[0];
+  return event ? getEventSeatingMode(event.settings) : null;
 }
 
 export async function getEventConfigurationReadiness(
@@ -128,6 +145,7 @@ export async function getEventConfigurationReadiness(
     enabledSeatCount: seats.length,
     hasDreamSettings: dreamSettings.length > 0,
     hasQuestionnaire: questionnaires.length > 0,
+    seatingMode: getEventSeatingMode(event.settings),
   });
   return includeLegalDocumentReadiness(operational, {
     hasPublishedEventTerms: documents.some(

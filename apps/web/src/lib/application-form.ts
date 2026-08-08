@@ -1,3 +1,5 @@
+import { defaultEventFormFields } from "@shime/core/events/config";
+
 export const APPLICATION_STEPS = [
   { key: "overview", label: "概要" },
   { key: "details", label: "入力" },
@@ -17,10 +19,10 @@ export const PUBLIC_APPLICATION_FIELD_MAP = {
 } as const;
 
 export type PublicApplicationFieldKey = keyof typeof PUBLIC_APPLICATION_FIELD_MAP;
-export type PublicApplicationInputName = (typeof PUBLIC_APPLICATION_FIELD_MAP)[PublicApplicationFieldKey];
+export type PublicApplicationInputName = string;
 
 export type PublicApplicationField = Readonly<{
-  fieldKey: PublicApplicationFieldKey;
+  fieldKey: string;
   inputName: PublicApplicationInputName;
   label: string;
   type: "text" | "email" | "tel" | "date" | "select" | "checkbox";
@@ -38,51 +40,10 @@ type StoredField = Readonly<{
   validation: Record<string, unknown>;
 }>;
 
-const fallbackFields: readonly StoredField[] = [
-  { fieldKey: "full_name", label: "氏名", type: "text", requirement: "required", displayOrder: 1, validation: {} },
-  {
-    fieldKey: "full_name_kana",
-    label: "氏名かな",
-    type: "text",
-    requirement: "optional",
-    displayOrder: 2,
-    validation: {},
-  },
-  { fieldKey: "birth_date", label: "生年月日", type: "date", requirement: "required", displayOrder: 3, validation: {} },
-  { fieldKey: "phone", label: "電話番号", type: "tel", requirement: "optional", displayOrder: 4, validation: {} },
-  {
-    fieldKey: "email",
-    label: "メールアドレス",
-    type: "email",
-    requirement: "optional",
-    displayOrder: 5,
-    validation: {},
-  },
-  {
-    fieldKey: "nickname",
-    label: "ニックネーム",
-    type: "text",
-    requirement: "optional",
-    displayOrder: 6,
-    validation: {},
-  },
-  {
-    fieldKey: "residence_area",
-    label: "居住エリア",
-    type: "text",
-    requirement: "optional",
-    displayOrder: 7,
-    validation: {},
-  },
-  {
-    fieldKey: "participant_category",
-    label: "参加区分",
-    type: "select",
-    requirement: "required",
-    displayOrder: 8,
-    validation: {},
-  },
-];
+const fallbackFields: readonly StoredField[] = defaultEventFormFields.map((field) => ({
+  ...field,
+  validation: {},
+}));
 
 export function buildPublicApplicationFields(
   storedFields: readonly StoredField[],
@@ -90,10 +51,7 @@ export function buildPublicApplicationFields(
 ): PublicApplicationField[] {
   const source = storedFields.length ? storedFields : fallbackFields;
   return source
-    .filter(
-      (field): field is StoredField & { fieldKey: PublicApplicationFieldKey; requirement: "required" | "optional" } =>
-        field.fieldKey in PUBLIC_APPLICATION_FIELD_MAP && field.requirement !== "hidden",
-    )
+    .filter((field): field is StoredField & { requirement: "required" | "optional" } => field.requirement !== "hidden")
     .sort((a, b) => a.displayOrder - b.displayOrder)
     .map((field) => {
       const configuredOptions = Array.isArray(field.validation.options)
@@ -103,7 +61,10 @@ export function buildPublicApplicationFields(
         : [];
       return {
         fieldKey: field.fieldKey,
-        inputName: PUBLIC_APPLICATION_FIELD_MAP[field.fieldKey],
+        inputName:
+          field.fieldKey in PUBLIC_APPLICATION_FIELD_MAP
+            ? PUBLIC_APPLICATION_FIELD_MAP[field.fieldKey as PublicApplicationFieldKey]
+            : field.fieldKey,
         label: field.label,
         type: field.type,
         requirement: field.requirement,

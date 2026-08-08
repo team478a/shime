@@ -44,6 +44,7 @@ function repository(overrides: Partial<SeatingRepository> = {}): SeatingReposito
     listAssignments: async () => [],
     listParticipants: async () => [],
     listSeats: async () => [],
+    getPublishedParticipantSeat: async () => null,
     ...overrides,
   };
 }

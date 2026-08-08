@@ -52,8 +52,10 @@ participants:
     digits: 2
 
 seating:
-  assignment_mode: pair_score_initial_seating
-  conversation_rounds: "REQUIRED_INPUT: 席替え回数"
+  # assigned（席指定あり）または standing（立食・席指定なし）
+  mode: standing
+  assignment_mode: disabled
+  conversation_rounds: null
   tables: [] # 管理画面または席CSVから登録
   weights:
     values: 40

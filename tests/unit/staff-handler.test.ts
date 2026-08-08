@@ -12,6 +12,7 @@ const systemAdminSession = {
   displayName: "System Admin",
   role: "system_admin" as const,
   eventId: null,
+  permissions: null,
 };
 
 describe("staffHandler contract", () => {
@@ -58,6 +59,20 @@ describe("staffHandler contract", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ requestId: "request-4", tenantId: "tenant-1" });
+  });
+
+  it("uses an explicit permission selection instead of the role preset", async () => {
+    const allowed = createStaffHandler({
+      loadSession: async () => ({ ...systemAdminSession, role: "reception", permissions: ["staff:manage"] }),
+      createRequestId: () => "request-custom-1",
+    })({ permission: "staff:manage" }, async () => Response.json({ ok: true }));
+    const denied = createStaffHandler({
+      loadSession: async () => ({ ...systemAdminSession, permissions: ["checkin:write"] }),
+      createRequestId: () => "request-custom-2",
+    })({ permission: "staff:manage" }, async () => Response.json({ ok: true }));
+
+    expect((await allowed()).status).toBe(200);
+    expect((await denied()).status).toBe(403);
   });
 
   it("keeps the existing validation error contract", async () => {

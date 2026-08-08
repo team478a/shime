@@ -1,6 +1,6 @@
 import { and, desc, eq, max } from "drizzle-orm";
 
-import { auditLogs, eventJourneyVersions, events, getDatabase } from "@shime/db";
+import { auditLogs, eventConciergeSnapshots, eventJourneyVersions, events, getDatabase } from "@shime/db";
 
 import type { ParticipantJourneyRepository } from "./participant-journey-repository";
 import {
@@ -42,6 +42,21 @@ export function createDrizzleParticipantJourneyRepository(): ParticipantJourneyR
         published: published ? parseVersion(published) : null,
         effectiveSteps: published ? parseVersion(published).steps : DEFAULT_PARTICIPANT_JOURNEY,
       };
+    },
+
+    async isDiagnosisAvailable(scope) {
+      const [snapshot] = await getDatabase()
+        .select({ id: eventConciergeSnapshots.id })
+        .from(eventConciergeSnapshots)
+        .where(
+          and(
+            eq(eventConciergeSnapshots.tenantId, scope.tenantId),
+            eq(eventConciergeSnapshots.eventId, scope.eventId),
+            eq(eventConciergeSnapshots.enabled, true),
+          ),
+        )
+        .limit(1);
+      return Boolean(snapshot);
     },
 
     async saveDraft(input) {

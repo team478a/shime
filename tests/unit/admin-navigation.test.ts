@@ -14,12 +14,14 @@ describe("admin navigation", () => {
   it("shows system settings only to system administrators", () => {
     expect(getAdminPrimaryNavigation("manager").map((item) => item.key)).toEqual([
       "dashboard",
+      "manual",
       "new-event",
       "venue-templates",
       "concierge",
     ]);
     expect(getAdminPrimaryNavigation("system_admin").map((item) => item.key)).toEqual([
       "dashboard",
+      "manual",
       "new-event",
       "venue-templates",
       "concierge",
@@ -29,7 +31,24 @@ describe("admin navigation", () => {
   });
 
   it("hides tenant-wide template management from event-scoped staff", () => {
-    expect(getAdminPrimaryNavigation("manager", true).map((item) => item.key)).toEqual(["dashboard", "new-event"]);
+    expect(getAdminPrimaryNavigation("manager", true).map((item) => item.key)).toEqual([
+      "dashboard",
+      "manual",
+      "new-event",
+    ]);
+  });
+
+  it("builds navigation from an exact per-staff permission selection", () => {
+    expect(getAdminPrimaryNavigation("reception", false, ["staff:manage"]).map((item) => item.key)).toEqual([
+      "dashboard",
+      "manual",
+      "staff",
+    ]);
+    expect(
+      getEventAdminNavigation("system_admin", "event-1", {}, ["checkin:write"])
+        .flatMap((group) => group.items)
+        .map((item) => item.key),
+    ).toEqual(["checkin"]);
   });
 
   it("limits reception staff to event-day check-in", () => {
@@ -38,7 +57,7 @@ describe("admin navigation", () => {
 
   it("does not expose settings or private results to operators", () => {
     const keys = eventKeys("operator");
-    expect(keys).toEqual(["imports", "analytics", "checkin", "seating", "exports"]);
+    expect(keys).toEqual(["imports", "analytics", "communication-analytics", "checkin", "seating", "exports"]);
     expect(keys).not.toContain("settings");
     expect(keys).not.toContain("results");
   });
@@ -60,5 +79,17 @@ describe("admin navigation", () => {
       "checkin",
       "seating",
     ]);
+  });
+
+  it("hides seating-only setup and operations for standing events", () => {
+    const keys = getEventAdminNavigation("manager", "event-1", { seatingMode: "standing" }).flatMap((group) =>
+      group.items.map((item) => item.key),
+    );
+    expect(keys).not.toContain("tables");
+    expect(keys).not.toContain("questionnaire");
+    expect(keys).not.toContain("seating");
+    expect(
+      getEventAdminQuickActions("manager", "event-1", { seatingMode: "standing" }).map((item) => item.key),
+    ).toEqual(["participants", "checkin"]);
   });
 });

@@ -1,6 +1,12 @@
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { allocateParticipantNumber, getParticipantNumberPrefix, isDreamRequirementSatisfied } from "@shime/core";
+import {
+  allocateParticipantNumber,
+  getEventSeatingMode,
+  getParticipantNumberAssignmentMode,
+  getParticipantNumberPrefix,
+  isDreamRequirementSatisfied,
+} from "@shime/core";
 import {
   applications,
   eventQuestionnaires,
@@ -33,32 +39,36 @@ export const POST = participantHandler(
     if (!detail) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
     if (!isDreamRequirementSatisfied(detail.mode, participant.dreamState))
       return NextResponse.json({ code: "DREAM_REQUIREMENT_NOT_SATISFIED" }, { status: 409 });
-    const questionnaire = await db
-      .select()
-      .from(eventQuestionnaires)
-      .where(and(eq(eventQuestionnaires.tenantId, session.tenantId), eq(eventQuestionnaires.eventId, eventId)))
-      .limit(1);
-    if (!questionnaire[0]) return NextResponse.json({ code: "QUESTIONNAIRE_NOT_CONFIGURED" }, { status: 409 });
-    const response = await db
-      .select()
-      .from(questionnaireResponses)
-      .where(
-        and(
-          eq(questionnaireResponses.tenantId, session.tenantId),
-          eq(questionnaireResponses.eventId, eventId),
-          eq(questionnaireResponses.participantId, participant.id),
-          eq(questionnaireResponses.versionId, questionnaire[0].versionId),
-          eq(questionnaireResponses.status, "submitted"),
-        ),
-      )
-      .limit(1);
-    if (!response[0]) return NextResponse.json({ code: "QUESTIONNAIRE_NOT_SUBMITTED" }, { status: 409 });
+    if (getEventSeatingMode(detail.settings) === "assigned") {
+      const questionnaire = await db
+        .select()
+        .from(eventQuestionnaires)
+        .where(and(eq(eventQuestionnaires.tenantId, session.tenantId), eq(eventQuestionnaires.eventId, eventId)))
+        .limit(1);
+      if (!questionnaire[0]) return NextResponse.json({ code: "QUESTIONNAIRE_NOT_CONFIGURED" }, { status: 409 });
+      const response = await db
+        .select()
+        .from(questionnaireResponses)
+        .where(
+          and(
+            eq(questionnaireResponses.tenantId, session.tenantId),
+            eq(questionnaireResponses.eventId, eventId),
+            eq(questionnaireResponses.participantId, participant.id),
+            eq(questionnaireResponses.versionId, questionnaire[0].versionId),
+            eq(questionnaireResponses.status, "submitted"),
+          ),
+        )
+        .limit(1);
+      if (!response[0]) return NextResponse.json({ code: "QUESTIONNAIRE_NOT_SUBMITTED" }, { status: 409 });
+    }
     const numberConfig = detail.settings.participantNumber as
       { prefixes?: Record<string, string>; groupAPrefix?: string; groupBPrefix?: string; digits?: number } | undefined;
     const prefix = getParticipantNumberPrefix(numberConfig, detail.category);
     const digits = numberConfig?.digits;
     if (!prefix || typeof digits !== "number")
       return NextResponse.json({ code: "PARTICIPANT_NUMBER_NOT_CONFIGURED" }, { status: 409 });
+    if (getParticipantNumberAssignmentMode(detail.settings) === "manual" && !participant.participantNumber)
+      return NextResponse.json({ code: "PARTICIPANT_NUMBER_PENDING" }, { status: 409 });
     const now = new Date();
     const result = await db.transaction(async (tx) => {
       await tx.execute(sql`select id from events where id = ${eventId} and tenant_id = ${session.tenantId} for update`);

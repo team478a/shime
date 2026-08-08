@@ -34,12 +34,6 @@ export const participantJourneyStepsSchema = z
         message: "PASS must remain enabled",
       });
     }
-    if (steps.find((step) => step.id === "diagnosis")?.enabled) {
-      context.addIssue({
-        code: "custom",
-        message: "Diagnosis participant flow is not available yet",
-      });
-    }
     const passIndex = ids.indexOf("pass");
     for (const prerequisite of ["dream", "questionnaire"] as const) {
       const index = ids.indexOf(prerequisite);
@@ -59,6 +53,13 @@ export const DEFAULT_PARTICIPANT_JOURNEY: ParticipantJourneyStep[] = [
   { id: "questionnaire", enabled: true },
   { id: "pass", enabled: true },
   { id: "diagnosis", enabled: false },
+];
+
+export const STANDING_DIAGNOSIS_PARTICIPANT_JOURNEY: ParticipantJourneyStep[] = [
+  { id: "dream", enabled: true },
+  { id: "questionnaire", enabled: false },
+  { id: "diagnosis", enabled: true },
+  { id: "pass", enabled: true },
 ];
 
 export type ParticipantJourneyVersion = {

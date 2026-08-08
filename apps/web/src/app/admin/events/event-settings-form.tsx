@@ -76,6 +76,7 @@ export function EventSettingsForm({
   const [targetStatus, setTargetStatus] = useState<string>(transitionTargets[transitionTargets.length - 1] ?? "");
   const [transitionReason, setTransitionReason] = useState("");
   const settings = initial?.settings ?? {};
+  const [seatingMode, setSeatingMode] = useState(settingString(settings, "seatingMode", "assigned"));
   const categories = Array.isArray(settings.participantCategories)
     ? (settings.participantCategories as Array<Record<string, unknown>>)
     : [];
@@ -108,7 +109,9 @@ export function EventSettingsForm({
         groupBPrefix: String(form.get("groupBPrefix") ?? "B"),
         digits: Number(form.get("numberDigits")),
       },
+      participantNumberAssignmentMode: form.get("participantNumberAssignmentMode"),
       contactExchangeMode: form.get("contactExchangeMode"),
+      seatingMode: form.get("seatingMode"),
     };
     if (mode === "create") body.code = String(form.get("code") ?? "");
 
@@ -347,6 +350,17 @@ export function EventSettingsForm({
 
       <fieldset>
         <legend>参加区分・番号</legend>
+        <label>
+          参加者番号の付与方法
+          <select
+            name="participantNumberAssignmentMode"
+            defaultValue={settingString(settings, "participantNumberAssignmentMode", "automatic")}
+          >
+            <option value="automatic">SHIME PASS発行時に自動採番</option>
+            <option value="manual">申込後に管理画面で手動付与</option>
+          </select>
+          <small>手動付与では、番号が付与されるまでSHIME PASSは発行されません。</small>
+        </label>
         <div className="settings-grid">
           <label>
             区分Aコード
@@ -381,6 +395,18 @@ export function EventSettingsForm({
 
       <fieldset>
         <legend>運用・規約</legend>
+        <label>
+          会場形式・席指定
+          <select name="seatingMode" value={seatingMode} onChange={(event) => setSeatingMode(event.target.value)}>
+            <option value="assigned">着席（席指定・席案内を使う）</option>
+            <option value="standing">立食（席指定・席案内を使わない）</option>
+          </select>
+          <small>
+            {seatingMode === "standing"
+              ? "テーブル・席、席案内5問、席配置は本番必須対象から外れます。"
+              : "参加者に5問と公開済みの席案内を表示します。"}
+          </small>
+        </label>
         <div className="settings-grid">
           <label>
             席替え回数
@@ -390,6 +416,7 @@ export function EventSettingsForm({
               min="1"
               max="20"
               defaultValue={settingNumber(settings, "conversationRounds")}
+              disabled={seatingMode === "standing"}
             />
           </label>
           <label>

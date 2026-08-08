@@ -28,6 +28,54 @@ describe("database migrations", () => {
     expect(names).toContain("concierge_template_versions");
     expect(names).toContain("event_concierge_snapshots");
     expect(names).toContain("event_journey_versions");
+    const applicationColumns = await client.query<{ column_name: string; column_default: string | null }>(
+      "select column_name, column_default from information_schema.columns where table_name = 'applications'",
+    );
+    expect(applicationColumns.rows).toContainEqual(
+      expect.objectContaining({ column_name: "additional_answers", column_default: expect.stringContaining("{}") }),
+    );
+  }, 20_000);
+
+  it("stores version-safe additional application answers without changing core columns", async () => {
+    client = new PGlite();
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: "packages/db/migrations" });
+    await client.exec(`
+      insert into tenants(id, code, name, status, timezone)
+      values ('20000000-0000-0000-0000-000000000001','profile','Profile','active','Asia/Tokyo');
+      insert into events(id, tenant_id, code, name, status, starts_at, capacity, dream_registration_mode, preference_mode, allow_multiple_matches)
+      values ('20000000-0000-0000-0000-000000000002','20000000-0000-0000-0000-000000000001','event','Event','draft',now(),10,'optional','first_choice_only',false);
+      insert into applications(tenant_id, event_id, source, status, full_name, birth_date, participant_category, additional_answers)
+      values ('20000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000002','shime_form','submitted','Synthetic','1990-01-01','group_a','{"occupation":"company","support_wanted":"hobby"}'::jsonb);
+    `);
+    const result = await client.query<{ additional_answers: Record<string, string> }>(
+      "select additional_answers from applications where tenant_id = '20000000-0000-0000-0000-000000000001'",
+    );
+    expect(result.rows[0]?.additional_answers).toEqual({ occupation: "company", support_wanted: "hobby" });
+  }, 20_000);
+  it("stores only allowlisted per-staff permissions", async () => {
+    client = new PGlite();
+    await migrate(drizzle(client), { migrationsFolder: "packages/db/migrations" });
+    await client.exec(`
+      insert into tenants(id, code, name, status, timezone)
+      values ('30000000-0000-0000-0000-000000000001','staff-scope','Staff Scope','active','Asia/Tokyo');
+      insert into users(id, tenant_id, user_type, status, display_name)
+      values ('30000000-0000-0000-0000-000000000002','30000000-0000-0000-0000-000000000001','staff','active','Synthetic Staff');
+      insert into staff_roles(tenant_id, user_id, role, permissions_json)
+      values (
+        '30000000-0000-0000-0000-000000000001',
+        '30000000-0000-0000-0000-000000000002',
+        'reception',
+        '["checkin:write","participant:read"]'::jsonb
+      );
+    `);
+    await expect(
+      client.exec(`
+        update staff_roles
+        set permissions_json = '["checkin:write","unknown:permission"]'::jsonb
+        where user_id = '30000000-0000-0000-0000-000000000002'
+      `),
+    ).rejects.toThrow();
   }, 20_000);
   it("prevents duplicate check-in records for one event participant", async () => {
     client = new PGlite();

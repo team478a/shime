@@ -1,5 +1,25 @@
 const protectedFields = new Set(["full_name", "participant_category", "event_terms_consent", "privacy_consent"]);
 
+export const STANDARD_PROFILE_SUPPORT_FORM_FIELDS = [
+  { fieldKey: "occupation", label: "職業", type: "text", requirement: "optional", displayOrder: 8 },
+  { fieldKey: "hobbies", label: "趣味", type: "text", requirement: "optional", displayOrder: 9 },
+  { fieldKey: "holiday_style", label: "休日の過ごし方", type: "text", requirement: "optional", displayOrder: 10 },
+  {
+    fieldKey: "support_wanted",
+    label: "応援してほしいこと",
+    type: "text",
+    requirement: "optional",
+    displayOrder: 11,
+  },
+  {
+    fieldKey: "support_offered",
+    label: "応援できること",
+    type: "text",
+    requirement: "optional",
+    displayOrder: 12,
+  },
+] as const;
+
 export const defaultEventFormFields = [
   { fieldKey: "full_name", label: "氏名", type: "text", requirement: "required", displayOrder: 1 },
   { fieldKey: "full_name_kana", label: "氏名かな", type: "text", requirement: "optional", displayOrder: 2 },
@@ -8,7 +28,8 @@ export const defaultEventFormFields = [
   { fieldKey: "email", label: "メールアドレス", type: "email", requirement: "optional", displayOrder: 5 },
   { fieldKey: "nickname", label: "ニックネーム", type: "text", requirement: "optional", displayOrder: 6 },
   { fieldKey: "residence_area", label: "居住エリア", type: "text", requirement: "optional", displayOrder: 7 },
-  { fieldKey: "participant_category", label: "参加区分", type: "select", requirement: "required", displayOrder: 8 },
+  ...STANDARD_PROFILE_SUPPORT_FORM_FIELDS,
+  { fieldKey: "participant_category", label: "参加区分", type: "select", requirement: "required", displayOrder: 13 },
 ] as const;
 
 export function validateFormFieldRequirement(fieldKey: string, requirement: "required" | "optional" | "hidden"): void {
@@ -64,7 +85,14 @@ export type EventOperationalResources = {
   enabledSeatCount: number;
   hasDreamSettings: boolean;
   hasQuestionnaire: boolean;
+  seatingMode: EventSeatingMode;
 };
+
+export type EventSeatingMode = "assigned" | "standing";
+
+export function getEventSeatingMode(settings: Record<string, unknown>): EventSeatingMode {
+  return settings.seatingMode === "standing" ? "standing" : "assigned";
+}
 
 export function includeEventOperationalReadiness(
   configuration: { complete: boolean; issues: EventConfigurationIssue[] },
@@ -80,12 +108,14 @@ export function includeEventOperationalReadiness(
   ) {
     issues.push({ key: "formFields", label: "申込フォーム必須項目", kind: "missing" });
   }
-  if (resources.tableCount < 1) issues.push({ key: "eventTables", label: "テーブル設定", kind: "missing" });
-  if (resources.enabledSeatCount < resources.capacity)
+  if (resources.seatingMode === "assigned" && resources.tableCount < 1)
+    issues.push({ key: "eventTables", label: "テーブル設定", kind: "missing" });
+  if (resources.seatingMode === "assigned" && resources.enabledSeatCount < resources.capacity)
     issues.push({ key: "eventSeats", label: `有効な席（定員${resources.capacity}席以上）`, kind: "missing" });
   if (!resources.hasDreamSettings)
     issues.push({ key: "dreamSettings", label: "Dream・感情カード設定", kind: "missing" });
-  if (!resources.hasQuestionnaire) issues.push({ key: "questionnaire", label: "席案内5問設定", kind: "missing" });
+  if (resources.seatingMode === "assigned" && !resources.hasQuestionnaire)
+    issues.push({ key: "questionnaire", label: "席案内5問設定", kind: "missing" });
   return { complete: issues.length === 0, issues };
 }
 
@@ -149,8 +179,10 @@ export function evaluateEventConfiguration(event: EventConfigurationSnapshot): {
     issues.push({ key: "participantCategories", label: "参加区分（2区分以上）", kind: "missing" });
   }
 
+  const seatingMode = getEventSeatingMode(event.settings);
   for (const [key, label] of requiredSettings) {
     const value = event.settings[key];
+    if (key === "conversationRounds" && seatingMode === "standing") continue;
     if (["conversationRounds", "retentionDays"].includes(key)) {
       if (typeof value !== "number" || !Number.isInteger(value) || value <= 0)
         issues.push({ key, label, kind: "missing" });

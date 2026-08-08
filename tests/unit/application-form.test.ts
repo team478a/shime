@@ -55,18 +55,27 @@ describe("public application form", () => {
       { code: "a", label: "区分A設定値" },
       { code: "b", label: "区分B設定値" },
     ]);
-    expect(fields.map((field) => field.fieldKey)).toEqual(["full_name", "phone", "participant_category"]);
-    expect(fields[0]).toMatchObject({ label: "お名前", inputName: "fullName", requirement: "required" });
+    expect(fields.map((field) => field.fieldKey)).toEqual([
+      "custom_question",
+      "full_name",
+      "phone",
+      "participant_category",
+    ]);
+    expect(fields.find((field) => field.fieldKey === "full_name")).toMatchObject({
+      label: "お名前",
+      inputName: "fullName",
+      requirement: "required",
+    });
     expect(fields.find((field) => field.fieldKey === "participant_category")?.options).toEqual([
       { value: "a", label: "区分A設定値" },
       { value: "b", label: "区分B設定値" },
     ]);
   });
 
-  it("does not collect unsupported custom fields until storage support exists", () => {
-    expect(buildPublicApplicationFields(stored, []).map((field) => String(field.fieldKey))).not.toContain(
-      "custom_question",
-    );
+  it("collects configured custom fields through the additional answer storage", () => {
+    expect(
+      buildPublicApplicationFields(stored, []).find((field) => field.fieldKey === "custom_question"),
+    ).toMatchObject({ inputName: "custom_question", label: "未対応項目" });
   });
 
   it("provides the standard form when no field rows exist", () => {
@@ -85,6 +94,11 @@ describe("public application form", () => {
       "email",
       "nickname",
       "residence_area",
+      "occupation",
+      "hobbies",
+      "holiday_style",
+      "support_wanted",
+      "support_offered",
       "participant_category",
     ]);
   });

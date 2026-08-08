@@ -7,6 +7,12 @@ export type MutualCandidate = {
   aRank: number | null;
   bRank: number | null;
 };
+export function canonicalizeMatchPair(participantAId: string, participantBId: string) {
+  if (participantAId === participantBId) throw new Error("SAME_PARTICIPANT");
+  return participantAId.localeCompare(participantBId) < 0
+    ? { participantAId, participantBId }
+    : { participantAId: participantBId, participantBId: participantAId };
+}
 export function validatePreferenceChoices(mode: PreferenceMode, choices: PreferenceChoice[]): void {
   const max = mode === "ranked_up_to_3" ? 3 : mode === "mutual_up_to_2" ? 2 : 1;
   if (choices.length > max) throw new Error("TOO_MANY_CHOICES");

@@ -1,4 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
+
+import { isParticipantNumberForCategory, resolveParticipantNumberForCategory } from "@shime/core/passport/rules";
 
 import {
   applications,
@@ -12,11 +14,183 @@ import {
 } from "@shime/db";
 
 import type { CheckinRepository } from "./checkin-repository";
-import { type ConfirmedCheckin, receptionEventSettingsSchema } from "./checkin-types";
+import {
+  type ConfirmedCheckin,
+  participantNumberEventSettingsSchema,
+  receptionEventSettingsSchema,
+} from "./checkin-types";
 import { retainOrAllocateReceptionNumber } from "./reception-number";
 
 export function createDrizzleCheckinRepository(): CheckinRepository {
   return {
+    async assignParticipantNumber(input) {
+      try {
+        return await getDatabase().transaction(async (tx) => {
+          const [event] = await tx
+            .select({ settings: events.settings })
+            .from(events)
+            .where(and(eq(events.id, input.eventId), eq(events.tenantId, input.tenantId)))
+            .for("update")
+            .limit(1);
+          if (!event) return { outcome: "not_found" as const };
+
+          const [target] = await tx
+            .select({
+              participantNumber: participants.participantNumber,
+              category: applications.participantCategory,
+            })
+            .from(participants)
+            .innerJoin(
+              applications,
+              and(
+                eq(applications.id, participants.applicationId),
+                eq(applications.tenantId, participants.tenantId),
+                eq(applications.eventId, participants.eventId),
+              ),
+            )
+            .where(
+              and(
+                eq(participants.id, input.participantId),
+                eq(participants.tenantId, input.tenantId),
+                eq(participants.eventId, input.eventId),
+              ),
+            )
+            .limit(1);
+          if (!target) return { outcome: "not_found" as const };
+          const parsed = participantNumberEventSettingsSchema.safeParse(event.settings);
+          if (!parsed.success || parsed.data.participantNumberAssignmentMode !== "manual")
+            return { outcome: "automatic_mode" as const };
+          if (target.participantNumber === input.participantNumber)
+            return { outcome: "assigned" as const, participantNumber: target.participantNumber };
+          const prefix =
+            target.category === "group_a"
+              ? parsed.data.participantNumber.groupAPrefix
+              : target.category === "group_b"
+                ? parsed.data.participantNumber.groupBPrefix
+                : null;
+          const participantNumber = prefix
+            ? resolveParticipantNumberForCategory(input.participantNumber, prefix, parsed.data.participantNumber.digits)
+            : input.participantNumber;
+          if (
+            !prefix ||
+            !isParticipantNumberForCategory(participantNumber, prefix, parsed.data.participantNumber.digits)
+          )
+            return { outcome: "invalid_format" as const };
+
+          if (target.participantNumber === participantNumber)
+            return { outcome: "assigned" as const, participantNumber: target.participantNumber };
+
+          const [duplicate] = await tx
+            .select({ id: participants.id, participantNumber: participants.participantNumber })
+            .from(participants)
+            .where(
+              and(
+                eq(participants.tenantId, input.tenantId),
+                eq(participants.eventId, input.eventId),
+                eq(participants.participantNumber, participantNumber),
+                ne(participants.id, input.participantId),
+              ),
+            )
+            .limit(1);
+          if (duplicate && !target.participantNumber) return { outcome: "duplicate" as const };
+
+          if (duplicate && target.participantNumber) {
+            const temporaryNumber = `SWAP${input.requestId.replaceAll("-", "").slice(0, 32)}`;
+            await tx
+              .update(participants)
+              .set({ participantNumber: temporaryNumber, updatedAt: input.now })
+              .where(
+                and(
+                  eq(participants.id, duplicate.id),
+                  eq(participants.tenantId, input.tenantId),
+                  eq(participants.eventId, input.eventId),
+                ),
+              );
+            await tx
+              .update(participants)
+              .set({ participantNumber, updatedAt: input.now })
+              .where(
+                and(
+                  eq(participants.id, input.participantId),
+                  eq(participants.tenantId, input.tenantId),
+                  eq(participants.eventId, input.eventId),
+                ),
+              );
+            await tx
+              .update(participants)
+              .set({ participantNumber: target.participantNumber, updatedAt: input.now })
+              .where(
+                and(
+                  eq(participants.id, duplicate.id),
+                  eq(participants.tenantId, input.tenantId),
+                  eq(participants.eventId, input.eventId),
+                ),
+              );
+
+            await tx.insert(auditLogs).values([
+              {
+                tenantId: input.tenantId,
+                actorUserId: input.actorUserId,
+                eventId: input.eventId,
+                action: "participant.number.change",
+                targetType: "participant",
+                targetId: input.participantId,
+                before: { participantNumber: target.participantNumber },
+                after: { participantNumber, swappedWithParticipantId: duplicate.id },
+                requestId: input.requestId,
+              },
+              {
+                tenantId: input.tenantId,
+                actorUserId: input.actorUserId,
+                eventId: input.eventId,
+                action: "participant.number.swap",
+                targetType: "participant",
+                targetId: duplicate.id,
+                before: { participantNumber: duplicate.participantNumber },
+                after: { participantNumber: target.participantNumber, swappedWithParticipantId: input.participantId },
+                requestId: input.requestId,
+              },
+            ]);
+            return {
+              outcome: "assigned" as const,
+              participantNumber,
+              swappedParticipantId: duplicate.id,
+              swappedParticipantNumber: target.participantNumber,
+            };
+          }
+
+          const [saved] = await tx
+            .update(participants)
+            .set({ participantNumber, updatedAt: input.now })
+            .where(
+              and(
+                eq(participants.id, input.participantId),
+                eq(participants.tenantId, input.tenantId),
+                eq(participants.eventId, input.eventId),
+              ),
+            )
+            .returning({ participantNumber: participants.participantNumber });
+          if (!saved?.participantNumber) return { outcome: "duplicate" as const };
+
+          await tx.insert(auditLogs).values({
+            tenantId: input.tenantId,
+            actorUserId: input.actorUserId,
+            eventId: input.eventId,
+            action: target.participantNumber ? "participant.number.change" : "participant.number.assign",
+            targetType: "participant",
+            targetId: input.participantId,
+            before: target.participantNumber ? { participantNumber: target.participantNumber } : undefined,
+            after: { participantNumber: saved.participantNumber },
+            requestId: input.requestId,
+          });
+          return { outcome: "assigned" as const, participantNumber: saved.participantNumber };
+        });
+      } catch (error) {
+        if (typeof error === "object" && error !== null && "code" in error && error.code === "23505")
+          return { outcome: "duplicate" as const };
+        throw error;
+      }
+    },
     async confirm(input) {
       return getDatabase().transaction(async (tx) => {
         const [event] = await tx

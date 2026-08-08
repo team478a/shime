@@ -14,7 +14,7 @@ import { ConciergeAdminConsole, type ConciergeAdminCard, type ConciergeAdminTemp
 export default async function ConciergeAdminPage() {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "concierge:manage") || session.eventId) redirect("/admin");
+  if (!hasPermission(session.role, "concierge:manage", session.permissions) || session.eventId) redirect("/admin");
   const db = getDatabase();
   const [templateRows, versionRows, assetRows, cardVersionRows] = await Promise.all([
     db
@@ -86,7 +86,7 @@ export default async function ConciergeAdminPage() {
       <ConciergeAdminConsole
         initialTemplates={templates}
         initialCards={cards}
-        canPublish={hasPermission(session.role, "concierge:publish")}
+        canPublish={hasPermission(session.role, "concierge:publish", session.permissions)}
       />
     </main>
   );

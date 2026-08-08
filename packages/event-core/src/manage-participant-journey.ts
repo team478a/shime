@@ -33,13 +33,27 @@ export class SaveParticipantJourneyDraft {
 export class PublishParticipantJourneyDraft {
   constructor(private readonly repository: ParticipantJourneyRepository) {}
 
-  execute(input: {
+  async execute(input: {
     tenantId: string;
     eventId: string;
     actorUserId: string;
     requestId: string;
     now: Date;
   }): Promise<ParticipantJourneyVersion | null> {
+    const settings = await this.repository.getSettings(input);
+    if (
+      settings?.draft?.steps.some((step) => step.id === "diagnosis" && step.enabled) &&
+      !(await this.repository.isDiagnosisAvailable(input))
+    ) {
+      throw new DiagnosisJourneyUnavailableError();
+    }
     return this.repository.publishDraft(input);
+  }
+}
+
+export class DiagnosisJourneyUnavailableError extends Error {
+  constructor() {
+    super("DIAGNOSIS_JOURNEY_UNAVAILABLE");
+    this.name = "DiagnosisJourneyUnavailableError";
   }
 }

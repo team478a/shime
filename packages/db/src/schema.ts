@@ -1,5 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -8,6 +11,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
   varchar,
@@ -95,7 +99,10 @@ export const matchCandidateStatus = pgEnum("match_candidate_status", [
   "revoked",
 ]);
 export const conciergeVersionStatus = pgEnum("concierge_version_status", ["draft", "published", "archived"]);
+export const conciergeSessionStatus = pgEnum("concierge_session_status", ["in_progress", "submitted"]);
 export const journeyVersionStatus = pgEnum("journey_version_status", ["draft", "published", "archived"]);
+export const matchChatRoomStatus = pgEnum("match_chat_room_status", ["pending_consent", "open", "blocked", "closed"]);
+export const matchChatReportStatus = pgEnum("match_chat_report_status", ["open", "reviewing", "resolved"]);
 
 export const tenants = pgTable(
   "tenants",
@@ -138,7 +145,14 @@ export const users = pgTable(
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     ...timestamps,
   },
-  (table) => [index("users_tenant_idx").on(table.tenantId)],
+  (table) => [
+    index("users_tenant_idx").on(table.tenantId),
+    // Composite-FK target: a real UNIQUE constraint (not just a unique index) is
+    // required for a composite foreign key to reference these columns. Lets
+    // viewer_user_id + tenant_id be verified together (concierge_access_logs),
+    // not just that the user id exists somewhere.
+    unique("users_tenant_scope_uidx").on(table.tenantId, table.id),
+  ],
 );
 
 export const userIdentities = pgTable(
@@ -205,6 +219,8 @@ export const events = pgTable(
   (table) => [
     uniqueIndex("events_tenant_code_uidx").on(table.tenantId, table.code),
     index("events_tenant_status_idx").on(table.tenantId, table.status),
+    // Composite-FK target for rows whose event must belong to the same tenant.
+    unique("events_tenant_id_uidx").on(table.tenantId, table.id),
   ],
 );
 
@@ -246,9 +262,16 @@ export const staffRoles = pgTable(
       .references(() => users.id),
     eventId: uuid("event_id").references(() => events.id),
     role: staffRole("role").notNull(),
+    permissions: jsonb("permissions_json").$type<string[]>(),
     ...timestamps,
   },
-  (table) => [uniqueIndex("staff_roles_scope_uidx").on(table.tenantId, table.userId, table.eventId, table.role)],
+  (table) => [
+    uniqueIndex("staff_roles_scope_uidx").on(table.tenantId, table.userId, table.eventId, table.role),
+    check(
+      "staff_roles_permissions_json_check",
+      sql`${table.permissions} is null or (jsonb_typeof(${table.permissions}) = 'array' and ${table.permissions} <@ '["checkin:write","participant:read","operations:read","application:import","application:duplicates","notification:write","event:write","event:delete","seating:write","seating:publish","preference:read","result:confirm","result:revoke","backup:export","backup:sensitive","staff:manage","concierge:manage","concierge:publish","concierge:private-read"]'::jsonb)`,
+    ),
+  ],
 );
 
 export const eventFormFields = pgTable(
@@ -402,6 +425,7 @@ export const applications = pgTable(
     nickname: varchar("nickname", { length: 120 }),
     residenceArea: varchar("residence_area", { length: 240 }),
     participantCategory: varchar("participant_category", { length: 80 }).notNull(),
+    additionalAnswers: jsonb("additional_answers").$type<Record<string, string>>().default({}).notNull(),
     notes: text("notes"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     idempotencyKeyHash: varchar("idempotency_key_hash", { length: 64 }),
@@ -412,6 +436,12 @@ export const applications = pgTable(
     uniqueIndex("applications_idempotency_uidx").on(table.tenantId, table.eventId, table.idempotencyKeyHash),
     index("applications_phone_idx").on(table.tenantId, table.eventId, table.phoneNormalized),
     index("applications_email_idx").on(table.tenantId, table.eventId, table.emailNormalized),
+    unique("applications_tenant_event_id_uidx").on(table.tenantId, table.eventId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "applications_event_scope_fk",
+    }),
   ],
 );
 
@@ -585,6 +615,26 @@ export const participants = pgTable(
     uniqueIndex("participants_user_uidx").on(table.tenantId, table.eventId, table.userId),
     uniqueIndex("participants_number_uidx").on(table.tenantId, table.eventId, table.participantNumber),
     uniqueIndex("participants_link_token_uidx").on(table.linkTokenHash),
+    // Composite-FK target: a real UNIQUE constraint (not just a unique index) is
+    // required for a composite foreign key to reference these columns. Lets a
+    // child row's tenant_id + event_id + participant_id be verified together
+    // against this row, not just that the participant id exists.
+    unique("participants_tenant_event_id_uidx").on(table.tenantId, table.eventId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "participants_event_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.applicationId],
+      foreignColumns: [applications.tenantId, applications.eventId, applications.id],
+      name: "participants_application_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.userId],
+      foreignColumns: [users.tenantId, users.id],
+      name: "participants_user_scope_fk",
+    }),
   ],
 );
 
@@ -607,6 +657,11 @@ export const participantSessions = pgTable(
   (table) => [
     uniqueIndex("participant_sessions_token_uidx").on(table.tokenHash),
     index("participant_sessions_user_idx").on(table.tenantId, table.userId),
+    foreignKey({
+      columns: [table.tenantId, table.userId],
+      foreignColumns: [users.tenantId, users.id],
+      name: "participant_sessions_user_scope_fk",
+    }),
   ],
 );
 
@@ -1045,6 +1100,321 @@ export const participantAvoidances = pgTable(
   ],
 );
 
+export const eventInteractionNoteSnapshots = pgTable(
+  "event_interaction_note_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    version: integer("version").notNull(),
+    enabled: boolean("enabled").default(false).notNull(),
+    status: varchar("status", { length: 20 }).default("draft").notNull(),
+    targetSource: varchar("target_source", { length: 40 }).notNull(),
+    publicProfileFieldKeys: jsonb("public_profile_field_keys_json").$type<string[]>().default([]).notNull(),
+    editableUntil: timestamp("editable_until", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    stoppedAt: timestamp("stopped_at", { withTimezone: true }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("event_interaction_note_snapshots_version_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.version,
+    ),
+    unique("event_interaction_note_snapshots_scope_id_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.id,
+    ),
+    index("event_interaction_note_snapshots_active_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.enabled,
+    ),
+    uniqueIndex("event_interaction_note_snapshots_published_uidx")
+      .on(table.tenantId, table.eventId, table.serviceType)
+      .where(sql`${table.status} = 'published'`),
+    check("event_interaction_note_snapshots_status_check", sql`${table.status} in ('draft', 'published', 'stopped')`),
+    check(
+      "event_interaction_note_snapshots_lifecycle_check",
+      sql`(${table.status} = 'draft' and not ${table.enabled} and ${table.publishedAt} is null and ${table.stoppedAt} is null)
+        or (${table.status} = 'published' and ${table.enabled} and ${table.publishedAt} is not null and ${table.stoppedAt} is null)
+        or (${table.status} = 'stopped' and not ${table.enabled} and ${table.publishedAt} is not null and ${table.stoppedAt} is not null)`,
+    ),
+    check(
+      "event_interaction_note_snapshots_public_profile_fields_array_check",
+      sql`jsonb_typeof(${table.publicProfileFieldKeys}) = 'array'`,
+    ),
+    check(
+      "event_interaction_note_snapshots_public_profile_fields_allowlist_check",
+      sql`${table.publicProfileFieldKeys} <@ '["nickname","age_or_band","residence_municipality","occupation","hobbies","holiday_style","support_wanted","support_offered","public_dream"]'::jsonb`,
+    ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "event_interaction_note_snapshots_event_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.createdBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "event_interaction_note_snapshots_creator_scope_fk",
+    }),
+  ],
+);
+
+export const interactionNoteOptions = pgTable(
+  "interaction_note_options",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    snapshotId: uuid("snapshot_id")
+      .notNull()
+      .references(() => eventInteractionNoteSnapshots.id),
+    code: varchar("code", { length: 80 }).notNull(),
+    label: varchar("label", { length: 160 }).notNull(),
+    displayOrder: integer("display_order").notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    isNegative: boolean("is_negative").default(false).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    unique("interaction_note_options_scope_code_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.snapshotId,
+      table.code,
+    ),
+    index("interaction_note_options_display_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.snapshotId,
+      table.displayOrder,
+    ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.snapshotId],
+      foreignColumns: [
+        eventInteractionNoteSnapshots.tenantId,
+        eventInteractionNoteSnapshots.eventId,
+        eventInteractionNoteSnapshots.serviceType,
+        eventInteractionNoteSnapshots.id,
+      ],
+      name: "interaction_note_options_snapshot_scope_fk",
+    }),
+  ],
+);
+
+export const interactionSlots = pgTable(
+  "interaction_slots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    source: varchar("source", { length: 40 }).notNull(),
+    sourceRef: varchar("source_ref", { length: 160 }).notNull(),
+    roundNo: integer("round_no"),
+    status: varchar("status", { length: 20 }).default("active").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("interaction_slots_source_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.source,
+      table.sourceRef,
+    ),
+    unique("interaction_slots_scope_id_uidx").on(table.tenantId, table.eventId, table.serviceType, table.id),
+    index("interaction_slots_active_idx").on(table.tenantId, table.eventId, table.serviceType, table.status),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "interaction_slots_event_scope_fk",
+    }),
+  ],
+);
+
+export const interactionSlotParticipants = pgTable(
+  "interaction_slot_participants",
+  {
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    interactionSlotId: uuid("interaction_slot_id")
+      .notNull()
+      .references(() => interactionSlots.id),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => participants.id),
+    roleCode: varchar("role_code", { length: 40 }),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.interactionSlotId, table.participantId],
+      name: "interaction_slot_participants_pk",
+    }),
+    index("interaction_slot_participants_participant_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.participantId,
+    ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.interactionSlotId],
+      foreignColumns: [
+        interactionSlots.tenantId,
+        interactionSlots.eventId,
+        interactionSlots.serviceType,
+        interactionSlots.id,
+      ],
+      name: "interaction_slot_participants_slot_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.participantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "interaction_slot_participants_participant_scope_fk",
+    }),
+  ],
+);
+
+export const interactionNotes = pgTable(
+  "interaction_notes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    snapshotId: uuid("snapshot_id")
+      .notNull()
+      .references(() => eventInteractionNoteSnapshots.id),
+    actorParticipantId: uuid("actor_participant_id")
+      .notNull()
+      .references(() => participants.id),
+    targetParticipantId: uuid("target_participant_id")
+      .notNull()
+      .references(() => participants.id),
+    interactionSlotId: uuid("interaction_slot_id")
+      .notNull()
+      .references(() => interactionSlots.id),
+    feelingCode: varchar("feeling_code", { length: 80 }).notNull(),
+    favorite: boolean("favorite").default(false).notNull(),
+    privateNoteText: varchar("private_note_text", { length: 120 }),
+    wantsToTalkMore: boolean("wants_to_talk_more").default(false).notNull(),
+    revision: integer("revision").default(1).notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow().notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("interaction_notes_actor_target_slot_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.snapshotId,
+      table.actorParticipantId,
+      table.targetParticipantId,
+      table.interactionSlotId,
+    ),
+    index("interaction_notes_actor_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.actorParticipantId,
+      table.updatedAt,
+    ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.snapshotId],
+      foreignColumns: [
+        eventInteractionNoteSnapshots.tenantId,
+        eventInteractionNoteSnapshots.eventId,
+        eventInteractionNoteSnapshots.serviceType,
+        eventInteractionNoteSnapshots.id,
+      ],
+      name: "interaction_notes_snapshot_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.snapshotId, table.feelingCode],
+      foreignColumns: [
+        interactionNoteOptions.tenantId,
+        interactionNoteOptions.eventId,
+        interactionNoteOptions.serviceType,
+        interactionNoteOptions.snapshotId,
+        interactionNoteOptions.code,
+      ],
+      name: "interaction_notes_option_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.interactionSlotId, table.actorParticipantId],
+      foreignColumns: [
+        interactionSlotParticipants.tenantId,
+        interactionSlotParticipants.eventId,
+        interactionSlotParticipants.serviceType,
+        interactionSlotParticipants.interactionSlotId,
+        interactionSlotParticipants.participantId,
+      ],
+      name: "interaction_notes_actor_slot_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.serviceType, table.interactionSlotId, table.targetParticipantId],
+      foreignColumns: [
+        interactionSlotParticipants.tenantId,
+        interactionSlotParticipants.eventId,
+        interactionSlotParticipants.serviceType,
+        interactionSlotParticipants.interactionSlotId,
+        interactionSlotParticipants.participantId,
+      ],
+      name: "interaction_notes_target_slot_scope_fk",
+    }),
+    check(
+      "interaction_notes_distinct_participants_check",
+      sql`${table.actorParticipantId} <> ${table.targetParticipantId}`,
+    ),
+    check("interaction_notes_revision_positive_check", sql`${table.revision} >= 1`),
+    check(
+      "interaction_notes_private_note_length_check",
+      sql`${table.privateNoteText} is null or char_length(${table.privateNoteText}) <= 120`,
+    ),
+    check(
+      "interaction_notes_private_note_lines_check",
+      sql`${table.privateNoteText} is null or char_length(${table.privateNoteText}) - char_length(replace(${table.privateNoteText}, chr(10), '')) <= 2`,
+    ),
+  ],
+);
+
 export const seatingRuns = pgTable(
   "seating_runs",
   {
@@ -1216,6 +1586,13 @@ export const matchCandidates = pgTable(
       table.participantAId,
       table.participantBId,
     ),
+    unique("match_candidates_scope_pair_id_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.id,
+      table.participantAId,
+      table.participantBId,
+    ),
   ],
 );
 
@@ -1241,6 +1618,260 @@ export const resultConfirmations = pgTable(
     ...timestamps,
   },
   (table) => [index("result_confirmations_event_idx").on(table.tenantId, table.eventId, table.confirmedAt)],
+);
+
+export const eventMatchChatConfigs = pgTable(
+  "event_match_chat_configs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    enabled: boolean("enabled").default(false).notNull(),
+    windowHours: integer("window_hours").default(72).notNull(),
+    messagesPerMinute: integer("messages_per_minute").default(10).notNull(),
+    maxMessageLength: integer("max_message_length").default(500).notNull(),
+    termsVersion: varchar("terms_version", { length: 80 }),
+    termsBody: text("terms_body"),
+    retentionDays: integer("retention_days"),
+    reportOwnerLabel: varchar("report_owner_label", { length: 120 }),
+    uatConfirmed: boolean("uat_confirmed").default(false).notNull(),
+    uatConfirmedAt: timestamp("uat_confirmed_at", { withTimezone: true }),
+    uatConfirmedBy: uuid("uat_confirmed_by"),
+    updatedBy: uuid("updated_by").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("event_match_chat_configs_scope_uidx").on(table.tenantId, table.eventId, table.serviceType),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "event_match_chat_configs_event_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.updatedBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "event_match_chat_configs_updater_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.uatConfirmedBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "event_match_chat_configs_uat_confirmer_scope_fk",
+    }),
+    check("event_match_chat_configs_window_check", sql`${table.windowHours} between 1 and 168`),
+    check("event_match_chat_configs_rate_check", sql`${table.messagesPerMinute} between 1 and 60`),
+    check("event_match_chat_configs_length_check", sql`${table.maxMessageLength} between 1 and 2000`),
+    check(
+      "event_match_chat_configs_enablement_check",
+      sql`not ${table.enabled} or (coalesce(length(trim(${table.termsVersion})) > 0, false) and coalesce(length(trim(${table.termsBody})) > 0, false) and coalesce(${table.retentionDays} between 1 and 3650, false) and coalesce(length(trim(${table.reportOwnerLabel})) > 0, false) and ${table.uatConfirmed} and ${table.uatConfirmedAt} is not null and ${table.uatConfirmedBy} is not null)`,
+    ),
+    check(
+      "event_match_chat_configs_uat_check",
+      sql`(${table.uatConfirmed} and ${table.uatConfirmedAt} is not null and ${table.uatConfirmedBy} is not null) or (not ${table.uatConfirmed} and ${table.uatConfirmedAt} is null and ${table.uatConfirmedBy} is null)`,
+    ),
+  ],
+);
+
+export const matchChatRooms = pgTable(
+  "match_chat_rooms",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    matchCandidateId: uuid("match_candidate_id").notNull(),
+    participantAId: uuid("participant_a_id").notNull(),
+    participantBId: uuid("participant_b_id").notNull(),
+    status: matchChatRoomStatus("status").default("pending_consent").notNull(),
+    opensAt: timestamp("opens_at", { withTimezone: true }),
+    closesAt: timestamp("closes_at", { withTimezone: true }).notNull(),
+    blockedAt: timestamp("blocked_at", { withTimezone: true }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("match_chat_rooms_candidate_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.serviceType,
+      table.matchCandidateId,
+    ),
+    unique("match_chat_rooms_scope_id_uidx").on(table.tenantId, table.eventId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "match_chat_rooms_event_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.matchCandidateId, table.participantAId, table.participantBId],
+      foreignColumns: [
+        matchCandidates.tenantId,
+        matchCandidates.eventId,
+        matchCandidates.id,
+        matchCandidates.participantAId,
+        matchCandidates.participantBId,
+      ],
+      name: "match_chat_rooms_candidate_pair_scope_fk",
+    }),
+    check("match_chat_rooms_distinct_participants_check", sql`${table.participantAId} <> ${table.participantBId}`),
+    check("match_chat_rooms_window_check", sql`${table.closesAt} > coalesce(${table.opensAt}, ${table.createdAt})`),
+  ],
+);
+
+export const matchChatConsents = pgTable(
+  "match_chat_consents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    roomId: uuid("room_id").notNull(),
+    participantId: uuid("participant_id").notNull(),
+    termsVersion: varchar("terms_version", { length: 80 }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("match_chat_consents_room_participant_uidx").on(table.roomId, table.participantId),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.roomId],
+      foreignColumns: [matchChatRooms.tenantId, matchChatRooms.eventId, matchChatRooms.id],
+      name: "match_chat_consents_room_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.participantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_consents_participant_scope_fk",
+    }),
+    check("match_chat_consents_terms_check", sql`length(trim(${table.termsVersion})) > 0`),
+  ],
+);
+
+export const matchChatBlocks = pgTable(
+  "match_chat_blocks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    roomId: uuid("room_id").notNull(),
+    blockerParticipantId: uuid("blocker_participant_id").notNull(),
+    blockedParticipantId: uuid("blocked_participant_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("match_chat_blocks_room_blocker_uidx").on(table.roomId, table.blockerParticipantId),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.roomId],
+      foreignColumns: [matchChatRooms.tenantId, matchChatRooms.eventId, matchChatRooms.id],
+      name: "match_chat_blocks_room_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.blockerParticipantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_blocks_blocker_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.blockedParticipantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_blocks_blocked_scope_fk",
+    }),
+    check(
+      "match_chat_blocks_distinct_participants_check",
+      sql`${table.blockerParticipantId} <> ${table.blockedParticipantId}`,
+    ),
+  ],
+);
+
+export const matchChatReports = pgTable(
+  "match_chat_reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    roomId: uuid("room_id").notNull(),
+    reporterParticipantId: uuid("reporter_participant_id").notNull(),
+    reportedParticipantId: uuid("reported_participant_id").notNull(),
+    category: varchar("category", { length: 40 }).notNull(),
+    detail: varchar("detail", { length: 1000 }),
+    status: matchChatReportStatus("status").default("open").notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedBy: uuid("resolved_by"),
+    ...timestamps,
+  },
+  (table) => [
+    index("match_chat_reports_queue_idx").on(table.tenantId, table.eventId, table.status, table.createdAt),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.roomId],
+      foreignColumns: [matchChatRooms.tenantId, matchChatRooms.eventId, matchChatRooms.id],
+      name: "match_chat_reports_room_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.reporterParticipantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_reports_reporter_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.reportedParticipantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_reports_reported_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.resolvedBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "match_chat_reports_resolver_scope_fk",
+    }),
+    check(
+      "match_chat_reports_distinct_participants_check",
+      sql`${table.reporterParticipantId} <> ${table.reportedParticipantId}`,
+    ),
+    check(
+      "match_chat_reports_category_check",
+      sql`${table.category} in ('harassment','spam','inappropriate','safety_concern','other')`,
+    ),
+  ],
+);
+
+export const matchChatMessages = pgTable(
+  "match_chat_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    eventId: uuid("event_id").notNull(),
+    roomId: uuid("room_id").notNull(),
+    senderParticipantId: uuid("sender_participant_id").notNull(),
+    clientMessageId: uuid("client_message_id").notNull(),
+    encryptedBody: text("encrypted_body").notNull(),
+    encryptionVersion: varchar("encryption_version", { length: 20 }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("match_chat_messages_idempotency_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.roomId,
+      table.senderParticipantId,
+      table.clientMessageId,
+    ),
+    index("match_chat_messages_timeline_idx").on(table.tenantId, table.eventId, table.roomId, table.sentAt),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.roomId],
+      foreignColumns: [matchChatRooms.tenantId, matchChatRooms.eventId, matchChatRooms.id],
+      name: "match_chat_messages_room_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.senderParticipantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "match_chat_messages_sender_scope_fk",
+    }),
+    check("match_chat_messages_window_check", sql`${table.expiresAt} > ${table.sentAt}`),
+    check(
+      "match_chat_messages_encryption_check",
+      sql`length(${table.encryptedBody}) > 0 and length(${table.encryptionVersion}) > 0`,
+    ),
+  ],
 );
 
 export const tenantServiceSettings = pgTable(
@@ -1437,6 +2068,11 @@ export const conciergeCardAssetVersions = pgTable(
     uniqueIndex("concierge_card_asset_versions_number_uidx").on(table.tenantId, table.assetId, table.version),
     uniqueIndex("concierge_card_asset_versions_hash_uidx").on(table.tenantId, table.contentHash),
     index("concierge_card_asset_versions_status_idx").on(table.tenantId, table.status, table.createdAt),
+    // Composite-FK target: a real UNIQUE constraint (not just a unique index) is
+    // required for a composite foreign key to reference these columns. Lets
+    // selected_card_asset_version_id + tenant_id be verified together
+    // (concierge_sessions), not just that the card id exists.
+    unique("concierge_card_asset_versions_tenant_id_uidx").on(table.tenantId, table.id),
   ],
 );
 
@@ -1459,6 +2095,12 @@ export const conciergeTemplates = pgTable(
   (table) => [
     uniqueIndex("concierge_templates_key_uidx").on(table.tenantId, table.moduleKey, table.templateKey),
     index("concierge_templates_tenant_idx").on(table.tenantId, table.moduleKey, table.archivedAt),
+    unique("concierge_templates_tenant_id_uidx").on(table.tenantId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.createdBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "concierge_templates_creator_scope_fk",
+    }),
   ],
 );
 
@@ -1486,6 +2128,17 @@ export const conciergeTemplateVersions = pgTable(
   (table) => [
     uniqueIndex("concierge_template_versions_number_uidx").on(table.tenantId, table.templateId, table.version),
     index("concierge_template_versions_status_idx").on(table.tenantId, table.templateId, table.status),
+    unique("concierge_template_versions_tenant_id_version_uidx").on(table.tenantId, table.id, table.version),
+    foreignKey({
+      columns: [table.tenantId, table.templateId],
+      foreignColumns: [conciergeTemplates.tenantId, conciergeTemplates.id],
+      name: "concierge_template_versions_template_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.createdBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "concierge_template_versions_creator_scope_fk",
+    }),
   ],
 );
 
@@ -1506,6 +2159,9 @@ export const eventConciergeSnapshots = pgTable(
     snapshot: jsonb("snapshot_json").$type<Record<string, unknown>>().notNull(),
     snapshotHash: varchar("snapshot_hash", { length: 64 }).notNull(),
     enabled: boolean("enabled").default(false).notNull(),
+    accessOpensAt: timestamp("access_opens_at", { withTimezone: true }),
+    accessClosesAt: timestamp("access_closes_at", { withTimezone: true }),
+    allowResubmission: boolean("allow_resubmission").default(false).notNull(),
     appliedBy: uuid("applied_by")
       .notNull()
       .references(() => users.id),
@@ -1514,5 +2170,222 @@ export const eventConciergeSnapshots = pgTable(
   (table) => [
     uniqueIndex("event_concierge_snapshots_event_uidx").on(table.tenantId, table.eventId),
     index("event_concierge_snapshots_version_idx").on(table.tenantId, table.templateVersionId),
+    // Composite-FK target: a real UNIQUE constraint (not just a unique index) is
+    // required for a composite foreign key to reference these columns. Lets a
+    // child row's tenant_id + event_id + snapshot_id be verified together
+    // (concierge_sessions), not just that the snapshot id exists.
+    unique("event_concierge_snapshots_tenant_event_id_uidx").on(table.tenantId, table.eventId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.eventId],
+      foreignColumns: [events.tenantId, events.id],
+      name: "event_concierge_snapshots_event_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.templateVersionId, table.templateVersion],
+      foreignColumns: [
+        conciergeTemplateVersions.tenantId,
+        conciergeTemplateVersions.id,
+        conciergeTemplateVersions.version,
+      ],
+      name: "event_concierge_snapshots_template_version_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.appliedBy],
+      foreignColumns: [users.tenantId, users.id],
+      name: "event_concierge_snapshots_applier_scope_fk",
+    }),
+  ],
+);
+
+export const conciergeSessions = pgTable(
+  "concierge_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => participants.id),
+    snapshotId: uuid("snapshot_id")
+      .notNull()
+      .references(() => eventConciergeSnapshots.id),
+    status: conciergeSessionStatus("status").default("in_progress").notNull(),
+    revision: integer("revision").default(0).notNull(),
+    selectedCardAssetVersionId: uuid("selected_card_asset_version_id").references(() => conciergeCardAssetVersions.id),
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("concierge_sessions_participant_uidx").on(table.tenantId, table.eventId, table.participantId),
+    index("concierge_sessions_status_idx").on(table.tenantId, table.eventId, table.status),
+    // Composite-FK target: a real UNIQUE constraint (not just a unique index) is
+    // required for a composite foreign key to reference these columns. Lets a
+    // child row's tenant_id + event_id + session_id be verified together
+    // (answers, revisions, results, access logs), not just that the session id
+    // exists somewhere, possibly under another tenant/event.
+    unique("concierge_sessions_tenant_event_id_uidx").on(table.tenantId, table.eventId, table.id),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.participantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "concierge_sessions_participant_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.snapshotId],
+      foreignColumns: [eventConciergeSnapshots.tenantId, eventConciergeSnapshots.eventId, eventConciergeSnapshots.id],
+      name: "concierge_sessions_snapshot_scope_fk",
+    }),
+    // selectedCardAssetVersionId is nullable until a card is chosen; Postgres'
+    // default MATCH SIMPLE skips the check entirely while it's null.
+    foreignKey({
+      columns: [table.tenantId, table.selectedCardAssetVersionId],
+      foreignColumns: [conciergeCardAssetVersions.tenantId, conciergeCardAssetVersions.id],
+      name: "concierge_sessions_selected_card_tenant_fk",
+    }),
+  ],
+);
+
+export const conciergeAnswers = pgTable(
+  "concierge_answers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => conciergeSessions.id),
+    axisCode: varchar("axis_code", { length: 40 }).notNull(),
+    optionCode: varchar("option_code", { length: 80 }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("concierge_answers_axis_uidx").on(table.tenantId, table.eventId, table.sessionId, table.axisCode),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.sessionId],
+      foreignColumns: [conciergeSessions.tenantId, conciergeSessions.eventId, conciergeSessions.id],
+      name: "concierge_answers_session_scope_fk",
+    }),
+  ],
+);
+
+export const conciergeAnswerRevisions = pgTable(
+  "concierge_answer_revisions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => conciergeSessions.id),
+    revision: integer("revision").notNull(),
+    answerSnapshot: jsonb("answer_snapshot_json").$type<unknown>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("concierge_answer_revisions_number_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.sessionId,
+      table.revision,
+    ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.sessionId],
+      foreignColumns: [conciergeSessions.tenantId, conciergeSessions.eventId, conciergeSessions.id],
+      name: "concierge_answer_revisions_session_scope_fk",
+    }),
+  ],
+);
+
+export const conciergeRuleResults = pgTable(
+  "concierge_rule_results",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => conciergeSessions.id),
+    submittedRevision: integer("submitted_revision").notNull(),
+    algorithmVersion: varchar("algorithm_version", { length: 80 }).notNull(),
+    primaryEmotionCode: varchar("primary_emotion_code", { length: 40 }).notNull(),
+    resultSnapshot: jsonb("result_snapshot_json").$type<unknown>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("concierge_rule_results_revision_uidx").on(
+      table.tenantId,
+      table.eventId,
+      table.sessionId,
+      table.submittedRevision,
+    ),
+    index("concierge_rule_results_session_idx").on(table.tenantId, table.eventId, table.sessionId),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.sessionId],
+      foreignColumns: [conciergeSessions.tenantId, conciergeSessions.eventId, conciergeSessions.id],
+      name: "concierge_rule_results_session_scope_fk",
+    }),
+  ],
+);
+
+export const conciergeAccessLogs = pgTable(
+  "concierge_access_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => participants.id),
+    sessionId: uuid("session_id").references(() => conciergeSessions.id),
+    viewerUserId: uuid("viewer_user_id")
+      .notNull()
+      .references(() => users.id),
+    action: varchar("action", { length: 80 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("concierge_access_logs_participant_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.participantId,
+      table.createdAt,
+    ),
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.participantId],
+      foreignColumns: [participants.tenantId, participants.eventId, participants.id],
+      name: "concierge_access_logs_participant_scope_fk",
+    }),
+    // sessionId is nullable (a "view" before a session exists); MATCH SIMPLE
+    // skips the check entirely while it's null.
+    foreignKey({
+      columns: [table.tenantId, table.eventId, table.sessionId],
+      foreignColumns: [conciergeSessions.tenantId, conciergeSessions.eventId, conciergeSessions.id],
+      name: "concierge_access_logs_session_scope_fk",
+    }),
+    foreignKey({
+      columns: [table.tenantId, table.viewerUserId],
+      foreignColumns: [users.tenantId, users.id],
+      name: "concierge_access_logs_viewer_tenant_fk",
+    }),
   ],
 );

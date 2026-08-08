@@ -31,15 +31,23 @@ const sectionDefinitions = [
   { key: "questionnaire", title: "席案内5問", path: "questionnaire", issueKeys: new Set(["questionnaire"]) },
 ] as const;
 
-export function buildEventSetupSections(eventId: string, issues: EventConfigurationIssue[]) {
-  return sectionDefinitions.map((section) => {
-    const sectionIssues = issues.filter((issue) => section.issueKeys.has(issue.key as never));
-    return {
-      key: section.key,
-      title: section.title,
-      href: `/admin/events/${eventId}/${section.path}`,
-      complete: sectionIssues.length === 0,
-      issues: sectionIssues,
-    };
-  });
+export function buildEventSetupSections(
+  eventId: string,
+  issues: EventConfigurationIssue[],
+  options: { seatingMode?: "assigned" | "standing" } = {},
+) {
+  return sectionDefinitions
+    .filter(
+      (section) => options.seatingMode !== "standing" || (section.key !== "tables" && section.key !== "questionnaire"),
+    )
+    .map((section) => {
+      const sectionIssues = issues.filter((issue) => section.issueKeys.has(issue.key as never));
+      return {
+        key: section.key,
+        title: section.title,
+        href: `/admin/events/${eventId}/${section.path}`,
+        complete: sectionIssues.length === 0,
+        issues: sectionIssues,
+      };
+    });
 }

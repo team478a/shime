@@ -3,8 +3,10 @@ import {
   allocateParticipantNumber,
   createParticipantNumber,
   formatQrPayload,
+  getParticipantNumberAssignmentMode,
   getParticipantNumberPrefix,
   isDreamRequirementSatisfied,
+  isParticipantNumberForCategory,
   parseQrPayload,
 } from "@shime/core";
 describe("passport rules", () => {
@@ -12,7 +14,10 @@ describe("passport rules", () => {
     expect(isDreamRequirementSatisfied("required_private_allowed", "confirmed")).toBe(true);
     expect(isDreamRequirementSatisfied("required_private_allowed", "skipped")).toBe(false);
   });
-  it("allows optional skip", () => expect(isDreamRequirementSatisfied("optional", "skipped")).toBe(true));
+  it.each(["not_started", "drafting", "confirmed", "skipped"] as const)(
+    "does not block PASS when Dream is optional (%s)",
+    (state) => expect(isDreamRequirementSatisfied("optional", state)).toBe(true),
+  );
   it("creates non-PII participant numbers", () => expect(createParticipantNumber("A", 4)).toMatch(/^A\d{4}$/));
   it("reads both stored participant number setting formats", () => {
     expect(getParticipantNumberPrefix({ groupAPrefix: "A", groupBPrefix: "B" }, "group_a")).toBe("A");
@@ -27,6 +32,15 @@ describe("passport rules", () => {
         Array.from({ length: 99 }, (_, index) => `A${String(index + 1).padStart(2, "0")}`),
       ),
     ).toThrow("capacity exhausted");
+  });
+  it("defaults to automatic numbering and recognizes manual mode", () => {
+    expect(getParticipantNumberAssignmentMode({})).toBe("automatic");
+    expect(getParticipantNumberAssignmentMode({ participantNumberAssignmentMode: "manual" })).toBe("manual");
+  });
+  it("normalizes and validates category-specific manual numbers", () => {
+    expect(isParticipantNumberForCategory("ａ０１", "A", 2)).toBe(true);
+    expect(isParticipantNumberForCategory("B01", "A", 2)).toBe(false);
+    expect(isParticipantNumberForCategory("A1", "A", 2)).toBe(false);
   });
   it("puts only an opaque token into QR payloads", () => {
     const token = "a".repeat(43);

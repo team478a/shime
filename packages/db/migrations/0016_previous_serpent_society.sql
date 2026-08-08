@@ -1,0 +1,1 @@
+ALTER TABLE "applications" ADD COLUMN "additional_answers" jsonb DEFAULT '{}'::jsonb NOT NULL;

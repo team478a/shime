@@ -8,7 +8,7 @@ import { LegalDocumentConsole } from "./legal-document-console";
 export default async function LegalDocumentsPage({ params }: { params: Promise<{ eventId: string }> }) {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "event:write")) redirect("/admin");
+  if (!hasPermission(session.role, "event:write", session.permissions)) redirect("/admin");
   const { eventId } = await params;
   if (session.eventId && session.eventId !== eventId) notFound();
   const db = getDatabase();

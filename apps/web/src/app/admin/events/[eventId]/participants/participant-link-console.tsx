@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { buildLiffApplicationLink } from "@shime/core/line/public-url";
+import { useParticipantNumberAdmin } from "../../../../../hooks/use-participant-number-admin";
 import { filterParticipantLinkRows, type ParticipantLinkFilter } from "../../../../../lib/participant-link-filter";
 
 type ParticipantRow = {
   id: string;
   participantNumber: string | null;
+  participantCategory: string;
   fullName: string;
   linked: boolean;
   linkTokenExpiresAt: string | null;
@@ -44,15 +46,29 @@ function linkStatus(participant: ParticipantRow): string {
   return "無効";
 }
 
+function editableNumber(value: string | null, prefix: string): string {
+  if (!value) return "";
+  const suffix = value.startsWith(prefix) ? value.slice(prefix.length) : value;
+  return /^\d+$/.test(suffix) ? String(Number(suffix)) : suffix;
+}
+
 export function ParticipantLinkConsole({
   eventId,
   eventName,
   liffId,
+  manualNumbering,
+  numberDigits,
+  groupAPrefix,
+  groupBPrefix,
   initial,
 }: {
   eventId: string;
   eventName: string;
   liffId: string;
+  manualNumbering: boolean;
+  numberDigits: number;
+  groupAPrefix: string;
+  groupBPrefix: string;
   initial: ParticipantRow[];
 }) {
   const [participants, setParticipants] = useState(initial);
@@ -61,7 +77,48 @@ export function ParticipantLinkConsole({
   const [issued, setIssued] = useState<IssuedLink | null>(null);
   const [busyId, setBusyId] = useState("");
   const [message, setMessage] = useState("");
+  const [numberDrafts, setNumberDrafts] = useState<Record<string, string>>({});
+  const participantNumberAdmin = useParticipantNumberAdmin(eventId);
   const filtered = filterParticipantLinkRows(participants, query, filter);
+
+  async function assignNumber(participant: ParticipantRow) {
+    const prefix = participant.participantCategory === "group_a" ? groupAPrefix : groupBPrefix;
+    const suggested = `${prefix}${String(1).padStart(numberDigits, "0")}`;
+    const value = (numberDrafts[participant.id] ?? "").trim();
+    if (!value) {
+      setMessage(`参加者番号を入力してください（例: ${suggested}）。`);
+      return;
+    }
+    const operation = participant.participantNumber ? "変更" : "付与";
+    if (!confirm(`${participant.fullName}さんの参加者番号を「${value}」へ${operation}します。`)) return;
+    const assignment = await participantNumberAdmin.assign(participant.id, value);
+    if (!assignment.data) {
+      const feedback: Record<string, string> = {
+        PARTICIPANT_NUMBER_DUPLICATE: "その番号はすでに使用されています。",
+        INVALID_PARTICIPANT_NUMBER: `区分に合う番号を入力してください（例: ${suggested}）。`,
+        MANUAL_NUMBERING_DISABLED: "基本設定で参加者番号を「手動付与」に変更してください。",
+      };
+      setMessage(feedback[assignment.code ?? ""] ?? "参加者番号を保存できませんでした。");
+      return;
+    }
+    const saved = assignment.data;
+    setParticipants((current) =>
+      current.map((item) =>
+        item.id === participant.id
+          ? { ...item, participantNumber: saved.participantNumber }
+          : item.id === saved.swappedParticipantId
+            ? { ...item, participantNumber: saved.swappedParticipantNumber ?? item.participantNumber }
+            : item,
+      ),
+    );
+    setNumberDrafts((current) => ({ ...current, [participant.id]: "" }));
+    const displayNumber = editableNumber(saved.participantNumber, prefix);
+    setMessage(
+      saved.swappedParticipantId
+        ? `表示番号を入れ替え、${displayNumber}番へ変更しました。`
+        : `表示番号 ${displayNumber}番へ${operation}しました。参加者はSHIME PASSを発行できます。`,
+    );
+  }
 
   async function reissue(participant: ParticipantRow) {
     if (
@@ -102,6 +159,12 @@ export function ParticipantLinkConsole({
         <p className="eyebrow">PARTICIPANT LINE LINK</p>
         <h1>{eventName} 本人連携</h1>
         <p>番号の先頭または氏名の一部で検索できます。未連携参加者だけに絞り込むと、発行対象をすぐ選べます。</p>
+        {manualNumbering && (
+          <section className="configuration-complete">
+            <h2>参加者番号を手動付与</h2>
+            <p>区分に合う参加者番号を付与・変更できます。使用中の番号を指定すると、同じ区分内で番号を入れ替えます。</p>
+          </section>
+        )}
 
         <div className="settings-grid participant-filter-controls">
           <label>
@@ -172,6 +235,40 @@ export function ParticipantLinkConsole({
                   <dt>現在のリンク</dt>
                   <dd>{linkStatus(participant)}</dd>
                 </dl>
+                {manualNumbering && (
+                  <div className="settings-grid">
+                    <label>
+                      表示番号（区分内）
+                      <input
+                        value={
+                          numberDrafts[participant.id] ??
+                          editableNumber(
+                            participant.participantNumber,
+                            participant.participantCategory === "group_a" ? groupAPrefix : groupBPrefix,
+                          )
+                        }
+                        onChange={(event) =>
+                          setNumberDrafts((current) => ({ ...current, [participant.id]: event.target.value }))
+                        }
+                        placeholder="例: 1"
+                        autoCapitalize="characters"
+                        inputMode="numeric"
+                      />
+                      <small>男女などの区分は内部で識別されます。同じ表示番号を別区分で使用できます。</small>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={participantNumberAdmin.busyId === participant.id}
+                      onClick={() => assignNumber(participant)}
+                    >
+                      {participantNumberAdmin.busyId === participant.id
+                        ? "保存中…"
+                        : participant.participantNumber
+                          ? "番号を変更"
+                          : "番号を付与"}
+                    </button>
+                  </div>
+                )}
                 {participant.linked ? (
                   <p className="hint">本人連携済みです。</p>
                 ) : (

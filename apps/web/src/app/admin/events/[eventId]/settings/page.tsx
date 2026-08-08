@@ -9,7 +9,7 @@ import { EventSettingsForm } from "../../event-settings-form";
 export default async function EventSettingsPage({ params }: { params: Promise<{ eventId: string }> }) {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "event:write")) redirect("/admin");
+  if (!hasPermission(session.role, "event:write", session.permissions)) redirect("/admin");
   const { eventId } = await params;
   if (session.eventId && session.eventId !== eventId) notFound();
   const rows = await getDatabase()
@@ -38,7 +38,7 @@ export default async function EventSettingsPage({ params }: { params: Promise<{ 
           mode="edit"
           initial={initial}
           configuration={configuration}
-          canDelete={hasPermission(session.role, "event:delete")}
+          canDelete={hasPermission(session.role, "event:delete", session.permissions)}
         />
       </section>
     </main>

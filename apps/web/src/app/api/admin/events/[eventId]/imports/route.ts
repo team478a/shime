@@ -11,7 +11,7 @@ export async function POST(request: Request, context: Context) {
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED" }, { status: 401 });
   try {
-    requirePermission(session.role, "application:import");
+    requirePermission(session.role, "application:import", session.permissions);
   } catch {
     return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 });
   }

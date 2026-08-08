@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import Link from "next/link";
-import { hasPermission } from "@shime/core";
+import { getEventSeatingMode, hasPermission } from "@shime/core";
 import { events, getDatabase } from "@shime/db";
 import { notFound, redirect } from "next/navigation";
 import { getStaffSession } from "../../../../../server/auth";
@@ -11,7 +11,7 @@ import { getEventStatusLabel } from "../../../../../lib/status-labels";
 export default async function EventSetupPage({ params }: { params: Promise<{ eventId: string }> }) {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "event:write")) redirect("/admin");
+  if (!hasPermission(session.role, "event:write", session.permissions)) redirect("/admin");
   const { eventId } = await params;
   if (session.eventId && session.eventId !== eventId) notFound();
   const event = (
@@ -23,7 +23,8 @@ export default async function EventSetupPage({ params }: { params: Promise<{ eve
   )[0];
   if (!event) notFound();
   const readiness = await getEventConfigurationReadiness(session.tenantId, eventId, event);
-  const sections = buildEventSetupSections(eventId, readiness.issues);
+  const seatingMode = getEventSeatingMode(event.settings);
+  const sections = buildEventSetupSections(eventId, readiness.issues, { seatingMode });
 
   return (
     <main>
@@ -33,6 +34,9 @@ export default async function EventSetupPage({ params }: { params: Promise<{ eve
         <p>
           <strong>{event.name}</strong> / 状態: {getEventStatusLabel(event.status)}
         </p>
+        {seatingMode === "standing" && (
+          <p className="configuration-complete">会場形式: 立食（席指定・席案内は使用しません）</p>
+        )}
         <section className={readiness.complete ? "configuration-complete" : "configuration-incomplete"}>
           <h2>
             {readiness.complete ? "受付開始に必要な設定が揃っています" : `未確定・未設定 ${readiness.issues.length}件`}

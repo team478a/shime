@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasPermission } from "@shime/core";
+import { hasPermission, parsePermissions, permissionsForRole } from "@shime/core";
 
 describe("staff permissions", () => {
   it("does not expose preferences to reception", () =>
@@ -29,5 +29,14 @@ describe("staff permissions", () => {
     expect(hasPermission("manager", "concierge:publish")).toBe(true);
     expect(hasPermission("manager", "concierge:private-read")).toBe(false);
     expect(hasPermission("system_admin", "concierge:private-read")).toBe(true);
+  });
+  it("supports exact per-staff permission selections", () => {
+    expect(hasPermission("reception", "event:write", ["event:write"])).toBe(true);
+    expect(hasPermission("system_admin", "staff:manage", ["checkin:write"])).toBe(false);
+    expect(permissionsForRole("operator")).toContain("application:import");
+  });
+  it("fails closed when stored permissions contain an unknown value", () => {
+    expect(parsePermissions(["checkin:write", "unknown:permission"])).toEqual([]);
+    expect(parsePermissions(null)).toBeNull();
   });
 });

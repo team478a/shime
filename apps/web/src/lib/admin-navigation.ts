@@ -24,6 +24,7 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
 
 const primaryItems: readonly AdminNavigationItem[] = [
   { key: "dashboard", label: "管理トップ", href: "/admin" },
+  { key: "manual", label: "操作マニュアル", href: "/admin/manual" },
   { key: "new-event", label: "イベント作成", href: "/admin/events/new", permission: "event:write" },
   {
     key: "venue-templates",
@@ -39,7 +40,7 @@ const primaryItems: readonly AdminNavigationItem[] = [
     permission: "concierge:manage",
     tenantScopeOnly: true,
   },
-  { key: "staff", label: "管理者・権限", href: "/admin/staff", systemAdminOnly: true },
+  { key: "staff", label: "管理者・権限", href: "/admin/staff", permission: "staff:manage" },
   { key: "platform", label: "外部接続・運用設定", href: "/admin/platform", systemAdminOnly: true },
 ];
 
@@ -56,6 +57,7 @@ const eventItemTemplates: readonly AdminNavigationGroup[] = [
       { key: "form-fields", label: "申込フォーム項目", href: "form-fields", permission: "event:write" },
       { key: "dream", label: "Dream設定", href: "dream", permission: "event:write" },
       { key: "questionnaire", label: "席案内5問", href: "questionnaire", permission: "event:write" },
+      { key: "interaction-memo", label: "会話メモ設定", href: "interaction-memo", permission: "event:write" },
       { key: "concierge-event", label: "診断テンプレート適用", href: "concierge", permission: "concierge:manage" },
     ],
   },
@@ -72,6 +74,12 @@ const eventItemTemplates: readonly AdminNavigationGroup[] = [
     label: "当日運営",
     items: [
       { key: "analytics", label: "運営進捗", href: "analytics", permission: "operations:read" },
+      {
+        key: "communication-analytics",
+        label: "コミュニケーション匿名集計",
+        href: "communication-analytics",
+        permission: "operations:read",
+      },
       { key: "checkin", label: "受付", href: "checkin", permission: "checkin:write" },
       { key: "seating", label: "席配置", href: "seating", permission: "seating:write" },
     ],
@@ -81,33 +89,52 @@ const eventItemTemplates: readonly AdminNavigationGroup[] = [
     label: "結果・記録",
     items: [
       { key: "results", label: "希望・結果確定", href: "results", permission: "preference:read" },
+      { key: "match-chat", label: "マッチ後チャット", href: "match-chat", permission: "event:write" },
       { key: "exports", label: "CSVバックアップ", href: "exports", permission: "backup:export" },
     ],
   },
 ];
 
-function canAccess(role: StaffRole, item: AdminNavigationItem) {
+function canAccess(role: StaffRole, item: AdminNavigationItem, explicitPermissions?: readonly Permission[] | null) {
   if (item.systemAdminOnly) return role === "system_admin";
-  return !item.permission || hasPermission(role, item.permission);
+  return !item.permission || hasPermission(role, item.permission, explicitPermissions);
 }
 
-export function getAdminPrimaryNavigation(role: StaffRole, eventScoped = false) {
-  return primaryItems.filter((item) => canAccess(role, item) && !(eventScoped && item.tenantScopeOnly));
+export function getAdminPrimaryNavigation(
+  role: StaffRole,
+  eventScoped = false,
+  explicitPermissions?: readonly Permission[] | null,
+) {
+  return primaryItems.filter(
+    (item) => canAccess(role, item, explicitPermissions) && !(eventScoped && item.tenantScopeOnly),
+  );
 }
 
-export function getEventAdminNavigation(role: StaffRole, eventId: string) {
+export function getEventAdminNavigation(
+  role: StaffRole,
+  eventId: string,
+  options: { seatingMode?: "assigned" | "standing" } = {},
+  explicitPermissions?: readonly Permission[] | null,
+) {
   const base = `/admin/events/${encodeURIComponent(eventId)}`;
+  const seatingDisabledKeys =
+    options.seatingMode === "standing" ? new Set(["tables", "questionnaire", "seating"]) : null;
   return eventItemTemplates.flatMap((group) => {
     const items = group.items
-      .filter((item) => canAccess(role, item))
+      .filter((item) => canAccess(role, item, explicitPermissions) && !seatingDisabledKeys?.has(item.key))
       .map((item) => ({ ...item, href: `${base}/${item.href}` }));
     return items.length ? [{ ...group, items }] : [];
   });
 }
 
-export function getEventAdminQuickActions(role: StaffRole, eventId: string) {
+export function getEventAdminQuickActions(
+  role: StaffRole,
+  eventId: string,
+  options: { seatingMode?: "assigned" | "standing" } = {},
+  explicitPermissions?: readonly Permission[] | null,
+) {
   const quickActionKeys = new Set(["checkin", "participants", "seating"]);
-  return getEventAdminNavigation(role, eventId)
+  return getEventAdminNavigation(role, eventId, options, explicitPermissions)
     .flatMap((group) => group.items)
     .filter((item) => quickActionKeys.has(item.key));
 }

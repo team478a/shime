@@ -2,9 +2,12 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import {
+  CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION,
   CONCIERGE_TEMPLATE_SCHEMA_VERSION,
+  conciergeTemplatePayloadSchema,
   createEmptyConciergeTemplate,
   type ConciergeTemplatePayload,
+  type ConciergeTemplateSchemaVersion,
 } from "@shime/core/concierge";
 
 type VersionStatus = "draft" | "published" | "archived";
@@ -33,12 +36,19 @@ type QuestionDraft = { axisCode: string; prompt: string; supplementalText: strin
 type EmotionDraft = { code: string; label: string; description: string };
 type MappingDraft = { cardAssetVersionId: string; emotionCode: string };
 
-const emptyQuestions = (): QuestionDraft[] =>
-  Array.from({ length: 4 }, () => ({ axisCode: "", prompt: "", supplementalText: "", options: "" }));
+const emptyQuestions = (
+  schemaVersion: ConciergeTemplateSchemaVersion = CONCIERGE_TEMPLATE_SCHEMA_VERSION,
+): QuestionDraft[] =>
+  Array.from({ length: schemaVersion === CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION ? 3 : 4 }, () => ({
+    axisCode: "",
+    prompt: "",
+    supplementalText: "",
+    options: "",
+  }));
 const emptyEmotions = (): EmotionDraft[] => Array.from({ length: 8 }, () => ({ code: "", label: "", description: "" }));
 
 function rowsFromPayload(payload: ConciergeTemplatePayload) {
-  const questions = emptyQuestions();
+  const questions = emptyQuestions(payload.schemaVersion);
   payload.questions.forEach((question, index) => {
     if (questions[index])
       questions[index] = {
@@ -105,9 +115,8 @@ export function ConciergeAdminConsole({
   }
 
   function buildPayload(): ConciergeTemplatePayload {
-    return {
+    return conciergeTemplatePayloadSchema.parse({
       ...payload,
-      schemaVersion: CONCIERGE_TEMPLATE_SCHEMA_VERSION,
       questions: questions.flatMap((question, index) => {
         if (!question.axisCode.trim() && !question.prompt.trim()) return [];
         return [
@@ -153,7 +162,30 @@ export function ConciergeAdminConsole({
           displayOrder: index + 1,
           active: true,
         })),
-    };
+    });
+  }
+
+  function switchSchemaVersion(schemaVersion: ConciergeTemplateSchemaVersion) {
+    setPayload((current) => conciergeTemplatePayloadSchema.parse({ ...current, schemaVersion, questions: [] }));
+    setQuestions((current) => {
+      const rows = emptyQuestions(schemaVersion);
+      return rows.map((row, index) => current[index] ?? row);
+    });
+    setMessage(
+      schemaVersion === CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION
+        ? "婚活版v2はQ1〜Q3を使用します。正式な選択肢を入力してから公開してください。"
+        : "現行v1は4つの分析軸を使用します。",
+    );
+  }
+
+  function applyMarriageV2QuestionPreset() {
+    switchSchemaVersion(CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION);
+    setQuestions([
+      { axisCode: "today_feeling", prompt: "今日の気持ち", supplementalText: "", options: "" },
+      { axisCode: "today_priority", prompt: "今日大切にしたいこと", supplementalText: "", options: "" },
+      { axisCode: "today_expectation", prompt: "今日期待していること", supplementalText: "", options: "" },
+    ]);
+    setMessage("PDF記載のQ1〜Q3を設定しました。クライアント確定後の正式な選択肢を入力してください。");
   }
 
   async function saveTemplate() {
@@ -253,6 +285,19 @@ export function ConciergeAdminConsole({
 
       <section className="panel wide">
         <h2>診断テンプレートの下書き</h2>
+        <label>
+          テンプレート形式
+          <select
+            value={payload.schemaVersion}
+            onChange={(event) => switchSchemaVersion(Number(event.target.value) as ConciergeTemplateSchemaVersion)}
+          >
+            <option value={CONCIERGE_TEMPLATE_SCHEMA_VERSION}>現行v1（4分析軸）</option>
+            <option value={CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION}>婚活版v2（Q1〜Q3）</option>
+          </select>
+        </label>
+        <button type="button" className="secondary" onClick={applyMarriageV2QuestionPreset}>
+          PDFの婚活版v2 Q1〜Q3を設定
+        </button>
         <label>
           テンプレート名
           <input
@@ -358,10 +403,14 @@ export function ConciergeAdminConsole({
             </label>
           ))}
         </fieldset>
-        <h3>設問・4分析軸</h3>
+        <h3>
+          {payload.schemaVersion === CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION ? "設問・Q1〜Q3" : "設問・4分析軸"}
+        </h3>
         {questions.map((question, index) => (
           <fieldset key={index}>
-            <legend>分析軸 {index + 1}</legend>
+            <legend>
+              {payload.schemaVersion === CONCIERGE_MARRIAGE_V2_TEMPLATE_SCHEMA_VERSION ? "質問" : "分析軸"} {index + 1}
+            </legend>
             <div className="settings-grid">
               <label>
                 軸コード
@@ -593,7 +642,7 @@ export function ConciergeAdminConsole({
             {template.versions.map((version) => (
               <div className="actions" key={version.id}>
                 <span>
-                  v{version.version} / {version.status}
+                  v{version.version} / {version.status} / schema {version.payload.schemaVersion}
                 </span>
                 <button type="button" className="secondary" onClick={() => loadVersion(template, version)}>
                   {version.status === "draft" ? "編集" : "この版から新規版"}

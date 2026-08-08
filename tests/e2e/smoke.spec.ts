@@ -63,7 +63,14 @@ test("AIコンシェルジュPhase 0進捗を公開URLから取得できる", as
 });
 test("スマートフォン幅で参加者画面が横にはみ出さない", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith("mobile"));
-  for (const path of ["/liff/dream", "/liff/questionnaire", "/liff/passport", "/liff/preferences", "/liff/result"]) {
+  for (const path of [
+    "/liff/dream",
+    "/liff/questionnaire",
+    "/liff/passport",
+    "/liff/preferences",
+    "/liff/result",
+    "/liff/diagnosis",
+  ]) {
     await page.goto(path);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

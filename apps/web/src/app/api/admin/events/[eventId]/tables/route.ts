@@ -55,7 +55,7 @@ export async function PUT(request: Request, context: Context) {
   const session = await requireStaffSession().catch(() => null);
   if (!session) return NextResponse.json({ code: "UNAUTHORIZED", request_id: requestId }, { status: 401 });
   try {
-    requirePermission(session.role, "event:write");
+    requirePermission(session.role, "event:write", session.permissions);
   } catch {
     return NextResponse.json({ code: "FORBIDDEN", request_id: requestId }, { status: 403 });
   }

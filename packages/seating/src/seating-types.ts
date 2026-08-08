@@ -56,6 +56,13 @@ export type SeatingSeat = {
   enabled: boolean;
 };
 
+export type PublishedParticipantSeat = {
+  tableCode: string;
+  seatCode: string;
+  explanation: Record<string, unknown>;
+  publishedAt: Date;
+};
+
 export type SeatingWorkspace = {
   runs: Array<SeatingRun & { assignments: SeatAssignment[] }>;
   participants: SeatingParticipant[];

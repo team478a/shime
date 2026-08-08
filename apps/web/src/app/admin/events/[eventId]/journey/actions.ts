@@ -5,13 +5,17 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { hasPermission } from "@shime/core";
-import { participantJourneyStepsSchema } from "@shime/event-core";
+import { DiagnosisJourneyUnavailableError, participantJourneyStepsSchema } from "@shime/event-core";
 import { getStaffSession } from "@shime/web/server/auth";
 import { publishParticipantJourneyDraft, saveParticipantJourneyDraft } from "@shime/web/server/event-journey-use-cases";
 
 async function getAuthorizedSession(eventId: string) {
   const session = await getStaffSession();
-  if (!session || !hasPermission(session.role, "event:write") || (session.eventId && session.eventId !== eventId)) {
+  if (
+    !session ||
+    !hasPermission(session.role, "event:write", session.permissions) ||
+    (session.eventId && session.eventId !== eventId)
+  ) {
     return null;
   }
   return session;
@@ -49,13 +53,20 @@ export async function publishJourneyAction(eventId: string, formData: FormData) 
     steps: parseSteps(formData),
     now: new Date(),
   });
-  await publishParticipantJourneyDraft.execute({
-    tenantId: session.tenantId,
-    eventId,
-    actorUserId: session.userId,
-    requestId,
-    now: new Date(),
-  });
+  try {
+    await publishParticipantJourneyDraft.execute({
+      tenantId: session.tenantId,
+      eventId,
+      actorUserId: session.userId,
+      requestId,
+      now: new Date(),
+    });
+  } catch (error) {
+    if (error instanceof DiagnosisJourneyUnavailableError) {
+      redirect(`/admin/events/${eventId}/journey?status=diagnosis-unavailable`);
+    }
+    throw error;
+  }
   revalidatePath(`/admin/events/${eventId}/journey`);
   redirect(`/admin/events/${eventId}/journey?status=published`);
 }

@@ -4,7 +4,10 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { formatQrPayload } from "@shime/core/passport/rules";
+import { ParticipantInteractionEntry } from "../../../components/participant-interaction-entry";
 import { ParticipantNotice, ParticipantPageHeader } from "../../../components/participant-ui";
+import { useParticipantSeat } from "../../../hooks/use-participant-seat";
+import { useParticipantEvent } from "../../../hooks/use-participant-event";
 import { getPassportStatusLabel } from "../../../lib/status-labels";
 import { useLiffEventId } from "../../../lib/liff-location";
 
@@ -39,6 +42,8 @@ async function copyText(value: string) {
 
 export default function PassportPage() {
   const eventId = useLiffEventId();
+  const { event } = useParticipantEvent(eventId);
+  const participantSeat = useParticipantSeat(eventId, event?.seatingMode === "assigned");
   const [passport, setPassport] = useState<Passport | null>(null);
   const [qr, setQr] = useState("");
   const [qrPayload, setQrPayload] = useState("");
@@ -69,11 +74,13 @@ export default function PassportPage() {
         setMessage(
           body.code === "DREAM_REQUIREMENT_NOT_SATISFIED"
             ? "先に夢登録を完了してください。"
-            : body.code === "QUESTIONNAIRE_NOT_SUBMITTED"
-              ? "先に席案内の5問を提出してください。"
-              : body.code === "QUESTIONNAIRE_NOT_CONFIGURED"
-                ? "運営側で5問がまだ設定されていません。"
-                : "SHIME® PASSを発行できませんでした。",
+            : body.code === "PARTICIPANT_NUMBER_PENDING"
+              ? "運営スタッフが参加者番号を準備中です。案内後、もう一度発行してください。"
+              : body.code === "QUESTIONNAIRE_NOT_SUBMITTED"
+                ? "先に席案内の5問を提出してください。"
+                : body.code === "QUESTIONNAIRE_NOT_CONFIGURED"
+                  ? "運営側で5問がまだ設定されていません。"
+                  : "SHIME® PASSを発行できませんでした。",
         );
         return;
       }
@@ -151,6 +158,40 @@ export default function PassportPage() {
             <button onClick={issueQr} disabled={Boolean(busyAction)}>
               {busyAction === "qr" ? "QR生成中…" : qr ? "QRを再発行" : "受付QRを表示"}
             </button>
+            {event?.seatingMode === "assigned" && (
+              <div className="participant-seat-status">
+                <p className="eyebrow">SEAT GUIDE</p>
+                <h2>現在の席</h2>
+                {participantSeat.status === "loading" && (
+                  <ParticipantNotice>公開された席を確認しています…</ParticipantNotice>
+                )}
+                {participantSeat.status === "error" && (
+                  <ParticipantNotice tone="error">
+                    席案内を確認できませんでした。通信状態を確認して、もう一度お試しください。
+                  </ParticipantNotice>
+                )}
+                {participantSeat.status === "loaded" && participantSeat.seat && (
+                  <>
+                    <dl className="pass-details participant-seat-details">
+                      <dt>テーブル</dt>
+                      <dd>{participantSeat.seat.tableCode}</dd>
+                      <dt>席番号</dt>
+                      <dd>{participantSeat.seat.seatCode}</dd>
+                    </dl>
+                    <ParticipantNotice tone="success">
+                      運営が公開した席です。当日はこの席へお進みください。
+                    </ParticipantNotice>
+                  </>
+                )}
+                {participantSeat.status === "loaded" && !participantSeat.seat && (
+                  <ParticipantNotice>席案内は準備中です。運営が公開すると、ここに表示されます。</ParticipantNotice>
+                )}
+                <button type="button" className="secondary" onClick={participantSeat.refresh}>
+                  席案内を更新
+                </button>
+              </div>
+            )}
+            <ParticipantInteractionEntry eventId={eventId} />
             {qr && (
               <div className="qr-section">
                 <Image

@@ -1,5 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
-import { buildLiffEventEntryLink, hasPermission } from "@shime/core";
+import { buildLiffEventEntryLink, getParticipantNumberAssignmentMode, hasPermission } from "@shime/core";
 import { applications, events, getDatabase, participants } from "@shime/db";
 import { notFound, redirect } from "next/navigation";
 import { getStaffSession } from "@shime/web/server/auth";
@@ -9,13 +9,13 @@ import { ParticipantLinkConsole } from "./participant-link-console";
 export default async function ParticipantsPage({ params }: { params: Promise<{ eventId: string }> }) {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "event:write")) redirect("/admin");
+  if (!hasPermission(session.role, "event:write", session.permissions)) redirect("/admin");
   const { eventId } = await params;
   if (session.eventId && session.eventId !== eventId) notFound();
   const db = getDatabase();
   const event = (
     await db
-      .select({ id: events.id, name: events.name })
+      .select({ id: events.id, name: events.name, settings: events.settings })
       .from(events)
       .where(and(eq(events.id, eventId), eq(events.tenantId, session.tenantId)))
       .limit(1)
@@ -25,6 +25,7 @@ export default async function ParticipantsPage({ params }: { params: Promise<{ e
     .select({
       id: participants.id,
       participantNumber: participants.participantNumber,
+      participantCategory: applications.participantCategory,
       fullName: applications.fullName,
       linkedUserId: participants.userId,
       linkTokenExpiresAt: participants.linkTokenExpiresAt,
@@ -43,6 +44,10 @@ export default async function ParticipantsPage({ params }: { params: Promise<{ e
     .orderBy(asc(participants.createdAt));
   const line = await getLineClientConfig(session.tenantId);
   const eventEntryUrl = buildLiffEventEntryLink(line.liffId, eventId);
+  const numbering =
+    event.settings.participantNumber && typeof event.settings.participantNumber === "object"
+      ? (event.settings.participantNumber as Record<string, unknown>)
+      : {};
   return (
     <main>
       {eventEntryUrl && rows.some((row) => Boolean(row.linkedUserId)) && (
@@ -58,9 +63,14 @@ export default async function ParticipantsPage({ params }: { params: Promise<{ e
         eventId={eventId}
         eventName={event.name}
         liffId={line.liffId}
+        manualNumbering={getParticipantNumberAssignmentMode(event.settings) === "manual"}
+        numberDigits={typeof numbering.digits === "number" ? numbering.digits : 2}
+        groupAPrefix={typeof numbering.groupAPrefix === "string" ? numbering.groupAPrefix : "A"}
+        groupBPrefix={typeof numbering.groupBPrefix === "string" ? numbering.groupBPrefix : "B"}
         initial={rows.map((row) => ({
           id: row.id,
           participantNumber: row.participantNumber,
+          participantCategory: row.participantCategory,
           fullName: row.fullName,
           linked: Boolean(row.linkedUserId),
           linkTokenExpiresAt: row.linkTokenExpiresAt?.toISOString() ?? null,

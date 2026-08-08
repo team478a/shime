@@ -8,6 +8,7 @@ import {
   normalizePhone,
   parseApplicationCsv,
   shouldProvisionParticipant,
+  validateConfiguredApplicationInput,
 } from "@shime/core";
 
 const base = {
@@ -15,6 +16,7 @@ const base = {
   phone: "090-1234-5678",
   birthDate: "1990-04-15",
   participantCategory: "group_a",
+  additionalAnswers: {},
   status: "confirmed" as const,
 };
 describe("application validation", () => {
@@ -35,6 +37,49 @@ describe("application validation", () => {
     ));
   it("produces deterministic idempotency hashes", () =>
     expect(hashIdempotencyKey("request-123456789")).toBe(hashIdempotencyKey("request-123456789")));
+  it("validates additional profile answers without accepting arbitrary shapes", () => {
+    expect(
+      applicationInputSchema.parse({ ...base, additionalAnswers: { occupation: "会社員", support_wanted: "趣味仲間" } })
+        .additionalAnswers,
+    ).toEqual({ occupation: "会社員", support_wanted: "趣味仲間" });
+    expect(applicationInputSchema.safeParse({ ...base, additionalAnswers: { InvalidKey: "x" } }).success).toBe(false);
+  });
+  it("enforces event-configured custom fields and participant categories at the API boundary", () => {
+    const fields = [
+      { fieldKey: "full_name", requirement: "required" as const, validation: {} },
+      { fieldKey: "occupation", requirement: "required" as const, validation: {} },
+      {
+        fieldKey: "support_wanted",
+        requirement: "optional" as const,
+        validation: { options: ["趣味仲間", "学び仲間"] },
+      },
+    ];
+    expect(
+      validateConfiguredApplicationInput(
+        { ...base, additionalAnswers: { occupation: "会社員", support_wanted: "趣味仲間" } },
+        fields,
+        ["group_a", "group_b"],
+      ),
+    ).toEqual([]);
+    expect(
+      validateConfiguredApplicationInput(
+        {
+          ...base,
+          participantCategory: "fabricated",
+          additionalAnswers: { support_wanted: "未設定値", fabricated_field: "x" },
+        },
+        fields,
+        ["group_a", "group_b"],
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        "occupation",
+        "support_wanted",
+        "additionalAnswers.fabricated_field",
+        "participant_category",
+      ]),
+    );
+  });
   it("previews re-import differences", () =>
     expect(applicationDiff({ ...base, nickname: "旧" }, { ...base, nickname: "新" })).toContain("nickname"));
   it("returns CSV row numbers and duplicate external IDs", () => {

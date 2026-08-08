@@ -1,6 +1,6 @@
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { cookies } from "next/headers";
-import { hashSessionToken, SESSION_COOKIE } from "@shime/core";
+import { hashSessionToken, parsePermissions, SESSION_COOKIE } from "@shime/core";
 import { getDatabase, staffRoles, staffSessions, users } from "@shime/db";
 import { getEnv } from "../env";
 
@@ -16,6 +16,7 @@ export async function getStaffSession() {
       displayName: users.displayName,
       role: staffRoles.role,
       eventId: staffRoles.eventId,
+      permissions: staffRoles.permissions,
     })
     .from(staffSessions)
     .innerJoin(users, and(eq(users.id, staffSessions.userId), eq(users.tenantId, staffSessions.tenantId)))
@@ -29,7 +30,8 @@ export async function getStaffSession() {
       ),
     )
     .limit(1);
-  return rows[0] ?? null;
+  const session = rows[0];
+  return session ? { ...session, permissions: parsePermissions(session.permissions) } : null;
 }
 
 export async function requireStaffSession() {

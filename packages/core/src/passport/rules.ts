@@ -3,7 +3,7 @@ export function isDreamRequirementSatisfied(
   mode: "required_private_allowed" | "optional",
   state: "not_started" | "drafting" | "confirmed" | "skipped",
 ) {
-  return state === "confirmed" || (mode === "optional" && state === "skipped");
+  return mode === "optional" || state === "confirmed";
 }
 export function createParticipantNumber(prefix: string, digits: number) {
   if (!/^[A-Z0-9]{1,4}$/.test(prefix) || digits < 2 || digits > 8) throw new Error("Invalid participant number format");
@@ -18,6 +18,31 @@ export function getParticipantNumberPrefix(
     config?.prefixes?.[category] ??
     (category === "group_a" ? config?.groupAPrefix : category === "group_b" ? config?.groupBPrefix : undefined)
   );
+}
+
+export type ParticipantNumberAssignmentMode = "automatic" | "manual";
+
+export function getParticipantNumberAssignmentMode(
+  settings: Record<string, unknown> | null | undefined,
+): ParticipantNumberAssignmentMode {
+  return settings?.participantNumberAssignmentMode === "manual" ? "manual" : "automatic";
+}
+
+export function normalizeParticipantNumber(value: string) {
+  return value.normalize("NFKC").trim().toUpperCase();
+}
+
+export function resolveParticipantNumberForCategory(value: string, prefix: string, digits: number) {
+  const normalized = normalizeParticipantNumber(value);
+  if (!/^\d+$/.test(normalized)) return normalized;
+  const sequence = Number(normalized);
+  if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= 10 ** digits) return normalized;
+  return `${prefix}${String(sequence).padStart(digits, "0")}`;
+}
+
+export function isParticipantNumberForCategory(value: string, prefix: string, digits: number) {
+  if (!/^[A-Z0-9]{1,4}$/.test(prefix) || digits < 2 || digits > 8) return false;
+  return new RegExp(`^${prefix}\\d{${digits}}$`).test(normalizeParticipantNumber(value));
 }
 export function allocateParticipantNumber(
   prefix: string,

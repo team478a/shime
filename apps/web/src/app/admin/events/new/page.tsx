@@ -6,7 +6,7 @@ import { EventSettingsForm } from "../event-settings-form";
 export default async function NewEventPage() {
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
-  if (!hasPermission(session.role, "event:write")) redirect("/admin");
+  if (!hasPermission(session.role, "event:write", session.permissions)) redirect("/admin");
   return (
     <main>
       <section className="panel settings-panel">

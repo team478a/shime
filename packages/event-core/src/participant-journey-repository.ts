@@ -11,6 +11,7 @@ export type JourneyScope = {
 
 export interface ParticipantJourneyRepository {
   getSettings(scope: JourneyScope): Promise<ParticipantJourneySettings | null>;
+  isDiagnosisAvailable(scope: JourneyScope): Promise<boolean>;
   saveDraft(
     scope: JourneyScope & {
       actorUserId: string;
