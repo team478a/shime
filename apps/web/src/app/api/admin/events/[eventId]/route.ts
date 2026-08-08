@@ -114,6 +114,7 @@ export async function PATCH(request: Request, context: Context) {
   const {
     participantCategories,
     participantNumber,
+    participantNumberAssignmentMode,
     conversationRounds,
     cardSetCode,
     retentionDays,
@@ -127,6 +128,7 @@ export async function PATCH(request: Request, context: Context) {
   const settings = mergeEventSettings(current.settings, {
     participantCategories,
     participantNumber,
+    participantNumberAssignmentMode,
     conversationRounds,
     cardSetCode,
     retentionDays,
