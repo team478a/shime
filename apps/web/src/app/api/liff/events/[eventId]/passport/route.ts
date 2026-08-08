@@ -17,6 +17,7 @@ import {
   questionnaireResponses,
 } from "@shime/db";
 import { participantHandler } from "@shime/web/server/api/participant-handler";
+import { getParticipantJourneySettings } from "@shime/web/server/event-journey-use-cases";
 
 export const POST = participantHandler(
   async (_request: Request, { params }: { params: Promise<{ eventId: string }> }) => (await params).eventId,
@@ -37,7 +38,9 @@ export const POST = participantHandler(
       .limit(1);
     const detail = details[0];
     if (!detail) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
-    if (!isDreamRequirementSatisfied(detail.mode, participant.dreamState))
+    const journey = await getParticipantJourneySettings.execute({ tenantId: session.tenantId, eventId });
+    const dreamEnabled = journey?.effectiveSteps.find((step) => step.id === "dream")?.enabled ?? true;
+    if (!isDreamRequirementSatisfied(detail.mode, participant.dreamState, dreamEnabled))
       return NextResponse.json({ code: "DREAM_REQUIREMENT_NOT_SATISFIED" }, { status: 409 });
     if (getEventSeatingMode(detail.settings) === "assigned") {
       const questionnaire = await db
