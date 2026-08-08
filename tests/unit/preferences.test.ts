@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { detectMutualCandidates, findMatchConflicts, validatePreferenceChoices } from "@shime/core";
+import {
+  canonicalizeMatchPair,
+  detectMutualCandidates,
+  findMatchConflicts,
+  validatePreferenceChoices,
+} from "@shime/core";
 describe("preference modes", () => {
   it.each([
     ["mutual_up_to_2", 2],
@@ -28,6 +33,13 @@ describe("preference modes", () => {
   });
 });
 describe("mutual candidates", () => {
+  it("canonicalizes staff-created pairs and rejects self matching", () => {
+    expect(canonicalizeMatchPair("participant-b", "participant-a")).toEqual({
+      participantAId: "participant-a",
+      participantBId: "participant-b",
+    });
+    expect(() => canonicalizeMatchPair("participant-a", "participant-a")).toThrow("SAME_PARTICIPANT");
+  });
   it("returns only reciprocal choices in stable order", () => {
     expect(
       detectMutualCandidates([
