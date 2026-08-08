@@ -37,6 +37,7 @@ describe("ConfirmCheckin", () => {
   it("returns the confirmed reception number", async () => {
     const repository: CheckinRepository = {
       confirm: vi.fn().mockResolvedValue({ outcome: "confirmed", checkin: confirmed }),
+      assignParticipantNumber: vi.fn(),
     };
 
     await expect(new ConfirmCheckin(repository).execute(input)).resolves.toEqual({
@@ -50,6 +51,7 @@ describe("ConfirmCheckin", () => {
     const checkedInAt = new Date("2026-08-08T00:55:00.000Z");
     const repository: CheckinRepository = {
       confirm: vi.fn().mockResolvedValue({ outcome: "already_checked_in", checkedInAt }),
+      assignParticipantNumber: vi.fn(),
     };
 
     await expect(new ConfirmCheckin(repository).execute(input)).resolves.toEqual({
@@ -63,6 +65,7 @@ describe("ConfirmCheckin", () => {
   it("returns not found without exposing another scope", async () => {
     const repository: CheckinRepository = {
       confirm: vi.fn().mockResolvedValue({ outcome: "not_found" }),
+      assignParticipantNumber: vi.fn(),
     };
 
     await expect(new ConfirmCheckin(repository).execute(input)).resolves.toEqual({

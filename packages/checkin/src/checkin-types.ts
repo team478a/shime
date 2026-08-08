@@ -13,6 +13,17 @@ export const receptionEventSettingsSchema = z
   })
   .passthrough();
 
+export const participantNumberEventSettingsSchema = z
+  .object({
+    participantNumberAssignmentMode: z.enum(["automatic", "manual"]).default("automatic"),
+    participantNumber: z.object({
+      groupAPrefix: z.string().min(1).max(8),
+      groupBPrefix: z.string().min(1).max(8),
+      digits: z.number().int().min(2).max(8),
+    }),
+  })
+  .passthrough();
+
 export type CheckinMethod = "qr" | "manual";
 
 export type ConfirmCheckinInput = {
@@ -62,3 +73,36 @@ export type ConfirmCheckinResult =
       status: 409;
       data: { checkedInAt: Date | null };
     };
+
+export type AssignParticipantNumberInput = {
+  tenantId: string;
+  eventId: string;
+  participantId: string;
+  participantNumber: string;
+  actorUserId: string;
+  requestId: string;
+  now: Date;
+};
+
+export type AssignParticipantNumberRepositoryResult =
+  | { outcome: "assigned"; participantNumber: string }
+  | { outcome: "not_found" }
+  | { outcome: "automatic_mode" }
+  | { outcome: "invalid_format" }
+  | { outcome: "already_assigned"; participantNumber: string }
+  | { outcome: "duplicate" };
+
+export type AssignParticipantNumberResult =
+  | { ok: true; data: { participantNumber: string } }
+  | {
+      ok: false;
+      code: "NOT_FOUND" | "MANUAL_NUMBERING_DISABLED" | "INVALID_PARTICIPANT_NUMBER";
+      status: 404 | 409 | 422;
+    }
+  | {
+      ok: false;
+      code: "PARTICIPANT_NUMBER_ALREADY_ASSIGNED";
+      status: 409;
+      data: { participantNumber: string };
+    }
+  | { ok: false; code: "PARTICIPANT_NUMBER_DUPLICATE"; status: 409 };

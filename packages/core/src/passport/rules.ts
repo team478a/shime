@@ -19,6 +19,23 @@ export function getParticipantNumberPrefix(
     (category === "group_a" ? config?.groupAPrefix : category === "group_b" ? config?.groupBPrefix : undefined)
   );
 }
+
+export type ParticipantNumberAssignmentMode = "automatic" | "manual";
+
+export function getParticipantNumberAssignmentMode(
+  settings: Record<string, unknown> | null | undefined,
+): ParticipantNumberAssignmentMode {
+  return settings?.participantNumberAssignmentMode === "manual" ? "manual" : "automatic";
+}
+
+export function normalizeParticipantNumber(value: string) {
+  return value.normalize("NFKC").trim().toUpperCase();
+}
+
+export function isParticipantNumberForCategory(value: string, prefix: string, digits: number) {
+  if (!/^[A-Z0-9]{1,4}$/.test(prefix) || digits < 2 || digits > 8) return false;
+  return new RegExp(`^${prefix}\\d{${digits}}$`).test(normalizeParticipantNumber(value));
+}
 export function allocateParticipantNumber(
   prefix: string,
   digits: number,

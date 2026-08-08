@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { buildLiffApplicationLink } from "@shime/core/line/public-url";
+import { useParticipantNumberAdmin } from "../../../../../hooks/use-participant-number-admin";
 import { filterParticipantLinkRows, type ParticipantLinkFilter } from "../../../../../lib/participant-link-filter";
 
 type ParticipantRow = {
   id: string;
   participantNumber: string | null;
+  participantCategory: string;
   fullName: string;
   linked: boolean;
   linkTokenExpiresAt: string | null;
@@ -48,11 +50,19 @@ export function ParticipantLinkConsole({
   eventId,
   eventName,
   liffId,
+  manualNumbering,
+  numberDigits,
+  groupAPrefix,
+  groupBPrefix,
   initial,
 }: {
   eventId: string;
   eventName: string;
   liffId: string;
+  manualNumbering: boolean;
+  numberDigits: number;
+  groupAPrefix: string;
+  groupBPrefix: string;
   initial: ParticipantRow[];
 }) {
   const [participants, setParticipants] = useState(initial);
@@ -61,7 +71,39 @@ export function ParticipantLinkConsole({
   const [issued, setIssued] = useState<IssuedLink | null>(null);
   const [busyId, setBusyId] = useState("");
   const [message, setMessage] = useState("");
+  const [numberDrafts, setNumberDrafts] = useState<Record<string, string>>({});
+  const participantNumberAdmin = useParticipantNumberAdmin(eventId);
   const filtered = filterParticipantLinkRows(participants, query, filter);
+
+  async function assignNumber(participant: ParticipantRow) {
+    const prefix = participant.participantCategory === "group_a" ? groupAPrefix : groupBPrefix;
+    const suggested = `${prefix}${String(1).padStart(numberDigits, "0")}`;
+    const value = (numberDrafts[participant.id] ?? "").trim();
+    if (!value) {
+      setMessage(`参加者番号を入力してください（例: ${suggested}）。`);
+      return;
+    }
+    if (!confirm(`${participant.fullName}さんへ「${value}」を付与します。付与後はこの画面から変更できません。`)) return;
+    const assignment = await participantNumberAdmin.assign(participant.id, value);
+    if (!assignment.data) {
+      const feedback: Record<string, string> = {
+        PARTICIPANT_NUMBER_DUPLICATE: "その番号はすでに使用されています。",
+        INVALID_PARTICIPANT_NUMBER: `区分に合う番号を入力してください（例: ${suggested}）。`,
+        PARTICIPANT_NUMBER_ALREADY_ASSIGNED: "すでに番号が付与されています。画面を再読み込みしてください。",
+        MANUAL_NUMBERING_DISABLED: "基本設定で参加者番号を「手動付与」に変更してください。",
+      };
+      setMessage(feedback[assignment.code ?? ""] ?? "参加者番号を保存できませんでした。");
+      return;
+    }
+    const saved = assignment.data;
+    setParticipants((current) =>
+      current.map((item) =>
+        item.id === participant.id ? { ...item, participantNumber: saved.participantNumber } : item,
+      ),
+    );
+    setNumberDrafts((current) => ({ ...current, [participant.id]: "" }));
+    setMessage(`${saved.participantNumber}を付与しました。参加者はSHIME PASSを発行できます。`);
+  }
 
   async function reissue(participant: ParticipantRow) {
     if (
@@ -102,6 +144,12 @@ export function ParticipantLinkConsole({
         <p className="eyebrow">PARTICIPANT LINE LINK</p>
         <h1>{eventName} 本人連携</h1>
         <p>番号の先頭または氏名の一部で検索できます。未連携参加者だけに絞り込むと、発行対象をすぐ選べます。</p>
+        {manualNumbering && (
+          <section className="configuration-complete">
+            <h2>参加者番号を手動付与</h2>
+            <p>未採番の参加者へ区分に合う番号を付与します。一度付与した番号は、この画面から変更できません。</p>
+          </section>
+        )}
 
         <div className="settings-grid participant-filter-controls">
           <label>
@@ -172,6 +220,29 @@ export function ParticipantLinkConsole({
                   <dt>現在のリンク</dt>
                   <dd>{linkStatus(participant)}</dd>
                 </dl>
+                {manualNumbering && !participant.participantNumber && (
+                  <div className="settings-grid">
+                    <label>
+                      参加者番号
+                      <input
+                        value={numberDrafts[participant.id] ?? ""}
+                        onChange={(event) =>
+                          setNumberDrafts((current) => ({ ...current, [participant.id]: event.target.value }))
+                        }
+                        placeholder={`${participant.participantCategory === "group_a" ? groupAPrefix : groupBPrefix}${String(1).padStart(numberDigits, "0")}`}
+                        autoCapitalize="characters"
+                        inputMode="text"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={participantNumberAdmin.busyId === participant.id}
+                      onClick={() => assignNumber(participant)}
+                    >
+                      {participantNumberAdmin.busyId === participant.id ? "保存中…" : "番号を付与"}
+                    </button>
+                  </div>
+                )}
                 {participant.linked ? (
                   <p className="hint">本人連携済みです。</p>
                 ) : (
