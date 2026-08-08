@@ -109,6 +109,7 @@ export function EventSettingsForm({
         groupBPrefix: String(form.get("groupBPrefix") ?? "B"),
         digits: Number(form.get("numberDigits")),
       },
+      participantNumberAssignmentMode: form.get("participantNumberAssignmentMode"),
       contactExchangeMode: form.get("contactExchangeMode"),
       seatingMode: form.get("seatingMode"),
     };
@@ -349,6 +350,17 @@ export function EventSettingsForm({
 
       <fieldset>
         <legend>参加区分・番号</legend>
+        <label>
+          参加者番号の付与方法
+          <select
+            name="participantNumberAssignmentMode"
+            defaultValue={settingString(settings, "participantNumberAssignmentMode", "automatic")}
+          >
+            <option value="automatic">SHIME PASS発行時に自動採番</option>
+            <option value="manual">申込後に管理画面で手動付与</option>
+          </select>
+          <small>手動付与では、番号が付与されるまでSHIME PASSは発行されません。</small>
+        </label>
         <div className="settings-grid">
           <label>
             区分Aコード

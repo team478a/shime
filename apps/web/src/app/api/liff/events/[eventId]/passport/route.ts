@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   allocateParticipantNumber,
   getEventSeatingMode,
+  getParticipantNumberAssignmentMode,
   getParticipantNumberPrefix,
   isDreamRequirementSatisfied,
 } from "@shime/core";
@@ -66,6 +67,8 @@ export const POST = participantHandler(
     const digits = numberConfig?.digits;
     if (!prefix || typeof digits !== "number")
       return NextResponse.json({ code: "PARTICIPANT_NUMBER_NOT_CONFIGURED" }, { status: 409 });
+    if (getParticipantNumberAssignmentMode(detail.settings) === "manual" && !participant.participantNumber)
+      return NextResponse.json({ code: "PARTICIPANT_NUMBER_PENDING" }, { status: 409 });
     const now = new Date();
     const result = await db.transaction(async (tx) => {
       await tx.execute(sql`select id from events where id = ${eventId} and tenant_id = ${session.tenantId} for update`);

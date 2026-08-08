@@ -74,11 +74,13 @@ export default function PassportPage() {
         setMessage(
           body.code === "DREAM_REQUIREMENT_NOT_SATISFIED"
             ? "先に夢登録を完了してください。"
-            : body.code === "QUESTIONNAIRE_NOT_SUBMITTED"
-              ? "先に席案内の5問を提出してください。"
-              : body.code === "QUESTIONNAIRE_NOT_CONFIGURED"
-                ? "運営側で5問がまだ設定されていません。"
-                : "SHIME® PASSを発行できませんでした。",
+            : body.code === "PARTICIPANT_NUMBER_PENDING"
+              ? "運営スタッフが参加者番号を準備中です。案内後、もう一度発行してください。"
+              : body.code === "QUESTIONNAIRE_NOT_SUBMITTED"
+                ? "先に席案内の5問を提出してください。"
+                : body.code === "QUESTIONNAIRE_NOT_CONFIGURED"
+                  ? "運営側で5問がまだ設定されていません。"
+                  : "SHIME® PASSを発行できませんでした。",
         );
         return;
       }

@@ -3,8 +3,10 @@ import {
   allocateParticipantNumber,
   createParticipantNumber,
   formatQrPayload,
+  getParticipantNumberAssignmentMode,
   getParticipantNumberPrefix,
   isDreamRequirementSatisfied,
+  isParticipantNumberForCategory,
   parseQrPayload,
 } from "@shime/core";
 describe("passport rules", () => {
@@ -27,6 +29,15 @@ describe("passport rules", () => {
         Array.from({ length: 99 }, (_, index) => `A${String(index + 1).padStart(2, "0")}`),
       ),
     ).toThrow("capacity exhausted");
+  });
+  it("defaults to automatic numbering and recognizes manual mode", () => {
+    expect(getParticipantNumberAssignmentMode({})).toBe("automatic");
+    expect(getParticipantNumberAssignmentMode({ participantNumberAssignmentMode: "manual" })).toBe("manual");
+  });
+  it("normalizes and validates category-specific manual numbers", () => {
+    expect(isParticipantNumberForCategory("ａ０１", "A", 2)).toBe(true);
+    expect(isParticipantNumberForCategory("B01", "A", 2)).toBe(false);
+    expect(isParticipantNumberForCategory("A1", "A", 2)).toBe(false);
   });
   it("puts only an opaque token into QR payloads", () => {
     const token = "a".repeat(43);

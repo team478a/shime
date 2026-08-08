@@ -38,6 +38,7 @@ export const eventSettingsFields = {
       digits: z.number().int().min(1).max(6),
     })
     .optional(),
+  participantNumberAssignmentMode: z.enum(["automatic", "manual"]).optional(),
   conversationRounds: z.number().int().min(1).max(20).optional(),
   cardSetCode: z.string().trim().min(1).max(80).optional(),
   retentionDays: z.number().int().min(1).max(3650).optional(),
@@ -50,6 +51,7 @@ export const eventSettingsFields = {
 export type EventSettingsFields = {
   participantCategories?: Array<{ code: string; label: string }> | undefined;
   participantNumber?: { groupAPrefix: string; groupBPrefix: string; digits: number } | undefined;
+  participantNumberAssignmentMode?: "automatic" | "manual" | undefined;
   conversationRounds?: number | undefined;
   cardSetCode?: string | undefined;
   retentionDays?: number | undefined;
