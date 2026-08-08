@@ -16,13 +16,6 @@ export class AssignParticipantNumber {
     if (result.outcome === "not_found") return { ok: false, code: "NOT_FOUND", status: 404 };
     if (result.outcome === "automatic_mode") return { ok: false, code: "MANUAL_NUMBERING_DISABLED", status: 409 };
     if (result.outcome === "invalid_format") return { ok: false, code: "INVALID_PARTICIPANT_NUMBER", status: 422 };
-    if (result.outcome === "already_assigned")
-      return {
-        ok: false,
-        code: "PARTICIPANT_NUMBER_ALREADY_ASSIGNED",
-        status: 409,
-        data: { participantNumber: result.participantNumber },
-      };
     return { ok: false, code: "PARTICIPANT_NUMBER_DUPLICATE", status: 409 };
   }
 }

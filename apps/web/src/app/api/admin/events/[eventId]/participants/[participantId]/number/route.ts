@@ -24,8 +24,6 @@ export const PUT = staffEventHandler(
     });
 
     if (result.ok) return NextResponse.json({ data: result.data });
-    return result.code === "PARTICIPANT_NUMBER_ALREADY_ASSIGNED"
-      ? NextResponse.json({ code: result.code, data: result.data, request_id: requestId }, { status: result.status })
-      : NextResponse.json({ code: result.code, request_id: requestId }, { status: result.status });
+    return NextResponse.json({ code: result.code, request_id: requestId }, { status: result.status });
   },
 );
