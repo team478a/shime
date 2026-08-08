@@ -44,14 +44,9 @@ describe("AssignParticipantNumber", () => {
     });
   });
 
-  it("returns the existing number without allowing reassignment", async () => {
+  it("returns a changed participant number", async () => {
     await expect(
-      new AssignParticipantNumber(repository({ outcome: "already_assigned", participantNumber: "A02" })).execute(input),
-    ).resolves.toEqual({
-      ok: false,
-      code: "PARTICIPANT_NUMBER_ALREADY_ASSIGNED",
-      status: 409,
-      data: { participantNumber: "A02" },
-    });
+      new AssignParticipantNumber(repository({ outcome: "assigned", participantNumber: "A02" })).execute(input),
+    ).resolves.toEqual({ ok: true, data: { participantNumber: "A02" } });
   });
 });

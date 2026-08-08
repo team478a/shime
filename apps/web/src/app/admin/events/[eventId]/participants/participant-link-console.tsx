@@ -83,13 +83,13 @@ export function ParticipantLinkConsole({
       setMessage(`参加者番号を入力してください（例: ${suggested}）。`);
       return;
     }
-    if (!confirm(`${participant.fullName}さんへ「${value}」を付与します。付与後はこの画面から変更できません。`)) return;
+    const operation = participant.participantNumber ? "変更" : "付与";
+    if (!confirm(`${participant.fullName}さんの参加者番号を「${value}」へ${operation}します。`)) return;
     const assignment = await participantNumberAdmin.assign(participant.id, value);
     if (!assignment.data) {
       const feedback: Record<string, string> = {
         PARTICIPANT_NUMBER_DUPLICATE: "その番号はすでに使用されています。",
         INVALID_PARTICIPANT_NUMBER: `区分に合う番号を入力してください（例: ${suggested}）。`,
-        PARTICIPANT_NUMBER_ALREADY_ASSIGNED: "すでに番号が付与されています。画面を再読み込みしてください。",
         MANUAL_NUMBERING_DISABLED: "基本設定で参加者番号を「手動付与」に変更してください。",
       };
       setMessage(feedback[assignment.code ?? ""] ?? "参加者番号を保存できませんでした。");
@@ -102,7 +102,7 @@ export function ParticipantLinkConsole({
       ),
     );
     setNumberDrafts((current) => ({ ...current, [participant.id]: "" }));
-    setMessage(`${saved.participantNumber}を付与しました。参加者はSHIME PASSを発行できます。`);
+    setMessage(`${saved.participantNumber}へ${operation}しました。参加者はSHIME PASSを発行できます。`);
   }
 
   async function reissue(participant: ParticipantRow) {
@@ -147,7 +147,7 @@ export function ParticipantLinkConsole({
         {manualNumbering && (
           <section className="configuration-complete">
             <h2>参加者番号を手動付与</h2>
-            <p>未採番の参加者へ区分に合う番号を付与します。一度付与した番号は、この画面から変更できません。</p>
+            <p>区分に合う参加者番号を付与・変更できます。重複番号や区分と異なる番号は保存できません。</p>
           </section>
         )}
 
@@ -220,12 +220,12 @@ export function ParticipantLinkConsole({
                   <dt>現在のリンク</dt>
                   <dd>{linkStatus(participant)}</dd>
                 </dl>
-                {manualNumbering && !participant.participantNumber && (
+                {manualNumbering && (
                   <div className="settings-grid">
                     <label>
                       参加者番号
                       <input
-                        value={numberDrafts[participant.id] ?? ""}
+                        value={numberDrafts[participant.id] ?? participant.participantNumber ?? ""}
                         onChange={(event) =>
                           setNumberDrafts((current) => ({ ...current, [participant.id]: event.target.value }))
                         }
@@ -239,7 +239,11 @@ export function ParticipantLinkConsole({
                       disabled={participantNumberAdmin.busyId === participant.id}
                       onClick={() => assignNumber(participant)}
                     >
-                      {participantNumberAdmin.busyId === participant.id ? "保存中…" : "番号を付与"}
+                      {participantNumberAdmin.busyId === participant.id
+                        ? "保存中…"
+                        : participant.participantNumber
+                          ? "番号を変更"
+                          : "番号を付与"}
                     </button>
                   </div>
                 )}

@@ -89,7 +89,6 @@ export type AssignParticipantNumberRepositoryResult =
   | { outcome: "not_found" }
   | { outcome: "automatic_mode" }
   | { outcome: "invalid_format" }
-  | { outcome: "already_assigned"; participantNumber: string }
   | { outcome: "duplicate" };
 
 export type AssignParticipantNumberResult =
@@ -98,11 +97,5 @@ export type AssignParticipantNumberResult =
       ok: false;
       code: "NOT_FOUND" | "MANUAL_NUMBERING_DISABLED" | "INVALID_PARTICIPANT_NUMBER";
       status: 404 | 409 | 422;
-    }
-  | {
-      ok: false;
-      code: "PARTICIPANT_NUMBER_ALREADY_ASSIGNED";
-      status: 409;
-      data: { participantNumber: string };
     }
   | { ok: false; code: "PARTICIPANT_NUMBER_DUPLICATE"; status: 409 };

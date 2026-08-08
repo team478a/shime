@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 
 import { isParticipantNumberForCategory } from "@shime/core/passport/rules";
 
@@ -57,14 +57,11 @@ export function createDrizzleCheckinRepository(): CheckinRepository {
             )
             .limit(1);
           if (!target) return { outcome: "not_found" as const };
-          if (target.participantNumber === input.participantNumber)
-            return { outcome: "assigned" as const, participantNumber: target.participantNumber };
-          if (target.participantNumber)
-            return { outcome: "already_assigned" as const, participantNumber: target.participantNumber };
-
           const parsed = participantNumberEventSettingsSchema.safeParse(event.settings);
           if (!parsed.success || parsed.data.participantNumberAssignmentMode !== "manual")
             return { outcome: "automatic_mode" as const };
+          if (target.participantNumber === input.participantNumber)
+            return { outcome: "assigned" as const, participantNumber: target.participantNumber };
           const prefix =
             target.category === "group_a"
               ? parsed.data.participantNumber.groupAPrefix
@@ -85,6 +82,7 @@ export function createDrizzleCheckinRepository(): CheckinRepository {
                 eq(participants.tenantId, input.tenantId),
                 eq(participants.eventId, input.eventId),
                 eq(participants.participantNumber, input.participantNumber),
+                ne(participants.id, input.participantId),
               ),
             )
             .limit(1);
@@ -98,7 +96,6 @@ export function createDrizzleCheckinRepository(): CheckinRepository {
                 eq(participants.id, input.participantId),
                 eq(participants.tenantId, input.tenantId),
                 eq(participants.eventId, input.eventId),
-                isNull(participants.participantNumber),
               ),
             )
             .returning({ participantNumber: participants.participantNumber });
@@ -108,9 +105,10 @@ export function createDrizzleCheckinRepository(): CheckinRepository {
             tenantId: input.tenantId,
             actorUserId: input.actorUserId,
             eventId: input.eventId,
-            action: "participant.number.assign",
+            action: target.participantNumber ? "participant.number.change" : "participant.number.assign",
             targetType: "participant",
             targetId: input.participantId,
+            before: target.participantNumber ? { participantNumber: target.participantNumber } : undefined,
             after: { participantNumber: saved.participantNumber },
             requestId: input.requestId,
           });
