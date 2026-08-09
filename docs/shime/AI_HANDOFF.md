@@ -2,14 +2,14 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャット有効化ゲートを実装・検証、未適用）
-作業ブランチ: `codex/match-chat-uat-gate`
+最終更新: 2026-08-07（Asia/Tokyo、Codex。婚活最優先導線の最終統合・検証）
+作業ブランチ: `codex/priority-marriage-flow-final-integration`
 コミュニケーション匿名集計PR: `#26`（releaseへマージ済み）
 マッチ後チャット運用管理PR: `#25`（releaseへマージ済み）
 会話メモ設定PR: `#23`（releaseへマージ済み）
 マッチ後チャット安全基盤PR: `#24`（releaseへマージ済み）
 release install hotfix PR: `#27`（releaseへマージ済み）
-release HEAD / deployment source HEAD: `9b4e42e1c82ac97819d1bda4b8b2f7cc7344e47a`
+release HEAD / production deployment source HEAD: `3964cd3188ef52a2408b6271978fe2fcd412d6b8`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
@@ -19,9 +19,22 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 PR #13 merge commit: `d53df09274dd0a27e4b1aac24681a85bf9c9a50d`
 PR #14 merge commit: `9c98cf54ccd589af04417ae5f74c2ad3e9d0093d`
 PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
-release HEAD（本番反映済み）: `9b4e42e1c82ac97819d1bda4b8b2f7cc7344e47a`
+release HEAD（本番反映済み）: `3964cd3188ef52a2408b6271978fe2fcd412d6b8`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
+
+### 婚活最優先導線の最終統合（2026-08-07、実装・検証済み、Draft PR #32）
+
+- 最新`release/2026-08-08-readiness`の`3964cd3188ef52a2408b6271978fe2fcd412d6b8`から`codex/priority-marriage-flow-final-integration`を作成した。PR #19/#20/#23/#24/#25/#29の既存機能を再利用し、別システムは作っていない。
+- 立食イベントのself-reported interactionを既存の最終希望候補へ接続した。本人が`wants_to_talk_more`をONにした相手は候補上部へ表示するが、自動選択・自動送信・自動成立は行わない。本人が最後に確認・変更して送信する。
+- 希望候補は参加者番号だけを返し、氏名・ニックネーム等を無条件に公開しない。自分自身、回避対象、未受付、別tenant/event/serviceは既存境界と追加UseCaseで除外する。相手側の`wants_to_talk_more`やprivate memoは取得・表示しない。
+- interaction画面に最終希望入力への直接導線を追加した。プロフィールは既存allowlistを維持し、allowlistが空なら値を公開しない。タグ、お気に入り、120文字本人専用メモ、revision conflict、冪等保存も既存実装を維持する。
+- migration追加は不要。productionはmigration 25/25で、match chat設定・room・messageが0件かつ機能OFFであることを既存production適用記録で確認した。今回、production設定変更、機能ON、実参加者データ操作、LINE通知、deployは行っていない。
+- production deploymentは`dpl_5gA2v5rUVBjTMJRT3GHVBiBBoJY8`（Ready、`https://app.shimelife.jp`）で、deployment sourceはrelease `3964cd3188ef52a2408b6271978fe2fcd412d6b8`である。
+- productionイベントのinteraction memo実行時設定は管理セッション切れにより再取得できなかった。fail-closed設計と未変更は確認済みだが、公開snapshot/allowlist/利用時間は本番ON前に管理画面で再確認する。
+- 検証記録は`PRIORITY_MARRIAGE_FLOW_UAT_20260807.md`。architecture、lint、typecheck、単体82ファイル417件、結合6ファイル50件、production build、重点mobile E2E 5件、依存監査は成功。全E2Eは47件成功・10件skip・既存match chat mobile 1件が4 worker並列時に一時失敗し、同じテストの1 worker再実行は成功した。
+- `readiness`は実行成功だが正式イベント情報14項目が未確定でproduction readyはfalse。`readiness:strict`も同じ14項目で失敗し、今回のコード不具合とは分離する。
+- コード統合はDraft PRのCI/レビュー通過を条件にGO。本番interaction memo/match chat ONは、正式チャット規約、保持期間、通報責任者、隔離UAT確認者・日時、クライアント実機確認が未完了のためNO-GO。
 
 ### マッチ後チャット有効化ゲート強化（2026-08-07、実装・検証済み、未適用）
 

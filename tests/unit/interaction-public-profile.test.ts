@@ -47,6 +47,7 @@ function repository(overrides: Partial<InteractionMemoRepository> = {}): Interac
     listOptions: async () => [],
     listTargets: async () => [target],
     listOwnNotes: async () => [],
+    listOwnWantsToTalkMoreTargetIds: async () => [],
     getTargetPublicProfileSource: async () => source,
     searchSelfReportedCandidates: async () => [],
     createSelfReportedSlot: async () => ({ status: "invalid_target" }),

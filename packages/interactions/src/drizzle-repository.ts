@@ -203,6 +203,22 @@ export function createDrizzleInteractionMemoRepository(): InteractionMemoReposit
       return rows.map((row) => ({ ...row, privateNoteText: row.privateNoteText ?? "" }));
     },
 
+    async listOwnWantsToTalkMoreTargetIds(scope) {
+      const rows = await getDatabase()
+        .select({ targetParticipantId: interactionNotes.targetParticipantId })
+        .from(interactionNotes)
+        .where(
+          and(
+            eq(interactionNotes.tenantId, scope.tenantId),
+            eq(interactionNotes.eventId, scope.eventId),
+            eq(interactionNotes.serviceType, scope.serviceType),
+            eq(interactionNotes.actorParticipantId, scope.participantId),
+            eq(interactionNotes.wantsToTalkMore, true),
+          ),
+        );
+      return [...new Set(rows.map((row) => row.targetParticipantId))];
+    },
+
     async getTargetPublicProfileSource(scope, targetParticipantId) {
       return getTargetPublicProfileSourceWithDrizzle(scope, targetParticipantId);
     },

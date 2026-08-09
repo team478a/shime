@@ -13,6 +13,7 @@ import {
   preferences,
 } from "@shime/db";
 import { requireParticipantForEvent } from "@shime/web/server/participant-auth";
+import { getInteractionPreferenceHints } from "@shime/web/server/interaction-memo-use-cases";
 const input = z.object({
   choices: z.array(
     z.object({
@@ -52,6 +53,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ even
   } catch (error) {
     return NextResponse.json({ code: error instanceof Error ? error.message : "INVALID_CHOICES" }, { status: 400 });
   }
+  const interactionHints = await getInteractionPreferenceHints.execute({
+    tenantId: auth.session.tenantId,
+    eventId,
+    serviceType: "marriage",
+    participantId: auth.participant.id,
+  });
+  if (!interactionHints.ok)
+    return NextResponse.json({ code: interactionHints.code }, { status: interactionHints.status });
   const pairs = await db
     .select()
     .from(conversationPairs)
@@ -65,9 +74,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ even
         ),
       ),
     );
-  const conversationIds = new Set(
-    pairs.map((p) => (p.participantAId === auth.participant.id ? p.participantBId : p.participantAId)),
-  );
+  const conversationIds = new Set([
+    ...pairs.map((p) => (p.participantAId === auth.participant.id ? p.participantBId : p.participantAId)),
+    ...interactionHints.data.targetParticipantIds,
+  ]);
   const avoidances = await db
     .select()
     .from(participantAvoidances)

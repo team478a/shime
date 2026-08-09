@@ -6,6 +6,7 @@ import type {
   InteractionMemoTarget,
   InteractionMemoTargetCandidate,
   InteractionMemoWorkspace,
+  InteractionPreferenceHints,
   InteractionPublicProfile,
   SaveInteractionMemoInput,
 } from "./types";
@@ -43,6 +44,30 @@ export class GetInteractionMemoWorkspace {
           ...target,
           note: noteByTarget.get(`${target.interactionSlotId}:${target.targetParticipantId}`) ?? null,
         })),
+      },
+    };
+  }
+}
+
+export class GetInteractionPreferenceHints {
+  constructor(private readonly repository: InteractionMemoRepository) {}
+
+  async execute(scope: InteractionMemoScope): Promise<InteractionMemoResult<InteractionPreferenceHints>> {
+    if (!(await this.repository.isParticipantEligible(scope)))
+      return { ok: false, code: "PARTICIPATION_NOT_CONFIRMED", status: 409 };
+
+    const [targets, wantsToTalkMoreTargetIds] = await Promise.all([
+      this.repository.listTargets(scope),
+      this.repository.listOwnWantsToTalkMoreTargetIds(scope),
+    ]);
+    const targetParticipantIds = [...new Set(targets.map((target) => target.targetParticipantId))];
+    const allowedTargets = new Set(targetParticipantIds);
+
+    return {
+      ok: true,
+      data: {
+        targetParticipantIds,
+        wantsToTalkMoreTargetIds: wantsToTalkMoreTargetIds.filter((id) => allowedTargets.has(id)),
       },
     };
   }

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ParticipantNotice, ParticipantPageHeader } from "../../../components/participant-ui";
 import { useLiffEventId } from "../../../lib/liff-location";
 
-type Candidate = { id: string; participantNumber: string | null; nickname: string | null };
+type Candidate = { id: string; participantNumber: string | null; recommended: boolean };
 type Choice = { toParticipantId: string; rank: number | null; privateNote: string | null };
 
 export default function PreferencesPage() {
@@ -107,11 +107,17 @@ export default function PreferencesPage() {
         {loadState === "loaded" && (
           <>
             {mode === "ranked_up_to_3" && <p>選んだ順が希望順位になります（最大3名）。</p>}
+            {candidates.some((candidate) => candidate.recommended) && (
+              <ParticipantNotice>
+                会話中に「もう少し話したい」と記録した方を上に表示しています。ここではまだ確定していません。
+              </ParticipantNotice>
+            )}
             <div className="card-grid participant-choice-grid">
               {candidates.map((candidate) => {
                 const index = selected.indexOf(candidate.id);
                 return (
                   <div className={index >= 0 ? "emotion-card selected" : "emotion-card"} key={candidate.id}>
+                    {candidate.recommended && <p className="participant-preference-hint">♡ もう少し話したい</p>}
                     <button
                       type="button"
                       className={index >= 0 ? "secondary" : ""}
@@ -119,7 +125,7 @@ export default function PreferencesPage() {
                       disabled={busy}
                     >
                       {index >= 0 && mode === "ranked_up_to_3" ? `${index + 1}位 ` : ""}
-                      {candidate.participantNumber} {candidate.nickname ?? "参加者"}
+                      {candidate.participantNumber ?? "番号未設定"}
                     </button>
                     {index >= 0 && (
                       <textarea
