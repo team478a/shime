@@ -2,14 +2,15 @@
 
 ## 現在の状態（唯一の最新状態。これ以外の記述は本セクションで上書きされる過去の記録）
 
-最終更新: 2026-08-07（Asia/Tokyo、Codex。マッチ後チャット有効化ゲートを実装・検証、未適用）
-作業ブランチ: `codex/match-chat-uat-gate`
+最終更新: 2026-08-07 12:39（Asia/Tokyo、Codex。production migration 0024適用・release `af6f501`デプロイ・スモーク確認完了）
+作業ブランチ: `codex/record-production-migration-0024`
 コミュニケーション匿名集計PR: `#26`（releaseへマージ済み）
 マッチ後チャット運用管理PR: `#25`（releaseへマージ済み）
 会話メモ設定PR: `#23`（releaseへマージ済み）
 マッチ後チャット安全基盤PR: `#24`（releaseへマージ済み）
 release install hotfix PR: `#27`（releaseへマージ済み）
-release HEAD / deployment source HEAD: `9b4e42e1c82ac97819d1bda4b8b2f7cc7344e47a`
+release HEAD: `af6f5013d82ab34615b05aa0b2d90be4e3a04984`
+production deployment source HEAD: `af6f5013d82ab34615b05aa0b2d90be4e3a04984`
 PR #3最終HEAD: `3fb7c64b0bb1e99bf745242b67ddf39fcdcf08c0`
 release merge commit: `cef5ace36768b2af82e4dc47cdf91d250d9fbdc5`
 PR #4 merge commit: `a40e0a64cab3b084ec8cd787bbc3831bc0ded940`
@@ -19,13 +20,23 @@ PR #10 merge commit: `e621ae3`（レビュー修正commit `e299369`は含まな�
 PR #13 merge commit: `d53df09274dd0a27e4b1aac24681a85bf9c9a50d`
 PR #14 merge commit: `9c98cf54ccd589af04417ae5f74c2ad3e9d0093d`
 PR #15 merge commit: `c7d9b5c81fde23b03e83bb400ad2c27f190d674a`
-release HEAD（本番反映済み）: `9b4e42e1c82ac97819d1bda4b8b2f7cc7344e47a`
+release HEAD（本番反映済み）: `af6f5013d82ab34615b05aa0b2d90be4e3a04984`
 最新文書コミット: 本更新を含むコミット（コミット自身のSHAは文書内へ自己参照しない）
 開始時の `main`: `b07d1ce`
 
-### マッチ後チャット有効化ゲート強化（2026-08-07、実装・検証済み、未適用）
+### production migration 0024適用・releaseデプロイ（2026-08-07 12:39 JST、機能ONは未実施）
 
-- PR: `#29`（`codex/match-chat-uat-gate` → `release/2026-08-08-readiness`）。CI成功、レビュー可能、未マージ。
+- PR #29は`release/2026-08-08-readiness`へマージ済み。release HEADは`af6f5013d82ab34615b05aa0b2d90be4e3a04984`。
+- production Supabaseのproject refが`dipcpqmbmumazyuorslv`で、runtimeとmigrationの接続先が同一DBであることを事前確認した。適用前はmigration 24/25、public table 76、chat config・room・messageはすべて0件。
+- 新規ロジカルバックアップは、Docker/libpqがSupabase hostをIPv6だけで解決し、当該実行環境から到達できず、DB書込み前に2回失敗した。代わりに同日09:52 JSTの完全な所有者限定ロジカルバックアップを再検証し、`roles.sql` 370 bytes、`schema.sql` 128,858 bytes、`data.sql` 164,443 bytesが非0 byteでSHA-256再算出済み。Supabaseの日次バックアップも有効。SQL本文、資格情報、絶対保存先は共有記録へ含めない。
+- release HEADの`0024_shy_rocket_raccoon.sql`をproductionへ適用し、`pnpm db:migrate`はexit 0。事後確認はmigration 25/25、public table 76、追加列5件、安全制約3件、backup readiness issue 0件。
+- 適用後も`event_match_chat_configs`、`match_chat_rooms`、`match_chat_messages`はすべて0件で、マッチ後チャットはOFF。
+- クリーンな分離worktreeでrelease HEAD `af6f501`とPR #29のGitHub Actions `verify` / `e2e`成功を再確認し、Vercel production deployment `dpl_G6FdnQB5jcbXPWwHzGjQPqi93i2y`へ配備した。Vercel statusはReadyで、`https://app.shimelife.jp`および`https://shime-production.vercel.app`へalias済み。
+- 配備後は`/api/health` 200、`/liff/chat` 200、未認証`/admin` 307、未認証`/api/jobs/match-chat-retention` 401を確認した。機能ON、本番イベント設定変更、実参加者データ操作、LINE通知は実施していない。
+
+### マッチ後チャット有効化ゲート強化（2026-08-07、migration・productionデプロイ済み、機能OFF）
+
+- PR: `#29`（`codex/match-chat-uat-gate` → `release/2026-08-08-readiness`）。CI成功後にマージ済み。merge commitは`af6f5013d82ab34615b05aa0b2d90be4e3a04984`。
 - production配備後の再確認で、従来は規約の版番号だけで機能ONにでき、参加者の同意画面に正式な規約本文が表示されない不足を検出した。通報対応責任者と合成データUATの完了記録も設定に存在しなかった。
 - `event_match_chat_configs`へ正式規約本文、通報対応責任者、UAT確認・確認者・確認日時を追加するmigration 0024を作成した。既存の有効行がある環境では、移行時に設定を削除せず機能だけをOFFへ戻すfail-closed方式とした。
 - 規約版、規約本文、本文保持日数、通報対応責任者、UAT確認がすべて揃わない限り、ZodとDB CHECKの両方で機能ONを拒否する。UAT確認者は認証済み操作ユーザーとtenant複合FKで拘束し、日時はサーバー側で記録する。
@@ -34,7 +45,7 @@ release HEAD（本番反映済み）: `9b4e42e1c82ac97819d1bda4b8b2f7cc7344e47a`
 - 手順と中止条件は`MATCH_CHAT_ACTIVATION_GATE_20260807.md`へ記録した。
 - 検証: architecture成功（DB直接route `61/62`、client fetch `23/24`、巨大component `9/9`）、lintエラー0（既存warningのみ）、typecheck成功、単体82ファイル415件、結合6ファイル50件、production build成功、依存監査は既知脆弱性0件。チャット重点テスト27件とmobile E2E 1件が成功した。全E2Eは46件成功・9件skipで、既存manual表示1件だけが並列実行時に一時失敗し、単独再実行で成功した。
 - `readiness`はコマンド成功だが正式イベント情報14項目が未確定のためproduction readyはfalse。`readiness:strict`は同じ14項目で失敗しており、今回のコード変更とは別の本番P0である。
-- migration 0024はどの環境にも未適用。ブランチは`codex/match-chat-uat-gate`で、production deploy、機能ON、実データ操作、LINE通知は行っていない。
+- migration 0024とrelease `af6f501`のproductionデプロイは完了し、事後検証も成功。機能ON、本番イベント設定変更、実データ操作、LINE通知は行っていない。正式規約本文、保持日数、通報対応責任者、合成データUATが確定・完了するまで機能をONにしない。
 
 ### 2026-08-07 production rollout（migration 0021〜0023・release 9b4e42e）
 
